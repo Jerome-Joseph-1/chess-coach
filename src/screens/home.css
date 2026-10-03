@@ -33,6 +33,31 @@
   color: var(--text-muted);
   font: var(--text-caption);
 }
+.up-next--waiting {
+  min-height: 208px;
+  visibility: hidden;
+}
+.up-next-tile {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+/* The quiet second way out of the lesson card; the button stays the one action. */
+.up-next-instead {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  margin: -10px 0;
+  padding: 0 12px;
+  color: var(--text-muted);
+  font: var(--text-callout);
+  text-decoration: none;
+  touch-action: manipulation;
+}
+.up-next-instead:active {
+  color: var(--text-strong);
+}
 
 .mini-board {
   flex: none;
