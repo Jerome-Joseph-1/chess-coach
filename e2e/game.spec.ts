@@ -101,6 +101,7 @@ test('after a key position the game plays on by itself to the next one', async (
   await playButton(page).click();
   await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
   await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  await page.getByRole('button', { name: 'Show solution' }).click();
   const played = await moveList(page).count();
 
   await continueAfterPause(page);

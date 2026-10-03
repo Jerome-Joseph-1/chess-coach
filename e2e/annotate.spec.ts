@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { boardSquares, moveList, playButton, tapSquare } from './board';
+import { boardSquares, moveList, playButton } from './board';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -52,8 +52,6 @@ test('drawings do not block moving a piece, and playing a move clears them', asy
   await page.goto('./#/play/italian/1400');
   await playButton(page).click();
   await page.getByRole('button', { name: "Yes, something's going on" }).click();
-  await expect(page.getByText('Tap the piece that matters most')).toBeVisible();
-  await tapSquare(page, 'd4');
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
   const at = await boardSquares(page);
 

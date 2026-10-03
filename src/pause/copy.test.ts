@@ -98,36 +98,28 @@ describe('spotSub', () => {
 describe('resultLine', () => {
   const right = (...steps: StepOutcome['step'][]): StepOutcome[] => steps.map((step) => ({ step, correct: true }));
 
-  it('says what the user found, by how far this depth goes', () => {
-    expect(resultLine('pause', 1, right('spot'))).toEqual({ kind: 'success', text: 'You spotted it' });
-    expect(resultLine('pause', 2, right('spot', 'find')).text).toBe('You spotted it and found the piece');
-    expect(resultLine('pause', 3, right('spot', 'find', 'solve'))).toEqual({
-      kind: 'success',
-      text: 'You spotted it and found the move',
-    });
+  it('says what the user found', () => {
+    expect(resultLine('pause', right('spot', 'solve'))).toEqual({ kind: 'success', text: 'You spotted it and found the move' });
+    expect(resultLine('pause', right('spot', 'solve', 'hold')).kind).toBe('success');
   });
 
   it('says missed it as soon as one step was missed', () => {
-    const outcomes: StepOutcome[] = [...right('spot', 'find'), { step: 'solve', correct: false }];
-    expect(resultLine('pause', 3, outcomes)).toBe(MISSED);
+    const outcomes: StepOutcome[] = [...right('spot'), { step: 'solve', correct: false }];
+    expect(resultLine('pause', outcomes)).toBe(MISSED);
     expect(MISSED.text).toBe('Missed it');
-    expect(resultLine('pause', 1, [{ step: 'spot', correct: false }])).toBe(MISSED);
+    expect(resultLine('pause', [{ step: 'spot', correct: false }, { step: 'solve', correct: false }])).toBe(MISSED);
   });
 
-  it('says solved with a hint, neutral, when hints carried the user through', () => {
-    const outcomes: StepOutcome[] = [
-      { step: 'spot', correct: true },
-      { step: 'find', correct: false },
-    ];
-    expect(resultLine('pause', 2, outcomes, true)).toBe(HINTED);
+  it('says solved with a hint, neutral, when a hint carried the user through', () => {
+    const outcomes: StepOutcome[] = [...right('spot'), { step: 'solve', correct: false }];
+    expect(resultLine('pause', outcomes, true)).toBe(HINTED);
     expect(HINTED).toEqual({ kind: 'quiet', text: 'Solved with a hint' });
-    expect(resultLine('pause', 2, outcomes)).toBe(MISSED);
-    expect(resultLine('pause', 2, outcomes.map((o) => ({ ...o, correct: true })), true).kind).toBe('success');
+    expect(resultLine('pause', right('spot', 'solve'), true).kind).toBe('success');
   });
 
   it('keeps a quiet position neutral whatever the answer was', () => {
-    expect(resultLine('nothing', 3, right('spot'))).toEqual({ kind: 'quiet', text: 'You saw it was quiet' });
-    expect(resultLine('nothing', 3, [{ step: 'spot', correct: false }])).toEqual({ kind: 'quiet', text: 'This one was quiet' });
+    expect(resultLine('nothing', right('spot'))).toEqual({ kind: 'quiet', text: 'You saw it was quiet' });
+    expect(resultLine('nothing', [{ step: 'spot', correct: false }])).toEqual({ kind: 'quiet', text: 'This one was quiet' });
   });
 });
 

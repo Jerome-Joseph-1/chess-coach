@@ -4,16 +4,41 @@ import { COPY } from '../copy';
 
 export interface LinkProps {
   label: string;
-  disabled?: boolean;
   onClick: () => void;
 }
 
-/** A small muted text link: the quiet way out under the one action that matters. */
-export function TextLink({ label, disabled = false, onClick }: LinkProps) {
+/** A small muted text link: the quiet way to a second look under the one action that matters. */
+export function TextLink({ label, onClick }: LinkProps) {
   return (
-    <button type="button" class="pause-link" disabled={disabled} onClick={onClick}>
+    <button type="button" class="pause-link" onClick={onClick}>
       {label}
     </button>
+  );
+}
+
+export interface PlayActionsProps {
+  /** "Hint", then "Show the move"; null once the move is shown. */
+  hintLabel: string | null;
+  disabled: boolean;
+  onHint: () => void;
+  onSolution: () => void;
+}
+
+/** Hint and Show solution, side by side and equal. Hint leaves a gap when it is used up, so the other does not move. */
+export function PlayActions({ hintLabel, disabled, onHint, onSolution }: PlayActionsProps) {
+  return (
+    <div class="pause-actions is-pair">
+      {hintLabel ? (
+        <button type="button" class="btn btn-secondary btn-lg" disabled={disabled} onClick={onHint}>
+          {hintLabel}
+        </button>
+      ) : (
+        <span />
+      )}
+      <button type="button" class="btn btn-secondary btn-lg" disabled={disabled} onClick={onSolution}>
+        {COPY.showSolution}
+      </button>
+    </div>
   );
 }
 

@@ -4,12 +4,12 @@ import type { BoardController } from '../board/types';
 import type { Depth, Game } from '../content/types';
 import { loadGame } from '../content/loader';
 import { PauseSheet, type PauseResult } from '../pause/PauseSheet';
+import { DEPTH_NAMES } from '../progress/depth';
 import { Button } from '../ui/Button';
 import '../pause/lab/lab.css';
 
 const GAME_IDS = ['italian-1400-0001', 'italian-1400-0002'];
 const STAGES: Depth[] = [1, 2, 3, 4, 5];
-const STAGE_NAMES = ['Notice', 'Point', 'Play', 'Follow through', 'Finish'];
 
 interface LabPick {
   game: number;
@@ -63,7 +63,7 @@ function StageSelector(props: StageProps) {
     <div>
       <StageButtons {...props} />
       <p class="lab-muted">
-        Stage {props.stage}: {STAGE_NAMES[props.stage - 1]}
+        Stage {props.stage}: {DEPTH_NAMES[props.stage]}
       </p>
     </div>
   );

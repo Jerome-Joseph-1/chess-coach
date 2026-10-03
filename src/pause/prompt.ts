@@ -10,17 +10,13 @@ export interface Prompt {
 }
 
 const RIGHT = { sub: COPY.right, right: true };
-const NOT_QUITE = { sub: COPY.notQuite, right: false };
 
 /** What the last answer earned, as the line that replaces the question's sub line. */
 function feedbackSub(game: Game, state: FlowState): Pick<Prompt, 'sub' | 'right'> | null {
   const feedback = state.feedback;
   switch (feedback?.kind) {
     case 'spot':
-      return feedback.correct ? RIGHT : NOT_QUITE;
-    case 'find':
-      if (feedback.correct) return RIGHT;
-      return state.hint ? null : { sub: COPY.findRetry, right: false };
+      return feedback.correct ? RIGHT : { sub: COPY.lookAgain, right: false };
     case 'move': {
       const rare = state.phase === 'solve' && state.hint === 0;
       return { sub: rare ? findNote(game.turns[feedback.turn], game.level) : COPY.right, right: true };
@@ -28,8 +24,7 @@ function feedbackSub(game: Game, state: FlowState): Pick<Prompt, 'sub' | 'right'
     case 'alt':
       return { sub: COPY.altNote, right: true };
     case 'wrong':
-      if (state.answered) return NOT_QUITE;
-      return state.hint ? null : { sub: COPY.oneMore, right: false };
+      return state.hint ? null : { sub: COPY.tryAgain, right: false };
     default:
       return null;
   }
@@ -38,14 +33,11 @@ function feedbackSub(game: Game, state: FlowState): Pick<Prompt, 'sub' | 'right'
 /** What the hint in hand asks the user to do. */
 function hintSub(state: FlowState): Pick<Prompt, 'sub' | 'right'> | null {
   if (state.hint === 0) return null;
-  if (state.phase === 'find') return { sub: COPY.findHint, right: false };
   return { sub: state.hint === 1 ? COPY.hintPiece : COPY.hintMove, right: false };
 }
 
 function questionFor(game: Game, state: FlowState): Pick<Prompt, 'title' | 'sub'> {
   switch (state.phase) {
-    case 'find':
-      return { title: COPY.findTitle, sub: COPY.findSub };
     case 'hold':
       return { title: COPY.holdTitle, sub: holdSub(game) };
     case 'reply':
@@ -66,15 +58,8 @@ export function spotPromptFor(game: Game, turnIndex: number, state: FlowState): 
   return feedbackSub(game, state) ?? { sub: spotSub(game, turnIndex), right: false };
 }
 
-/** The quiet link under a question that plays on the board: Hint, then Show the move; none once the move is shown. */
+/** The label of the hint button under a question that plays on the board: Hint, then Show the move, then none. */
 export function hintLabel(state: FlowState): string | null {
-  switch (state.phase) {
-    case 'find':
-      return state.hint === 0 ? COPY.hint : null;
-    case 'solve':
-    case 'hold':
-      return [COPY.hint, COPY.showMove, null][state.hint];
-    default:
-      return null;
-  }
+  if (state.phase !== 'solve' && state.phase !== 'hold') return null;
+  return [COPY.hint, COPY.showMove, null][state.hint];
 }

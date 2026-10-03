@@ -1,4 +1,4 @@
-import type { Depth, Game, Kind, Level, Side, StepOutcome, Turn } from '../content/types';
+import type { Game, Kind, Level, Side, StepOutcome, Turn } from '../content/types';
 import { holdShare } from '../game/grading';
 import { capturesIn, materialLoss, valueOf } from './captures';
 import { material, pieceValue } from './material';
@@ -8,19 +8,16 @@ export const COPY = {
   spotTitle: 'Is something important happening?',
   spotYes: "Yes, something's going on",
   spotNo: 'No, nothing special',
-  findTitle: 'Tap the piece that matters most',
-  findSub: 'You get two tries.',
-  findRetry: 'Not quite. Try again.',
-  findHint: "It's marked on the board. Tap it.",
+  lookAgain: 'Not quite. Look again.',
   solveTitle: 'Your move',
   solveSub: 'Play the best move on the board.',
+  tryAgain: 'Not quite. Try again.',
   hint: 'Hint',
   showMove: 'Show the move',
+  showSolution: 'Show solution',
   hintPiece: 'Move the highlighted piece.',
   hintMove: 'Play the move shown.',
   right: 'Right.',
-  notQuite: 'Not quite.',
-  oneMore: 'Not quite. One more try.',
   altNote: 'That works too.',
   holdTitle: 'Keep going',
   next: 'Continue',
@@ -87,21 +84,13 @@ export interface ResultLine {
 export const MISSED: ResultLine = { kind: 'danger', text: 'Missed it' };
 export const HINTED: ResultLine = { kind: 'quiet', text: 'Solved with a hint' };
 
-const FOUND: Record<Depth, string> = {
-  1: 'You spotted it',
-  2: 'You spotted it and found the piece',
-  3: 'You spotted it and found the move',
-  4: 'You spotted it and found the move',
-  5: 'You spotted it and found the move',
-};
-
 /** The line that opens the reveal: how this attempt went. A quiet position is neither a win nor a miss. */
-export function resultLine(type: 'pause' | 'nothing', depth: Depth, outcomes: StepOutcome[], hinted = false): ResultLine {
+export function resultLine(type: 'pause' | 'nothing', outcomes: StepOutcome[], hinted = false): ResultLine {
   if (type === 'nothing') {
     return { kind: 'quiet', text: outcomes[0]?.correct ? 'You saw it was quiet' : 'This one was quiet' };
   }
   const allRight = outcomes.length > 0 && outcomes.every((o) => o.correct);
-  if (allRight) return { kind: 'success', text: FOUND[depth] };
+  if (allRight) return { kind: 'success', text: 'You spotted it and found the move' };
   return hinted ? HINTED : MISSED;
 }
 

@@ -8,15 +8,18 @@ export interface SpotStepProps {
   right: boolean;
   /** The right answer is "Yes". */
   expectYes: boolean;
-  /** The user's answer, once given. */
+  /** The user's latest answer. */
   picked: boolean | null;
+  /** The right answer is in: the row is done, otherwise a wrong one can be picked over. */
+  settled: boolean;
   onAnswer: (yes: boolean) => void;
 }
 
 type ChoiceState = 'idle' | 'right' | 'wrong' | 'dim';
 
-function stateOf(isYes: boolean, { expectYes, picked }: SpotStepProps): ChoiceState {
-  if (picked !== isYes) return picked === null ? 'idle' : 'dim';
+function stateOf(isYes: boolean, { expectYes, picked, settled }: SpotStepProps): ChoiceState {
+  if (picked === null || (!settled && picked !== isYes)) return 'idle';
+  if (picked !== isYes) return 'dim';
   return isYes === expectYes ? 'right' : 'wrong';
 }
 
@@ -26,8 +29,8 @@ function Choice({ isYes, ...props }: SpotStepProps & { isYes: boolean }) {
     <button
       type="button"
       class={`pause-choice is-${state}`}
-      aria-disabled={props.picked !== null}
-      onClick={() => props.picked === null && props.onAnswer(isYes)}
+      aria-disabled={props.settled}
+      onClick={() => !props.settled && props.onAnswer(isYes)}
     >
       {state === 'right' || state === 'wrong' ? (
         <CheckPop tone={state === 'right' ? 'success' : 'danger'} />
@@ -39,7 +42,7 @@ function Choice({ isYes, ...props }: SpotStepProps & { isYes: boolean }) {
   );
 }
 
-/** Step 1: is something important happening? Two rows, then the flow moves on by itself. */
+/** Step 1: is something important happening? Two rows; a wrong one is an error and the other can be picked. */
 export function SpotStep(props: SpotStepProps) {
   return (
     <div class="pause-spot">

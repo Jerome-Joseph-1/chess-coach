@@ -17,11 +17,9 @@ function after(depth: Depth, events: FlowEvent[]): FlowState {
 
 const advance: FlowEvent = { type: 'advance' };
 const spot = (up: boolean): FlowEvent => ({ type: 'spot', up });
-const tap = (square: string): FlowEvent => ({ type: 'tap', square });
 const move = (uci: string): FlowEvent => ({ type: 'move', uci });
 const hint: FlowEvent = { type: 'hint' };
-const toFind: FlowEvent[] = [spot(true), advance];
-const toSolve: FlowEvent[] = [...toFind, tap('d1'), advance];
+const toSolve: FlowEvent[] = [spot(true), advance];
 const wrongMove = Object.keys(italian1.turns[TURN].grades).find((uci) => italian1.turns[TURN].grades[uci] >= 10)!;
 
 describe('the spot step', () => {
@@ -31,34 +29,16 @@ describe('the spot step', () => {
       right: false,
     });
     expect(spotPromptFor(italian1, TURN, after(3, [spot(true)]))).toEqual({ sub: 'Right.', right: true });
-    expect(spotPromptFor(italian1, TURN, after(3, [spot(false)]))).toEqual({ sub: 'Not quite.', right: false });
+  });
+
+  it('asks to look again after a wrong answer', () => {
+    expect(spotPromptFor(italian1, TURN, after(3, [spot(false)]))).toEqual({ sub: 'Not quite. Look again.', right: false });
   });
 });
 
-describe('the find step', () => {
-  it('asks which piece matters most and says there are two tries', () => {
-    expect(promptFor(italian1, after(3, toFind))).toEqual({
-      title: 'Tap the piece that matters most',
-      sub: 'You get two tries.',
-      right: false,
-    });
-  });
-
-  it('says not quite after a wrong tap and right after the right one', () => {
-    expect(promptFor(italian1, after(3, [...toFind, tap('a1')])).sub).toBe('Not quite. Try again.');
-    expect(promptFor(italian1, after(3, [...toFind, tap('d1')]))).toMatchObject({ sub: 'Right.', right: true });
-  });
-
-  it('says the piece is marked once a hint is in hand, asked for or earned', () => {
-    expect(promptFor(italian1, after(3, [...toFind, hint])).sub).toBe("It's marked on the board. Tap it.");
-    expect(promptFor(italian1, after(3, [...toFind, tap('a1'), tap('a2')])).sub).toBe("It's marked on the board. Tap it.");
-    expect(promptFor(italian1, after(3, [...toFind, hint, tap('a1')])).sub).toBe("It's marked on the board. Tap it.");
-  });
-});
-
-describe('the solve step', () => {
-  it('asks for the move on the board', () => {
-    expect(promptFor(italian1, after(3, toSolve))).toEqual({
+describe('the play step', () => {
+  it.each([1, 2, 3, 4, 5] as const)('asks for the best move on the board at stage %i', (depth) => {
+    expect(promptFor(italian1, after(depth, toSolve))).toEqual({
       title: 'Your move',
       sub: 'Play the best move on the board.',
       right: false,
@@ -80,8 +60,11 @@ describe('the solve step', () => {
     expect(promptFor(italian1, after(3, play))).toMatchObject({ sub: 'Right.', right: true });
   });
 
-  it('says not quite, with one more try after the first miss', () => {
-    expect(promptFor(italian1, after(3, [...toSolve, move(wrongMove)])).sub).toBe('Not quite. One more try.');
+  it('says to try again after every wrong move', () => {
+    expect(promptFor(italian1, after(3, [...toSolve, move(wrongMove)])).sub).toBe('Not quite. Try again.');
+    expect(promptFor(italian1, after(3, [...toSolve, move(wrongMove), move(wrongMove), move(wrongMove)])).sub).toBe(
+      'Not quite. Try again.',
+    );
   });
 
   it('asks to move the marked piece after the first hint, then to play the move shown', () => {
@@ -90,27 +73,26 @@ describe('the solve step', () => {
   });
 
   it('keeps the hint in view after a wrong move, and does not boast of a rare find after a hint', () => {
-    expect(promptFor(italian1, after(3, [...toSolve, move(wrongMove), move(wrongMove)])).sub).toBe('Move the highlighted piece.');
-    expect(promptFor(italian1, after(3, [...toSolve, move(wrongMove), move(wrongMove), move(wrongMove)])).sub).toBe('Play the move shown.');
+    expect(promptFor(italian1, after(3, [...toSolve, hint, move(wrongMove)])).sub).toBe('Move the highlighted piece.');
     expect(promptFor(italian1, after(3, [...toSolve, hint, move(scriptedUci(italian1, TURN))])).sub).toBe('Right.');
+  });
+
+  it('asks to keep going on a follow-up move', () => {
+    const state = after(5, [...toSolve, move(scriptedUci(italian1, TURN)), advance, { type: 'replied' }]);
+    expect(promptFor(italian1, state)).toMatchObject({ title: 'Keep going', sub: "Black has answered. What's your next move?" });
   });
 });
 
-describe('the hint link', () => {
+describe('the hint button', () => {
   it('is Hint, then Show the move, then gone on the play steps', () => {
     expect(hintLabel(after(3, toSolve))).toBe('Hint');
     expect(hintLabel(after(3, [...toSolve, hint]))).toBe('Show the move');
     expect(hintLabel(after(3, [...toSolve, hint, hint]))).toBeNull();
   });
 
-  it('is Hint on the find step until the piece is marked', () => {
-    expect(hintLabel(after(3, toFind))).toBe('Hint');
-    expect(hintLabel(after(3, [...toFind, hint]))).toBeNull();
-    expect(hintLabel(after(3, [...toFind, tap('a1'), tap('a2')]))).toBeNull();
-  });
-
-  it('is left out where nothing is asked', () => {
+  it('is left out where nothing is played', () => {
     expect(hintLabel(after(3, []))).toBeNull();
-    expect(hintLabel(after(3, [spot(false), advance]))).toBeNull();
+    expect(hintLabel(after(3, [spot(true)]))).toBeNull();
+    expect(hintLabel(after(3, [...toSolve, { type: 'solution' }]))).toBeNull();
   });
 });

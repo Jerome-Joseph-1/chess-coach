@@ -147,7 +147,14 @@
   justify-items: center;
   width: 100%;
 }
-/* The quiet way out under a question or under Continue. */
+.pause-actions.is-pair {
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.pause-actions.is-pair .btn {
+  width: 100%;
+}
+/* The quiet way to watch again, under Continue. */
 .pause-link {
   min-height: 36px;
   padding: 0 16px;
@@ -161,10 +168,6 @@
 }
 .pause-link:active:not(:disabled) {
   transform: scale(0.94);
-}
-.pause-link:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 
 /* Line stepper: previous, the caption of the move on show, next. */

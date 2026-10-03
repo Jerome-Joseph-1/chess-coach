@@ -3,34 +3,28 @@ import { holds } from './moments';
 
 export const DEPTHS: Depth[] = [1, 2, 3, 4, 5];
 
+const SPOT_AND_PLAY = 'Spot it, then play it';
+
+/** What the player does at each stage, worded to follow "Stage 3 of 5:". Stages 1 to 3 all ask one move. */
 export const DEPTH_NAMES: Record<Depth, string> = {
-  1: 'Notice',
-  2: 'Point',
-  3: 'Play',
-  4: 'Follow through',
-  5: 'Finish',
+  1: SPOT_AND_PLAY,
+  2: SPOT_AND_PLAY,
+  3: SPOT_AND_PLAY,
+  4: 'Play the follow-up too',
+  5: 'Play it all the way',
 };
 
 export const DEPTH_BLURBS: Record<Depth, string> = {
-  1: 'Tell us if something important is going on',
-  2: 'Tap the piece that matters',
-  3: 'Find the best move and play it',
+  1: 'Spot the moment, then play the best move',
+  2: 'Spot the moment, then play the best move',
+  3: 'Spot the moment, then play the best move',
   4: 'Play the next move too',
   5: "Play it out until it's settled",
 };
 
-/** What the player does at each stage, worded to follow "Stage 3 of 5:". */
-const STAGE_ACTIONS: Record<Depth, string> = {
-  1: 'Notice the moment',
-  2: 'Point to the piece',
-  3: 'Play the move',
-  4: 'Follow through',
-  5: 'Finish the line',
-};
-
-/** How a depth is shown to the player, e.g. "Stage 3 of 5: Play the move". */
+/** How a depth is shown to the player, e.g. "Stage 4 of 5: Play the follow-up too". */
 export function stageLine(depth: Depth): string {
-  return `Stage ${depth} of ${DEPTHS.length}: ${STAGE_ACTIONS[depth]}`;
+  return `Stage ${depth} of ${DEPTHS.length}: ${DEPTH_NAMES[depth]}`;
 }
 
 export const WINDOW_SIZE = 20;

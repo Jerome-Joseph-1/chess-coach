@@ -75,23 +75,23 @@ describe('depth rules', () => {
 });
 
 describe('stage wording', () => {
-  it('names the five stages in plain language', () => {
+  it('names the five stages in plain language, the first three asking the same', () => {
     expect(DEPTHS.map((d) => `${DEPTH_NAMES[d]}: ${DEPTH_BLURBS[d]}`)).toEqual([
-      'Notice: Tell us if something important is going on',
-      'Point: Tap the piece that matters',
-      'Play: Find the best move and play it',
-      'Follow through: Play the next move too',
-      "Finish: Play it out until it's settled",
+      'Spot it, then play it: Spot the moment, then play the best move',
+      'Spot it, then play it: Spot the moment, then play the best move',
+      'Spot it, then play it: Spot the moment, then play the best move',
+      'Play the follow-up too: Play the next move too',
+      "Play it all the way: Play it out until it's settled",
     ]);
   });
 
   it('writes the stage line', () => {
     expect(DEPTHS.map(stageLine)).toEqual([
-      'Stage 1 of 5: Notice the moment',
-      'Stage 2 of 5: Point to the piece',
-      'Stage 3 of 5: Play the move',
-      'Stage 4 of 5: Follow through',
-      'Stage 5 of 5: Finish the line',
+      'Stage 1 of 5: Spot it, then play it',
+      'Stage 2 of 5: Spot it, then play it',
+      'Stage 3 of 5: Spot it, then play it',
+      'Stage 4 of 5: Play the follow-up too',
+      'Stage 5 of 5: Play it all the way',
     ]);
   });
 });

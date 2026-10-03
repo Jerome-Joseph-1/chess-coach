@@ -61,7 +61,7 @@ test.describe('Today', () => {
     await expect(page.getByRole('heading', { name: 'Chess Coach.' })).toBeVisible();
     const card = page.getByRole('region', { name: 'Italian Game' });
     await expect(card.getByText('You play White · Opponents rated 1400')).toBeVisible();
-    await expect(card.getByText('Stage 1 of 5: Notice the moment')).toBeVisible();
+    await expect(card.getByText('Stage 1 of 5: Spot it, then play it')).toBeVisible();
     await expect(card.getByRole('button', { name: 'Play', exact: true })).toBeEnabled();
     await expect(page.locator('main .btn-primary')).toHaveCount(1);
     await expect(page.getByText('Download for offline')).toHaveCount(0);
@@ -147,7 +147,7 @@ test.describe('Settings', () => {
     await page.getByRole('switch', { name: /Quick games \(about 3 key positions\)/ }).click();
     await page.getByRole('button', { name: '3', exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await expect(page.getByText('Stage 3 of 5: Play the move.')).toBeVisible();
+    await expect(page.getByText('Stage 3 of 5: Spot it, then play it.')).toBeVisible();
 
     await page.reload();
 
@@ -177,7 +177,7 @@ test.describe('Settings', () => {
     await page.goto('./#/settings');
     await page.getByRole('button', { name: '4', exact: true }).click();
     await page.goto('./');
-    await expect(page.getByText('Stage 4 of 5: Follow through')).toBeVisible();
+    await expect(page.getByText('Stage 4 of 5: Play the follow-up too')).toBeVisible();
   });
 
   test('reset asks for confirmation inside the page', async ({ page }) => {
@@ -318,8 +318,8 @@ test.describe('Recap', () => {
     await page.goto('./#/recap');
     await page.reload();
 
-    const card = page.getByRole('dialog', { name: 'New stage unlocked: Point' });
-    await expect(card.getByText('Tap the piece that matters')).toBeVisible();
+    const card = page.getByRole('dialog', { name: 'New stage unlocked: Spot it, then play it' });
+    await expect(card.getByText('Spot the moment, then play the best move')).toBeVisible();
     await card.getByRole('button', { name: 'Got it' }).click();
     await expect(card).toBeHidden();
     await expect(page.getByRole('heading', { name: 'Game complete' })).toBeVisible();
@@ -348,7 +348,7 @@ test.describe('Progress', () => {
     await expect(page.getByRole('heading', { name: 'Progress', level: 1 })).toBeVisible();
     const italian = page.getByRole('region', { name: 'Italian Game' });
     await expect(italian.getByText('Games played')).toBeVisible();
-    await expect(italian.getByText('Stage 1 of 5: Notice the moment')).toBeVisible();
+    await expect(italian.getByText('Stage 1 of 5: Spot it, then play it')).toBeVisible();
     await expect(italian.getByText('Reviews due')).toBeVisible();
     await expect(italian.getByRole('img', { name: 'Chances to win: 50% right' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Caro-Kann Defense' }).getByText('Not started yet')).toBeVisible();
