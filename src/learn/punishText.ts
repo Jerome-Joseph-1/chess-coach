@@ -5,6 +5,7 @@ import { VALUE, otherColor, type PieceAt } from './board';
 import type { Cost } from './loss';
 import type { Tactic } from './tactics';
 import type { Theme } from './themes';
+import { appeal } from './purpose';
 import { capturedSquare } from './trade';
 import { listOf, refer } from './words';
 
@@ -77,7 +78,13 @@ export function baitText(say: Say, caught: Caught): string {
     const piece = `your ${NAME[say.move.promotion ?? say.move.piece]}`;
     return `${move} puts ${piece} where ${attacker} can take it, and ${mover(say, t.moves[0])} ${rest(say, caught, {}, keyVerb(say, caught, {}, 'it'))}.`;
   }
-  return `${tempting(say.move)}, but ${clause(say, caught, { grabbed: Boolean(say.move.captured) })}.`;
+  return `${lure(say)}, but ${clause(say, caught, { grabbed: Boolean(say.move.captured) })}.`;
+}
+
+/** "Nd5 attacks the bishop on f4", "Bxf7+ grabs a pawn": what draws the eye to the trap's move, as the lesson says it. */
+function lure({ move, user }: Say): string {
+  const [why] = move.captured ? [] : appeal(move, user);
+  return why ? `${move.san} ${why}` : tempting(move);
 }
 
 /** "so Nxe4 wins it", "and after Bxc1 Rfxc1, Bxc4 wins it". */

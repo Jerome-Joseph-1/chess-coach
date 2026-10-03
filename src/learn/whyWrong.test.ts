@@ -98,7 +98,7 @@ describe('the real payoff of a line (R3)', () => {
 
   it('plays a line that stops mid-exchange to its end', () => {
     expect(told('caro-kann-2000-0206#25', 'g7g6').early.text).toBe(
-      'Qg6 looks natural, but after Qxg6+ hxg6, Nxf6+ takes your pawn on f6, checks your king and attacks your rook on e8 at once, and after Kf8, Nxe8 takes the rook, and you lose the exchange and a pawn.',
+      'Qg6 attacks the queen on h5, but after Qxg6+ hxg6, Nxf6+ takes your pawn on f6, checks your king and attacks your rook on e8 at once, and after Kf8, Nxe8 takes the rook, and you lose the exchange and a pawn.',
     );
     expect(told('italian-1400-0068#25', 'a1a6').named.text).toBe(
       "That doesn't stop Black's threat: Rxf2+ checks your king and attacks your queen on e2 at once, and after Qxf2, Rxf2+ takes your queen on f2, and you get only a rook for your queen and a pawn.",
@@ -118,10 +118,10 @@ describe('the squares and moves of a line (R4)', () => {
 describe('a pattern with what it costs (R5)', () => {
   it('ends a pin, a discovered attack or a removed defender on the material', () => {
     expect(told('caro-kann-2000-0132#15', 'h8g8').early.text).toBe(
-      "Rg8 looks natural, but Rxg8+ wins your rook on g8, because your knight on f6 is pinned to your king and can't take back, and Rxc8 then takes your rook on c8.",
+      "Rg8 attacks the rook on g7, but Rxg8+ wins your rook on g8, because your knight on f6 is pinned to your king and can't take back, and Rxc8 then takes your rook on c8.",
     );
     expect(told('caro-kann-1700-0235#8', 'f8d6').early.text).toBe(
-      'Bd6 looks natural, but dxc5 wins your pawn on c5 and opens the line from the queen on d1 to your bishop on d6.',
+      'Bd6 attacks the knight on e5, but dxc5 wins your pawn on c5 and opens the line from the queen on d1 to your bishop on d6.',
     );
     expect(told('italian-1400-0135#14', 'b2b4').named.text).toBe(
       "That doesn't stop Black's threat: Bxd4 trades off your knight on d4, which guards your bishop on e6, and after Qxd4, Qxe6 wins the bishop.",
@@ -229,7 +229,7 @@ describe('material the line only wins after a poor move of the user (R11)', () =
   it('still blames the move when the piece falls without that poor move too', () => {
     // Taking back at once with dxe4 drops the bishop on c4 as well, so Qb7 isn't what loses it.
     expect(told('caro-kann-1400-0128#15', 'f6e4').early.text).toBe(
-      'Ne4 looks natural, but after Nxe4 Qb7 a3 dxe4, Qxc4 wins your bishop on c4.',
+      'Ne4 attacks the knight on c3, but after Nxe4 Qb7 a3 dxe4, Qxc4 wins your bishop on c4.',
     );
   });
 });
@@ -244,7 +244,7 @@ describe('the common mistake', () => {
     });
     expect(whyWrong(caroKann, 6, 'f6d5', 0)).toMatchObject({
       kind: 'bait',
-      text: 'Nd5 looks natural, but Nxf7 takes your pawn on f7 and attacks your queen on d8 and your rook on h8 at once, and after Nxf4, Nxd8 takes the queen, and you get only a bishop for your queen and a pawn.',
+      text: 'Nd5 attacks the bishop on f4 and the knight on c3, but Nxf7 takes your pawn on f7 and attacks your queen on d8 and your rook on h8 at once, and after Nxf4, Nxd8 takes the queen, and you get only a bishop for your queen and a pawn.',
       targets: ['d8', 'h8'],
     });
   });
