@@ -1,0 +1,110 @@
+name: Content
+
+on:
+  workflow_dispatch:
+    inputs:
+      games:
+        description: Games per opening and level
+        default: '20'
+      dump:
+        description: Lichess month to build the opening index from
+        default: '2026-08'
+      bytes:
+        description: How much of the dump to read
+        default: '9000000000'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install chess zstandard
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: pipeline/data/index
+          key: index-${{ inputs.dump }}-${{ inputs.bytes }}-${{ hashFiles('pipeline/index_openings.py', 'pipeline/openings.py') }}
+      - if: steps.cache.outputs.cache-hit != 'true'
+        working-directory: pipeline
+        run: |
+          curl -s -r 0-${{ inputs.bytes }} https://database.lichess.org/standard/lichess_db_standard_rated_${{ inputs.dump }}.pgn.zst \
+            | python index_openings.py data/index
+      - uses: actions/upload-artifact@v4
+        with:
+          name: index
+          path: pipeline/data/index
+
+  generate:
+    needs: index
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        opening: [italian, caro-kann]
+        level: [1100, 1400, 1700, 2000]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: sudo apt-get install -y stockfish
+      - run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install maia2 chess zstandard safetensors
+      - uses: actions/download-artifact@v4
+        with:
+          name: index
+          path: pipeline/data/index
+      - uses: actions/cache@v4
+        with:
+          path: pipeline/data/maia
+          key: maia2-rapid-safetensors
+      - name: Fetch Maia-2 weights
+        run: |
+          mkdir -p pipeline/data/maia
+          f=pipeline/data/maia/maia2-rapid.safetensors
+          [ -s "$f" ] || curl -sL -o "$f" https://huggingface.co/shermansiu/maia2-rapid/resolve/main/model.safetensors
+      - name: Generate
+        working-directory: pipeline
+        env:
+          STOCKFISH: /usr/games/stockfish
+        run: |
+          total=${{ inputs.games }}
+          per=$(( (total + 3) / 4 ))
+          for i in 0 1 2 3; do
+            first=$(( i * per + 1 ))
+            count=$(( first + per - 1 > total ? total - first + 1 : per ))
+            [ "$count" -gt 0 ] && python generate.py --opening ${{ matrix.opening }} --level ${{ matrix.level }} \
+              --games "$count" --first "$first" --out out &
+          done
+          wait
+      - uses: actions/upload-artifact@v4
+        with:
+          name: games-${{ matrix.opening }}-${{ matrix.level }}
+          path: pipeline/out
+
+  publish:
+    needs: generate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: games-*
+          path: pipeline/out
+          merge-multiple: true
+      - run: python pipeline/export.py pipeline/out build/content
+      - name: Release and redeploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tar -czf content.tar.gz -C build/content .
+          tag="content-$(date -u +%Y%m%d-%H%M)"
+          gh release create "$tag" content.tar.gz build/report.md --title "$tag" --notes-file build/report.md
+          gh workflow run deploy.yml --ref main
