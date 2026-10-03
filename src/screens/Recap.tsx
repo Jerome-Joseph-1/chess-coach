@@ -137,13 +137,13 @@ function CoachNote({ moments }: { moments: MomentResult[] }) {
   const note = coachNote(moments);
   if (!note) return null;
   return (
-    <div class="coach-note rise-in" style={{ animationDelay: `${rowDelay(-1)}ms` }}>
-      <span class="coach-mark" aria-hidden="true">
+    <div class="recap-coach rise-in" style={{ animationDelay: `${rowDelay(-1)}ms` }}>
+      <span class="recap-coach-mark" aria-hidden="true">
         <svg viewBox="0 0 40 40">
           <use href={`${pieceSprite}#bn`} />
         </svg>
       </span>
-      <div class="coach-bubble">
+      <div class="recap-bubble">
         <p class="eyebrow">Coach's note</p>
         <p>{note}</p>
       </div>
@@ -194,8 +194,8 @@ function RecapBody({ game, bonus }: { game: GameSummary; bonus: boolean }) {
         )}
       </div>
 
-      <div class="dock rise-in" style={{ animationDelay: `${dockDelay(game.moments.length, game.moments.length)}ms` }}>
-        <a class="btn btn-secondary btn-lg dock-today" href="#/">
+      <div class="recap-dock rise-in" style={{ animationDelay: `${dockDelay(game.moments.length, game.moments.length)}ms` }}>
+        <a class="btn btn-secondary btn-lg recap-today" href="#/">
           <Icon name="home" />
           Today
         </a>
