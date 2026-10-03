@@ -225,6 +225,13 @@ describe('material the line only wins after a poor move of the user (R11)', () =
       "That doesn't stop Black's threat: after Ne2+ Kf2, Nxf4 wins your pawn on f4.",
     );
   });
+
+  it('still blames the move when the piece falls without that poor move too', () => {
+    // Taking back at once with dxe4 drops the bishop on c4 as well, so Qb7 isn't what loses it.
+    expect(told('caro-kann-1400-0128#15', 'f6e4').early.text).toBe(
+      'Ne4 looks natural, but after Nxe4 Qb7 a3 dxe4, Qxc4 wins your bishop on c4.',
+    );
+  });
 });
 
 describe('the common mistake', () => {

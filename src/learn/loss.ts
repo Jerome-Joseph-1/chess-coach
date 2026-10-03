@@ -1,6 +1,6 @@
-import { Chess, type Color, type Move, type Square } from 'chess.js';
+import { Chess, type Color, type Move, type PieceSymbol, type Square } from 'chess.js';
 import { attackedTargets, type Piece } from '../board/captions';
-import { VALUE, captureGain, capturesOn, exchangeGain, isLoose, otherColor, passTurn, playLine, uciOf } from './board';
+import { VALUE, captureGain, capturesOn, exchangeGain, isLoose, otherColor, passTurn, piecesOf, playLine, uciOf } from './board';
 import type { Tactic } from './tactics';
 import { capturedSquare, tradeOf, type Trade } from './trade';
 
@@ -49,9 +49,18 @@ export function giveaway(t: Tactic): number {
   for (let i = 1; i < key; i += 2) {
     const move = moves[i];
     if (move.captured || !isFree(move)) continue;
-    if (!isLoose(move.before, squares[i]) && isLoose(move.after, squares[i + 1])) return i;
+    if (!isLoose(move.before, squares[i]) && isLoose(move.after, squares[i + 1]) && safeWithout(moves, i, squares[i])) return i;
   }
   return -1;
+}
+
+/** The user's piece on `square` is out of danger when the line stops before move `i` and its exchange plays out. */
+function safeWithout(moves: Move[], i: number, square: Square): boolean {
+  const start = moves[0].before;
+  const line = playLine(start, settled(start, moves.slice(0, i).map(uciOf)));
+  const end = line.at(-1)!.after;
+  const at = line.slice(i).reduce((on, m) => (m.from === on ? m.to : on), square);
+  return new Chess(end).get(at)?.color === otherColor(moves[0].color) && !isLoose(end, at);
 }
 
 /** A capture that doesn't take back what was just taken, by a piece that wasn't in danger. */
@@ -91,13 +100,15 @@ export function costOf(turnFen: string, move: Move, t: Tactic): Cost {
   const end = exchangeEnd(turnFen, t.moves, t.key);
   const counted = [...t.moves.slice(0, end), ...delayedRecapture(t.moves, t.key, end)];
   const base = [move, ...counted];
-  const candidates = [laterCapture(t.moves, end, move.to), keyPieceCapture(t.moves, t.key, end)].filter((i) => i >= 0);
+  const candidates = new Set([laterCapture(t.moves, end, move.to), keyPieceCapture(t.moves, t.key, end)]);
   // A later capture counts only when it adds to the loss: taking back what the move itself took doesn't.
-  const then = candidates
+  const then = [...candidates]
+    .filter((i) => i >= 0)
     .sort((a, b) => a - b)
     .filter((i) => netOf([...base, ...exchangeAt(t.moves, i)], t.side) > netOf(base, t.side));
   const all = [...base, ...then.flatMap((i) => exchangeAt(t.moves, i))];
-  const trade = withoutMinorSwaps(tradeOf(all, t.side), all);
+  const named = new Set([t.moves[t.key], ...then.map((i) => t.moves[i])]);
+  const trade = { ...tradeOf(all, t.side), ...piecesTaken(all, t.side, named) };
   const forked = t.id === 'free-piece' || t.id === 'material-win' ? forkedAfter(t, end) : [];
   return { trade, counted, then: then.map((i) => t.moves[i]), forked, checks: keepsChecking(t) };
 }
@@ -107,23 +118,57 @@ function netOf(moves: Move[], side: Color): number {
 }
 
 /**
- * A knight given for a bishop, or the other way round, costs nothing when they are traded on one square, or when
- * the move itself took the minor piece the opponent then wins back.
+ * The pieces each side takes over `moves`, less alike ones that cancel out: a recapture, two taken on one square,
+ * one taken by the first move, and two taken anywhere unless the text names either (`named`).
  */
-function withoutMinorSwaps(trade: Trade, moves: Move[]): Trade {
-  const minor = (type: string | undefined) => type === 'n' || type === 'b';
-  const theirs = moves.filter((m) => m.color !== moves[0].color && minor(m.captured)).map(capturedSquare);
-  const swaps = moves.filter((m, i) => m.color === moves[0].color && minor(m.captured) && (i === 0 || theirs.includes(capturedSquare(m))));
-  const won = [...trade.won];
-  const lost = [...trade.lost];
-  for (let i = 0; i < swaps.length; i++) {
-    const w = won.findIndex(minor);
-    const l = lost.findIndex(minor);
-    if (w < 0 || l < 0) break;
-    won.splice(w, 1);
-    lost.splice(l, 1);
+function piecesTaken(moves: Move[], side: Color, named: Set<Move>): Pick<Trade, 'won' | 'lost'> {
+  const captures = capturesIn(moves, side, named);
+  for (let i = captures.length - 1; i > 0; i--) {
+    const [a, b] = [captures[i - 1], captures[i]];
+    if (!a.gone && !b.gone && a.square === b.square && pairs(a, b)) a.gone = b.gone = true;
   }
-  return { ...trade, won, lost };
+  const rules = [
+    (a: Taken, b: Taken) => a.square === b.square,
+    (a: Taken, b: Taken) => a.first || b.first,
+    (a: Taken, b: Taken) => a.type === b.type && !a.named && !b.named,
+  ];
+  for (const rule of rules) {
+    for (const a of captures.filter((c) => !c.gone)) {
+      const b = !a.gone && captures.find((c) => !c.gone && pairs(a, c) && rule(a, c));
+      if (b) a.gone = b.gone = true;
+    }
+  }
+  const kept = (mine: boolean) => captures.filter((c) => !c.gone && c.mine === mine).map((c) => c.type);
+  const byValue = (types: PieceSymbol[]) => types.sort((a, b) => VALUE[b] - VALUE[a]);
+  return { won: byValue(kept(true)), lost: byValue(kept(false)) };
+}
+
+interface Taken {
+  square: Square;
+  type: PieceSymbol;
+  mine: boolean;
+  /** Taken by the line's first move. */
+  first: boolean;
+  named: boolean;
+  gone: boolean;
+}
+
+/** The captures in a line; a promoted piece taken back counts as a pawn. */
+function capturesIn(moves: Move[], side: Color, named: Set<Move>): Taken[] {
+  const promoted = new Set<Square>();
+  return moves.flatMap((move, i) => {
+    const square = capturedSquare(move);
+    const type = move.captured && promoted.delete(square) ? 'p' : move.captured;
+    if (promoted.delete(move.from)) promoted.add(move.to);
+    if (move.promotion) promoted.add(move.to);
+    return type ? [{ square, type, mine: move.color === side, first: i === 0, named: named.has(move), gone: false }] : [];
+  });
+}
+
+/** Captures by opposite sides of alike pieces, a knight and a bishop being alike. */
+function pairs(a: Taken, b: Taken): boolean {
+  const minor = (type: PieceSymbol) => type === 'n' || type === 'b';
+  return a.mine !== b.mine && (a.type === b.type || (minor(a.type) && minor(b.type)));
 }
 
 /** The key capture comes with check and the opponent checks again later: the attack goes on. */
@@ -208,9 +253,10 @@ function forkedAfter(t: Tactic, end: number): Piece[] {
  */
 export function hangingAfter(move: Move): Move | null {
   const chess = new Chess(move.after);
-  const captures = chess
-    .moves({ verbose: true })
-    .filter((m) => m.captured && m.captured !== 'p' && isCheap(chess, m) && captureGain(m) > 0 && !mateAfter(m) && !paidBack(m));
+  const captures = piecesOf(chess, move.color)
+    .filter((p) => p.type !== 'p' && p.type !== 'k')
+    .flatMap((p) => capturesOn(chess, p.square))
+    .filter((m) => isCheap(chess, m) && captureGain(m) > 0 && !mateAfter(m) && !paidBack(m));
   return captures.reduce<Move | null>((best, m) => (!best || captureGain(m) > captureGain(best) ? m : best), null);
 }
 
@@ -228,7 +274,9 @@ function isCheap(chess: Chess, capture: Move): boolean {
 
 /** The mate in one that answers `move`, if any. */
 export function mateAfter(move: Move): Move | null {
-  return new Chess(move.after).moves({ verbose: true }).find((m) => m.san.endsWith('#')) ?? null;
+  const chess = new Chess(move.after);
+  const mate = chess.moves().find((san) => san.endsWith('#'));
+  return mate ? chess.move(mate) : null;
 }
 
 /** Whether the opponent could already make the same capture, at a gain, in the turn's position. */

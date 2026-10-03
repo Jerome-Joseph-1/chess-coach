@@ -178,7 +178,9 @@ export function attacked(say: Say, reply: Move): string[] {
 function keyVerb(say: Say, caught: Caught, voice: Voice, it?: string): string {
   const { t, cost } = caught;
   const capture = t.moves[t.key];
-  const ref = it ?? keyPiece(t, say.user);
+  const fresh = newPiece(say, capture);
+  const ref = it ?? fresh ?? keyPiece(t, say.user);
+  if (fresh) return `takes ${ref}`;
   if (!cost.trade.won.includes(keyType(t))) return `takes ${ref} in return`;
   const promotes = capture.promotion ? ` and makes a new ${NAME[capture.promotion]}` : '';
   const forked = cost.forked.map((p) => refer({ ...p, color: say.user }, say.user));
@@ -210,7 +212,13 @@ function thenText(say: Say, { cost }: Caught): string {
 }
 
 export function capturedRef(say: Say, capture: Move): string {
-  return refer({ square: capturedSquare(capture), type: capture.captured!, color: say.user }, say.user);
+  return newPiece(say, capture) ?? refer({ square: capturedSquare(capture), type: capture.captured!, color: say.user }, say.user);
+}
+
+/** "the new queen on b8": the piece the move has just promoted to, worth only the pawn it was. */
+function newPiece({ move }: Say, capture: Move): string | null {
+  const taken = move.promotion && capture.to === move.to && capture.captured === move.promotion;
+  return taken ? `the new ${NAME[move.promotion!]} on ${move.to}` : null;
 }
 
 /** What the user ends up with when it isn't just the named pieces: ", and you get only a knight for it". */
@@ -222,8 +230,9 @@ function netText(say: Say, caught: Caught, voice: Voice): string {
   const exchange = exchangeLost(say, caught, voice);
   if (exchange) return `, and you lose ${exchange}`;
   if (onlyNamed(say, caught, voice)) return '';
-  const what = !cost.then.length && sameTypes(lost, [keyType(caught.t)]) ? 'it' : yours(lost);
-  return back.length ? `, and you get only ${some(back)} for ${what}` : `, and you lose ${yours(lost)} in all`;
+  if (!back.length) return `, and you lose ${yours(lost)} in all`;
+  if (cost.then.length) return `, and you get only ${some(back)} back`;
+  return `, and you get only ${some(back)} for ${sameTypes(lost, [keyType(caught.t)]) ? 'it' : yours(lost)}`;
 }
 
 /** "the exchange", "the exchange and a pawn": a rook given for a minor piece, perhaps the one the move grabbed. */
