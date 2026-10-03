@@ -95,6 +95,8 @@ export interface MomentResult {
   stars: number;
   at: number;
   review?: boolean;
+  /** Asked again right after it was answered: it moves no stage and no review date. */
+  practice?: boolean;
 }
 
 export interface GameSummary {

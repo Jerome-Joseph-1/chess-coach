@@ -431,7 +431,7 @@ describe('a pause', () => {
     started.session.pauseDone({ outcomes: outcomes(true), resumePly: 3 });
     await flush();
     expect(started.deps.celebrate).toHaveBeenCalledWith('levelup');
-    expect(started.deps.toast).toHaveBeenCalledWith('New step unlocked');
+    expect(started.deps.toast).toHaveBeenCalledWith('New stage unlocked');
     expect(started.session.getView().depth).toBe(2);
   });
 

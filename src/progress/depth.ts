@@ -67,7 +67,7 @@ function moveTo(depth: Depth): { state: DepthState; changed: Depth } {
 
 /** Folds one recorded moment into the set's depth state; `changed` is set when the depth moved. */
 export function applyMoment(state: DepthState, m: MomentResult): { state: DepthState; changed?: Depth } {
-  if (m.type !== 'pause' || m.depth !== state.depth) return { state };
+  if (m.type !== 'pause' || m.practice || m.depth !== state.depth) return { state };
   const entry = { key: `${m.gameId}:${m.ply}`, held: holds(m) };
   const window = [...state.window.filter((e) => e.key !== entry.key), entry].slice(-WINDOW_SIZE);
   if (window.length === WINDOW_SIZE) {

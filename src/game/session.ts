@@ -489,12 +489,13 @@ export class GameSession {
       at: this.deps.now(),
     };
     if (this.review || practice) result.review = true;
+    if (practice) result.practice = true;
     const { depthChanged } = this.deps.recordMoment(result);
     if (!practice) this.countAnswer(turn, result);
     this.update({ depth: depthChanged ?? this.view.depth });
     if (depthChanged) {
       this.deps.celebrate('levelup');
-      this.deps.toast('New step unlocked');
+      this.deps.toast('New stage unlocked');
     }
   }
 

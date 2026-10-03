@@ -30,6 +30,15 @@ describe('depth through the store', () => {
     expect(store.getDepth('italian', 1400)).toBe(1);
   });
 
+  it('leaves the stage alone for practice answers', async () => {
+    const store = await openStore();
+    const results = mix(20).map((held, i) =>
+      store.recordMoment((held ? moment : wrong)({ ply: i * 2 + 1, depth: 1, practice: true, review: true })),
+    );
+    expect(results.every((r) => r.depthChanged === undefined)).toBe(true);
+    expect(store.getDepth('italian', 1400)).toBe(1);
+  });
+
   it('counts only moments recorded at the current depth', async () => {
     const store = await openStore();
     const stale = play(store, mix(20), 3);

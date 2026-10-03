@@ -67,6 +67,11 @@ describe('depth rules', () => {
     expect(applyMoment(newDepthState(), m).state.window[0].held).toBe(true);
   });
 
+  it('ignores practice answers', () => {
+    const state = newDepthState();
+    expect(applyMoment(state, moment({ practice: true })).state).toBe(state);
+  });
+
   it('ignores quiet moments, silent finds and other depths', () => {
     const state = newDepthState();
     expect(applyMoment(state, moment({ type: 'nothing' })).state).toBe(state);

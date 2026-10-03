@@ -85,8 +85,8 @@ export function recordMoment(r: MomentResult): { depthChanged?: Depth } {
   touchDay(p, r.at);
   p.moments.push(r);
   if (p.moments.length > MOMENT_CAP) p.moments.splice(0, p.moments.length - MOMENT_CAP);
-  p.reviews = updateReviews(p.reviews, r);
-  const depthChanged = trackDepth(p, r);
+  if (!r.practice) p.reviews = updateReviews(p.reviews, r);
+  const depthChanged = r.practice ? undefined : trackDepth(p, r);
   if (depthChanged) reachedStage = depthChanged > r.depth ? depthChanged : null;
   persist();
   return depthChanged ? { depthChanged } : {};

@@ -70,7 +70,8 @@ export class CmBoardController implements BoardController {
   async setPosition(fen: string, animate = false): Promise<void> {
     await this.pending;
     if (this.destroyed) return;
-    const sound = animate ? soundBetween(this.position, fen) : null;
+    // A step back undoes one move, so it sounds like the move it undoes.
+    const sound = animate ? (soundBetween(this.position, fen) ?? soundBetween(fullFen(fen), this.position)) : null;
     this.position = fullFen(fen);
     this.annotations.clear();
     this.setLastMove(null);
