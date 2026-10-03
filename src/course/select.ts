@@ -221,8 +221,10 @@ function deviceSource(opening: OpeningId, unit: UnitId): PositionSource {
   const answered = new Set(getLessons(opening)[unit]?.drills.map((d) => d.key));
   const played = new Map<string, Set<string>>();
   const playedIn = (set: string) => {
-    const parsed = setOf(set);
-    if (!played.has(set)) played.set(set, new Set(parsed ? playedGameIds(parsed.opening, parsed.level) : []));
+    if (!played.has(set)) {
+      const parsed = setOf(set);
+      played.set(set, new Set(parsed ? playedGameIds(parsed.opening, parsed.level) : []));
+    }
     return played.get(set)!;
   };
   return {
