@@ -2,7 +2,7 @@ import { Chess, type Color, type Move, type PieceSymbol, type Square } from 'che
 import { NAME, attackedTargets } from '../board/captions';
 import type { Game, Turn } from '../content/types';
 import type { HintLevel } from '../pause/flow';
-import { moveBefore } from '../pause/position';
+import { moveBefore, uciOfSan } from '../pause/position';
 import { VALUE, captureGain, kingOf, otherColor, passTurn, playLine, uciOf, type PieceAt } from './board';
 import { costOf, couldTakeBefore, giveaway, hangingAfter, mateAfter, nothingHangs, settled, wasLoose } from './loss';
 import {
@@ -71,9 +71,12 @@ export function whyWrong(game: Game, turnIndex: number, uci: string, hint: HintL
   const turn = game.turns[turnIndex];
   const [move] = playLine(turn.fen, [uci]);
   if (turn.grades[uci] === undefined || !move) return plain('unknown');
-  const answers = [playLine(turn.fen, turn.lines.best?.slice(0, 1) ?? [])[0]?.san, game.moves[turn.ply]].filter((san) => san !== undefined);
+  const best = playLine(turn.fen, turn.lines.best?.slice(0, 1) ?? [])[0];
+  const played = playLine(turn.fen, [uciOfSan(turn.fen, game.moves[turn.ply])])[0];
+  const answers = [best?.san, game.moves[turn.ply]].filter((san) => san !== undefined);
+  const answerSquares = [best?.to, played?.to].filter((square) => square !== undefined);
   const after = pawnsAt(turn.bestWin - turn.grades[uci]);
-  const say: Say = { turn, user: game.side, them: colorName(otherColor(game.side)), move, answers, after };
+  const say: Say = { turn, user: game.side, them: colorName(otherColor(game.side)), move, answers, answerSquares, after };
   const found = classify({ game, turnIndex, hint }, say);
   // With the move drawn on the board, there is nothing left to explain.
   return hint >= 3 ? plain(found.kind) : found;
@@ -174,8 +177,8 @@ function stillDown(say: Say, taken: PieceSymbol, caught: Caught | null, named: b
   if (!named || !reply) return { kind, text: `${lead}.`, reply: null, targets: [] };
   const escapes = new Chess(say.move.after).get(reply.from)?.type === taken && reply.piece === taken;
   if (!escapes) return { kind, text: `${lead}.`, reply: uciOf(reply), targets: [] };
-  const away = reply.captured ? `by taking ${capturedRef(say, reply)}` : `to ${reply.to}`;
-  const text = `${lead}: ${say.them}'s ${NAME[taken]} gets away ${away}.`;
+  const away = reply.captured ? `by taking ${capturedRef(say, reply)}` : say.answerSquares.includes(reply.to) ? '' : `to ${reply.to}`;
+  const text = `${lead}: ${say.them}'s ${NAME[taken]} gets away${away ? ` ${away}` : ''}.`;
   return { kind, text, reply: uciOf(reply), targets: reply.captured ? [capturedSquare(reply)] : [] };
 }
 

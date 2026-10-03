@@ -33,6 +33,8 @@ export interface Say {
   move: Move;
   /** Moves a text must never name: the position's best move and the game's move. */
   answers: string[];
+  /** Where those moves go: a square the text must not send an opponent's move to, since it would point at the answer. */
+  answerSquares: Square[];
   /** The user's evaluation after the move by the grades, in pawns. */
   after: number;
 }
@@ -105,12 +107,18 @@ export function attacked(say: Say, reply: Move): string[] {
 export function played(say: Say, move: Move, check = true): string {
   if (move.isKingsideCastle() || move.isQueensideCastle()) return `${say.them} castles`;
   const who = `${say.them}'s ${NAME[move.piece]}`;
-  const does = move.captured ? `takes ${capturedRef(say, move)}` : `moves to ${move.to}`;
+  const does = move.captured ? `takes ${capturedRef(say, move)}` : movesTo(say, move);
   const promotes = move.promotion ? ` and becomes a ${NAME[move.promotion]}` : '';
   return `${who} ${does}${promotes}${check && givesCheck(move) ? ' with check' : ''}`;
 }
 
 const givesCheck = (move: Move) => move.san.includes('+');
+
+/** "moves to d5", or "moves forward" when the square is where the answer goes, so it isn't pointed at. */
+export function movesTo(say: Say, move: Move): string {
+  if (!say.answerSquares.includes(move.to)) return `moves to ${move.to}`;
+  return move.piece === 'p' ? 'moves forward' : 'moves up';
+}
 
 /** "Taking the knight on d4": the user's capture, as the subject of a sentence. */
 export function taking(move: Move): string {
@@ -281,7 +289,7 @@ function event(say: Say, caught: Caught, level: Level, long: Long): Event {
   // The barest telling keeps a check only when the move does nothing else.
   const check = givesCheck(move) && !pattern?.checks && (level < 2 || !move.promotion) ? ' with check' : '';
   const parts = [
-    `${move.captured ? `takes ${capturedRef(say, move)}${back}` : castles(move) ? '' : `moves to ${move.to}`}${check}`.trim(),
+    `${move.captured ? `takes ${capturedRef(say, move)}${back}` : castles(move) ? '' : movesTo(say, move)}${check}`.trim(),
     move.promotion ? `becomes a ${NAME[move.promotion]}` : '',
     ...(pattern?.does ?? []),
     ...(level > 0 || pattern ? [] : forkedText(say, caught)),
@@ -326,7 +334,7 @@ function mateThreat(say: Say, { t }: Caught, long: Long): Event {
   if (t.id !== 'mate-threat') throw new Error('not a mate threat');
   const lead = leadTo(say, t, t.at, long);
   const move = t.moves[t.at];
-  const does = [move.captured ? `takes ${capturedRef(say, move)}` : `moves to ${move.to}`, `threatens checkmate on ${t.mate.to}`];
+  const does = [move.captured ? `takes ${capturedRef(say, move)}` : movesTo(say, move), `threatens checkmate on ${t.mate.to}`];
   const text = `${lead?.text ?? ''}${theirName(say, move)} ${listOf(does)}`;
   return { text, free: false, later: Boolean(lead?.later), lead: Boolean(lead), named: [] };
 }

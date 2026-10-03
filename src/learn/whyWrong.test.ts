@@ -317,6 +317,14 @@ describe('a move no line punishes (R8)', () => {
     });
   });
 
+  it("never sends the opponent's move to the square the answer goes to", () => {
+    // The answer is ...e5 itself: "White's pawn moves to e5" would give the defence away.
+    expect(told('caro-kann-1100-0077#23', 'g7g5').early).toMatchObject({
+      text: "That doesn't stop White's threat: White's pawn moves forward and attacks your bishop.",
+      reply: 'e4e5',
+    });
+  });
+
   it('sends the user looking for the trap without naming it', () => {
     expect(told('caro-kann-1100-0088#3', 'c8d7').early.text).toBe(
       'That avoids the trap, but there is a better move. Think about what your opponent can do after each natural move.',
