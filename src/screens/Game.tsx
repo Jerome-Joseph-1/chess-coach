@@ -26,6 +26,9 @@ export interface GameProps {
 const TITLES: Record<OpeningId, string> = { italian: 'Italian Game', 'caro-kann': 'Caro-Kann Defence' };
 const GLYPHS: Record<PieceSymbol, string> = { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' };
 
+/** Phases that hand the slot under the board to a sheet. */
+const PAUSED_PHASES = new Set<SessionView['phase']['kind']>(['pause', 'miss', 'lines']);
+
 const sideName = (side: Side) => (side === 'w' ? 'White' : 'Black');
 const otherSide = (side: Side): Side => (side === 'w' ? 'b' : 'w');
 
@@ -77,8 +80,10 @@ export function Game({ opening, level, review }: GameProps) {
 
   useEffect(() => () => session.current?.dispose(), []);
 
+  const paused = view ? PAUSED_PHASES.has(view.phase.kind) : false;
+
   return (
-    <main class="game">
+    <main class={paused ? 'game is-paused' : 'game'}>
       <header class="game-top">
         <button class="game-back" type="button" aria-label="Back" onClick={() => navigate(review ? '/review' : '/')}>
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -90,6 +95,7 @@ export function Game({ opening, level, review }: GameProps) {
       </header>
 
       <PlayerBar
+        role="opponent"
         name={sideName(otherSide(side))}
         detail={`Rated ${level}`}
         fen={view?.fen ?? DEFAULT_POSITION}
@@ -98,7 +104,7 @@ export function Game({ opening, level, review }: GameProps) {
       <div class="game-board">
         <Board fen={DEFAULT_POSITION} orientation={side} onReady={startSession} />
       </div>
-      <PlayerBar name="You" detail={sideName(side)} fen={view?.fen ?? DEFAULT_POSITION} color={side} />
+      <PlayerBar role="you" name="You" detail={sideName(side)} fen={view?.fen ?? DEFAULT_POSITION} color={side} />
 
       <MoveStrip moves={view?.history ?? []} />
 
@@ -111,6 +117,7 @@ export function Game({ opening, level, review }: GameProps) {
 }
 
 interface PlayerBarProps {
+  role: 'opponent' | 'you';
   name: string;
   detail: string;
   fen: string;
@@ -118,11 +125,11 @@ interface PlayerBarProps {
 }
 
 /** Shows what this player has captured and, when ahead, by how much. */
-function PlayerBar({ name, detail, fen, color }: PlayerBarProps) {
+function PlayerBar({ role, name, detail, fen, color }: PlayerBarProps) {
   const lead = materialLead(fen, color);
   const captured = lostPieces(fen, otherSide(color));
   return (
-    <div class="game-player">
+    <div class={`game-player is-${role}`}>
       <span class="game-player-name">{name}</span>
       <span class="game-player-detail">{detail}</span>
       <span class="game-captured" aria-label="Captured pieces">

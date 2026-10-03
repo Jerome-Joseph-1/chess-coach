@@ -1,9 +1,30 @@
 .game {
+  --screen: calc(100dvh - var(--safe-top) - var(--safe-bottom));
+  --top-bar: 56px;
+  --player-bar: 36px;
+  --move-strip: 42px;
+  /* What the slot under the board needs: the status line while playing, a sheet while paused. */
+  --room: 64px;
+  --chrome: calc(var(--top-bar) + 2 * var(--player-bar) + var(--move-strip));
+  --board: max(200px, min(100vw - 32px, 488px, var(--screen) - var(--chrome) - var(--room)));
   display: flex;
   flex-direction: column;
   max-width: 520px;
-  min-height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
+  min-height: var(--screen);
   margin: 0 auto;
+}
+.game.is-paused {
+  --room: 300px;
+  --chrome: calc(var(--top-bar) + var(--player-bar));
+}
+.game:has(.pause-reveal) {
+  --room: 340px;
+  --chrome: var(--top-bar);
+}
+.game.is-paused .game-player.is-you,
+.game.is-paused .game-moves,
+.game:has(.pause-reveal) .game-player.is-opponent {
+  display: none;
 }
 
 .game-top {
@@ -83,6 +104,10 @@
 
 .game-board {
   padding: 0 16px;
+}
+.game-board .board-host {
+  width: var(--board);
+  margin: 0 auto;
 }
 
 .game-moves {
