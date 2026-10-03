@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { boardSquares, tapSquares } from './board';
 
 const PLAY_URL = './#/play/italian/1400';
 
@@ -21,25 +22,6 @@ async function playQuietGame(page: Page, plies = Infinity) {
     }),
   );
   await page.goto(PLAY_URL);
-}
-
-async function boardSquares(page: Page) {
-  const box = (await page.locator('.board-host').boundingBox())!;
-  const size = box.width / 8;
-  return (square: string) => ({
-    x: box.x + (square.charCodeAt(0) - 97 + 0.5) * size,
-    y: box.y + (8 - Number(square[1]) + 0.5) * size,
-  });
-}
-
-async function tapSquares(page: Page, from: string, to: string) {
-  const at = await boardSquares(page);
-  // The board ignores a pick-up while a piece is still sliding, so tap again until the legal moves show.
-  await expect(async () => {
-    await page.touchscreen.tap(at(from).x, at(from).y);
-    await expect(page.locator('.cm-chessboard .marker-dot').first()).toBeVisible({ timeout: 400 });
-  }).toPass();
-  await page.touchscreen.tap(at(to).x, at(to).y);
 }
 
 const moves = (page: Page) => page.locator('.game-moves li');
