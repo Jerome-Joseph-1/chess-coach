@@ -54,12 +54,12 @@ test('shows the game screen at phone width, waiting for play', async ({ page }) 
   await expect(page.locator('.cm-chessboard .piece')).toHaveCount(32);
   await expect(coachLine(page)).toHaveText("Press Play and I'll stop at the next key position.");
 
-  // The board takes the whole width when the screen is tall enough, and stays centred when it is not.
+  // The board fills the width inside the 16px gutters when the screen is tall enough, and stays centred when it is not.
   const { width, height } = page.viewportSize()!;
   const board = (await page.locator('.board-host').boundingBox())!;
-  expect(board.width).toBeLessThanOrEqual(width);
+  expect(board.width).toBeLessThanOrEqual(width - 32);
   expect(board.x).toBeCloseTo((width - board.width) / 2, 0);
-  if (height >= 740) expect(board.width).toBeCloseTo(width, 0);
+  if (height >= 740) expect(board.width).toBeCloseTo(width - 32, 0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
   const back = (await page.getByRole('button', { name: 'Back' }).boundingBox())!;

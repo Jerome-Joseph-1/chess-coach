@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 
-export async function boardSquares(page: Page) {
-  // The board grows or shrinks when the layout changes, e.g. after step 1; read it once it holds still.
+/** The board's box once it holds still: it glides to a new size when the layout changes, e.g. for an answer. */
+export async function settledBoard(page: Page) {
   const host = page.locator('.board-host');
   let box = (await host.boundingBox())!;
   await expect
@@ -11,6 +11,11 @@ export async function boardSquares(page: Page) {
       return box.x === last.x && box.y === last.y && box.width === last.width;
     }, { intervals: [100] })
     .toBe(true);
+  return box;
+}
+
+export async function boardSquares(page: Page) {
+  const box = await settledBoard(page);
   const size = box.width / 8;
   return (square: string) => ({
     x: box.x + (square.charCodeAt(0) - 97 + 0.5) * size,

@@ -9,7 +9,7 @@
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  margin: 4px -12px 12px;
+  margin: 0 -12px 12px;
 }
 .nav-button {
   position: absolute;
@@ -34,7 +34,8 @@
   text-align: center;
 }
 .nav-title h1 {
-  font: 600 16px/20px var(--font);
+  font: var(--text-headline);
+  font-weight: 600;
   letter-spacing: -0.002em;
 }
 .nav-title p {
@@ -175,7 +176,8 @@ a.moment {
   border-radius: 18px;
   background: var(--surface-2);
   color: var(--text-strong);
-  font: 500 13px/18px var(--font);
+  font: var(--text-caption);
+  font-weight: 500;
   white-space: nowrap;
 }
 

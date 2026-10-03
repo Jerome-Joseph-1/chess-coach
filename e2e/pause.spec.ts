@@ -10,6 +10,7 @@ import {
   pauseButton,
   playButton,
   rememberCard,
+  settledBoard,
   squareOf,
   tapSquares,
   winButton,
@@ -59,6 +60,27 @@ async function expectBoardUncovered(page: Page) {
   expect(sheet.y + sheet.height).toBeLessThanOrEqual(page.viewportSize()!.height + 1);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 }
+
+test('the board holds its size and place through the questions and steps back for the answer', async ({ page }) => {
+  await atStage(page, 1);
+  await reachFirstPause(page);
+  const asking = await settledBoard(page);
+  expect(asking.x).toBeCloseTo((page.viewportSize()!.width - asking.width) / 2, 0);
+
+  await winButton(page).click();
+  await expect(page.getByText('Your move', { exact: true })).toBeVisible();
+  expect(await settledBoard(page)).toEqual(asking);
+  await hintButton(page).click();
+  await expect(page.locator('.pause-sheet .pattern-label')).toBeVisible();
+  expect(await settledBoard(page)).toEqual(asking);
+
+  await page.getByRole('button', { name: 'Show solution' }).click();
+  await expect(continueButton(page)).toBeVisible();
+  const answer = await settledBoard(page);
+  expect(answer.width).toBeLessThan(asking.width);
+  expect(answer.y).toBe(asking.y);
+  await expect(page.locator('.coach-scroll')).toHaveJSProperty('scrollTop', 0);
+});
 
 test('stage 1: spot it, play it, and the game moves on by itself', async ({ page }) => {
   await atStage(page, 1);
@@ -211,7 +233,8 @@ test('buttons say what they do in words, with at most a drawn icon and never an 
   await winButton(page).click();
   await expect(page.getByRole('button', { name: 'Show solution' })).toBeVisible();
   await expect(page.locator('.pause-sheet .xfade-out')).toHaveCount(0);
-  expect(await labels()).toEqual(['Hint · 1 of 3', 'Show solution']);
+  // Show solution is the quiet action; Hint comes last and fills the row.
+  expect(await labels()).toEqual(['Show solution', 'Hint · 1 of 3']);
   await page.getByRole('button', { name: 'Show solution' }).click();
   await expect(continueButton(page)).toBeVisible();
   expect((await labels()).every((text) => plain.test(text))).toBe(true);
@@ -248,7 +271,8 @@ test.describe('the coach panel on an iPhone 14', () => {
 
     const caption = page.locator('.stepper-caption');
     await expect(caption).toContainText('dxe5');
-    await expect(rememberCard(page)).toHaveCount(0);
+    // Its room is kept from the start, so nothing moves when it shows.
+    await expect(rememberCard(page)).toBeHidden();
     await expect(page.getByRole('button', { name: 'Next move' })).toBeEnabled();
     await expect(rememberCard(page)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'Next move' })).toBeDisabled();

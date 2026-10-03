@@ -36,7 +36,8 @@
   border-radius: 999px;
   background: var(--coach-tint);
   color: var(--coach-text);
-  font: 600 12px/16px var(--font);
+  font: var(--text-label);
+  font-weight: 600;
   letter-spacing: 0.01em;
 }
 .unit-later {

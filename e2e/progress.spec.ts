@@ -423,7 +423,8 @@ test.describe('Progress', () => {
     await seed(page, savedProgress([moment(3, true), moment(7, false), moment(23, true, { type: 'nothing', kinds: [] })]));
     await page.goto('./#/progress');
     await expect(page.getByRole('heading', { name: 'Progress', level: 1 })).toBeVisible();
-    await expect(page.getByText('Italian Game · White')).toBeVisible();
+    const openings = page.getByRole('group', { name: 'Opening' });
+    await expect(openings.getByRole('button', { name: /Italian Game/ })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.stat-tile').filter({ hasText: 'This week' })).toContainText('2 / 3');
     await expect(page.locator('.stat-tile').filter({ hasText: 'Stage 1 of 3' })).toContainText('0 / 15');
 
@@ -436,8 +437,8 @@ test.describe('Progress', () => {
     await expect(page.getByRole('img', { name: /Days you played/ })).toBeVisible();
     await expect(page.getByText(/streak/i)).toHaveCount(0);
 
-    await page.getByRole('group', { name: 'Opening' }).getByRole('button', { name: 'Caro-Kann' }).click();
-    await expect(page.getByText('Caro-Kann · Black')).toBeVisible();
+    await openings.getByRole('button', { name: /Caro-Kann/ }).click();
+    await expect(openings.getByRole('button', { name: /Caro-Kann/ })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByText('Not started yet')).toBeVisible();
   });
 
