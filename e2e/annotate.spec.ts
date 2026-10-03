@@ -1,7 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { boardSquares, moveList, playButton, winButton } from './board';
+import { readAllNotes } from './notes';
 
 test.use({ serviceWorkers: 'block' });
+// These tests are about key positions: opening notes would stop autoplay on the way there.
+test.beforeEach(({ page }) => readAllNotes(page));
 
 async function openBoard(page: Page) {
   await page.goto('./#/play/italian/1400');

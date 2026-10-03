@@ -40,14 +40,20 @@ test('the opening position is explained under the name of the opening, and count
   expect(await seenCount(page, START_NOTE)).toBe(1);
 });
 
-test('a note appears as autoplay reaches a new variation', async ({ page }) => {
+test('autoplay stops on a new note, and Continue plays on to the next one', async ({ page }) => {
   await playQuietGame(page);
   await playButton(page).click();
   await expect(noteName(page)).toHaveText('Two Knights Defence', { timeout: RUN_MS });
   await expect(coachLine(page)).toHaveText(/^3\.\.\.Nf6 hits e4/);
+  // The game waits for the user to read it, with the button to press ringed.
+  const main = page.locator('.game-main');
+  await expect(main).toHaveText('Continue');
+  await expect(main).toHaveClass(/is-nudge/);
+  expect(await seenCount(page, 'two-knights')).toBe(1);
+  await main.click();
   await expect(noteName(page)).toHaveText('Two Knights: 4.d4', { timeout: RUN_MS });
   await expect(coachLine(page)).toHaveText(/^4\.d4 opens the centre/);
-  expect(await seenCount(page, 'two-knights')).toBe(1);
+  await expect(main).toHaveText('Continue');
 });
 
 test('a note read once is shown in full a second time', async ({ page }) => {

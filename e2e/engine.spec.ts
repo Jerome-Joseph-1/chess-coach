@@ -1,7 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SPOT_QUESTION, continueAfterPause, moveList, playButton, tapSquares, winButton } from './board';
+import { readAllNotes } from './notes';
 
 test.use({ serviceWorkers: 'block' });
+// These tests are about key positions: opening notes would stop autoplay on the way there.
+test.beforeEach(({ page }) => readAllNotes(page));
 // The engine's first load and a few searches of about a second each.
 test.setTimeout(120_000);
 
