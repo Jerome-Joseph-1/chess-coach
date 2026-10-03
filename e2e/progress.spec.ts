@@ -55,8 +55,14 @@ async function seed(page: Page, progress: unknown) {
   await page.addInitScript((p) => localStorage.setItem('cc.progress.v1', JSON.stringify(p)), progress);
 }
 
+/** The first lesson was just finished, so Today offers a game. */
+async function afterFirstLesson(page: Page) {
+  await seed(page, { v: 1, lessons: { italian: { 'free-piece': { doneAt: Date.now(), drills: [] } } } });
+}
+
 test.describe('Today', () => {
   test('shows the next game with one Play button', async ({ page }) => {
+    await afterFirstLesson(page);
     await page.goto('./');
     await expect(page.getByRole('heading', { name: 'Today', level: 1 })).toBeVisible();
     const card = page.getByRole('region', { name: 'Italian Game' });
@@ -71,6 +77,7 @@ test.describe('Today', () => {
   });
 
   test('switches the card between the openings', async ({ page }) => {
+    await afterFirstLesson(page);
     await page.goto('./');
     const switcher = page.getByRole('group', { name: 'Opening' });
     await expect(switcher.getByRole('button', { name: 'Italian' })).toHaveAttribute('aria-pressed', 'true');
@@ -85,6 +92,7 @@ test.describe('Today', () => {
   });
 
   test('starts a game from the card', async ({ page }) => {
+    await afterFirstLesson(page);
     await page.goto('./');
     await page.getByRole('button', { name: 'Play', exact: true }).click();
     await expect(page).toHaveURL(/#\/play\/italian\/1400$/);
@@ -166,7 +174,7 @@ test.describe('Today', () => {
     await expect(hint).toBeHidden();
   });
 
-  test('the tab bar moves between Today, Progress and Settings', async ({ page }) => {
+  test('the tab bar moves between Today, Course, Progress and Settings', async ({ page }) => {
     await page.goto('./');
     const tabs = page.getByRole('navigation', { name: 'Main' });
     const pill = tabs.locator('.tabbar-pill');
@@ -178,6 +186,8 @@ test.describe('Today', () => {
     await expect(pill).toHaveClass(/tabbar-pill--slide/);
     await tabs.getByRole('link', { name: 'Settings' }).click();
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+    await tabs.getByRole('link', { name: 'Course' }).click();
+    await expect(page.getByRole('heading', { name: 'Course', level: 1 })).toBeVisible();
     await tabs.getByRole('link', { name: 'Today' }).click();
     await expect(page.getByRole('heading', { name: 'Today', level: 1 })).toBeVisible();
   });
@@ -218,6 +228,7 @@ test.describe('Settings', () => {
   });
 
   test('a manual stage replaces the automatic one on Today', async ({ page }) => {
+    await afterFirstLesson(page);
     await page.goto('./#/settings');
     await page.getByRole('button', { name: '2', exact: true }).click();
     await page.goto('./');
