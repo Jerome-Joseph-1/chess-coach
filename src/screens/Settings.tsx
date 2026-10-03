@@ -144,7 +144,7 @@ export function Settings() {
             <Segmented label="Board" options={BOARD_OPTIONS} value={settings.board} onChange={chooseBoard} />
           </li>
           <li>
-            <Switch label="Sound" hint="Chimes when you get things right" checked={settings.sound} onChange={(sound) => update({ sound })} />
+            <Switch label="Sound" hint="Move sounds, and a chime when you get it right" checked={settings.sound} onChange={(sound) => update({ sound })} />
           </li>
           <li>
             <Switch label="Haptics" hint="A small tap on your phone" checked={settings.haptics} onChange={(haptics) => update({ haptics })} />
