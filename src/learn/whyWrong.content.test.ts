@@ -4,7 +4,7 @@ import type { Game, Side, Turn } from '../content/types';
 import { materialChange } from '../pause/material';
 import { moveBefore, playLine as playedLine } from '../pause/position';
 import { playLine } from './board';
-import { settled } from './loss';
+import { nothingHangs, settled } from './loss';
 import { whyWrong, type WrongMove } from './whyWrong';
 
 const CONTENT_DIR: string | undefined = import.meta.env.CONTENT_DIR;
@@ -32,11 +32,24 @@ function namesMove(text: string, san: string): boolean {
 
 const PIECES: Record<string, string> = { pawn: 'p', knight: 'n', bishop: 'b', rook: 'r', queen: 'q' };
 
-/** The pieces a text says the user loses: "wins your rook", "takes the queen", "can take your knight on g4", "traps your bishop". */
+const PIECE = '(pawn|knight|bishop|rook|queen)s?';
+
+/**
+ * The pieces a text says the user loses: "takes your rook", "can take your knight on g4", "your queen can't escape",
+ * and each piece of "You lose a rook and a pawn" or "costs you a rook". What the user takes is no claim.
+ */
 function claimedPieces(text: string): string[] {
-  const claims = text.matchAll(/\b(?:wins|takes|taking|take|traps) (?:your |a |the )?(pawn|knight|bishop|rook|queen)/g);
-  return [...claims].map((claim) => PIECES[claim[1]]);
+  const said = text.replace(/You take the \w+ on \w\d|Taking the \w+ on \w\d/g, '');
+  const takes = [...said.matchAll(new RegExp(`\\b(?:wins|takes|taking|take|traps) (?:your |a |the )?${PIECE}`, 'g'))].map((m) => m[1]);
+  const trapped = [...said.matchAll(new RegExp(`your ${PIECE}(?: on \\w\\d)? can't escape`, 'g'))].map((m) => m[1]);
+  const lost = [...said.matchAll(/(?:[Yy]ou lose|costs you) (.+?)(?: and only get| for |, |\.)/g)].flatMap((m) =>
+    [...m[1].matchAll(new RegExp(`\\b(?:your|a|two|three|four) ${PIECE}`, 'g'))].map((p) => p[1]),
+  );
+  return [...takes, ...trapped, ...lost].map((piece) => PIECES[piece]);
 }
+
+const NOTATION = /\b[KQRBN][a-h1-8]?x?[a-h][1-8]|\b[a-h]x[a-h][1-8]|O-O/;
+const sentencesOf = (text: string) => text.split(/(?<=[.?])\s+(?=[A-Z])/);
 
 /** The opponent takes a piece of this type in the line; a promoted piece taken back was only a pawn. */
 function takes(moves: ReturnType<typeof playedLine>, side: Side, type: string): boolean {
@@ -73,12 +86,17 @@ describe.skipIf(!CONTENT_DIR)('whyWrong over a whole content folder', () => {
           for (const why of told) {
             const where = `${game.id} turn ${i} ${move.san}: ${why.text}`;
             for (const san of answers) if (!theirs.has(san)) expect(namesMove(why.text, san), where).toBe(false);
-            expect(why.text, where).not.toMatch(/\bsafe\b|line that follows/);
-            const down = why.text.match(/you stay a (\w+) down/);
+            expect(why.text, where).not.toMatch(/line that follows|the exchange|stronger move here/);
+            // Plain words for a beginner: no notation, at most two short sentences.
+            expect(why.text, where).not.toMatch(NOTATION);
+            expect(sentencesOf(why.text).length, where).toBeLessThanOrEqual(2);
+            for (const sentence of sentencesOf(why.text)) expect(sentence.split(/\s+/).length, where).toBeLessThanOrEqual(26);
+            if (/That's safe/.test(why.text)) expect(nothingHangs(move), where).toBe(true);
+            const down = why.text.match(/you are still a (\w+) down/);
             if (down) expect(moveBefore(game, turn.ply)?.captured, where).toBe(PIECES[down[1]]);
             // The reply on the board, with the exchange it starts: the line a giveaway in the stored one is cut back to.
             const shown = playedLine(turn.fen, why.reply ? [uci, ...settled(move.after, [why.reply])] : []);
-            for (const piece of claimedPieces(why.text.replace(/you stay a \w+ down/, ''))) {
+            for (const piece of claimedPieces(why.text.replace(/you are still a \w+ down/, ''))) {
               expect(takes(lineMoves, game.side, piece) || takes(shown, game.side, piece), where).toBe(true);
             }
             if (why.kind === 'blunder' && !down && !/checkmate|forced mate/.test(why.text)) {

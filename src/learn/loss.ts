@@ -272,6 +272,12 @@ function isCheap(chess: Chess, capture: Move): boolean {
   return !defended || VALUE[capture.piece] < VALUE[capture.captured!];
 }
 
+/** The static check behind calling a move safe: no mate in one answers it, and none of the mover's pieces can be won. */
+export function nothingHangs(move: Move): boolean {
+  if (mateAfter(move)) return false;
+  return piecesOf(new Chess(move.after), move.color).every((p) => p.type === 'k' || !isLoose(move.after, p.square));
+}
+
 /** The mate in one that answers `move`, if any. */
 export function mateAfter(move: Move): Move | null {
   const chess = new Chess(move.after);

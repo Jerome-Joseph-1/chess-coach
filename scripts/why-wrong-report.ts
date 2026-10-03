@@ -26,7 +26,8 @@ interface Candidate {
 
 interface Row extends Candidate {
   why: WrongMove;
-  /** What the coach says once the piece in trouble is marked, when that differs. */
+  /** What the coach says once the pattern is named, and once the piece in trouble is marked. */
+  pattern: WrongMove;
   named: WrongMove;
 }
 
@@ -80,18 +81,24 @@ function sampleSet(candidates: Candidate[], quota: number, next: () => number): 
     if (KINDS.every((kind) => count(kind) >= quota)) break;
     const why = whyWrong(candidate.game, candidate.index, candidate.uci, 0);
     if (!KINDS.includes(why.kind) || count(why.kind) >= quota) continue;
-    rows.push({ ...candidate, why, named: whyWrong(candidate.game, candidate.index, candidate.uci, 2) });
+    const [pattern, named] = ([1, 2] as const).map((hint) => whyWrong(candidate.game, candidate.index, candidate.uci, hint));
+    rows.push({ ...candidate, why, pattern, named });
   }
   return rows;
 }
 
 const PIECES: Record<string, string> = { pawn: 'p', knight: 'n', bishop: 'b', rook: 'r', queen: 'q' };
 
-/** What a text says the user loses, read from its words: a piece, or mate. */
+/** What a text says the user loses, read from its words: the biggest piece of "You lose ...", a piece taken, or mate. */
 function claimOf(text: string): { claimedPiece: string } | { claimedMate: true } | null {
-  const piece = text.match(/\b(?:wins|takes|taking|take|traps) (?:your |a |the |two |three |four )?(pawn|knight|bishop|rook|queen)/);
+  // What the user takes is no claim.
+  const said = text.replace(/You take the \w+ on \w\d|Taking the \w+ on \w\d/g, '');
+  const piece =
+    said.match(/(?:[Yy]ou lose|costs you) (?:your |a |two |three |four )?(pawn|knight|bishop|rook|queen)/) ??
+    said.match(/\b(?:wins|takes|taking|take|traps) (?:your |a |the |two |three |four )?(pawn|knight|bishop|rook|queen)/) ??
+    said.match(/your (pawn|knight|bishop|rook|queen)(?: on \w\d)? can't escape/);
   if (piece) return { claimedPiece: PIECES[piece[1]] };
-  return /checkmate|forced mate|leads to mate/.test(text) ? { claimedMate: true } : null;
+  return /checkmate/.test(said) && !/threatens checkmate/.test(said) ? { claimedMate: true } : null;
 }
 
 function sanLine(fen: string, ucis: string[]): string {
@@ -101,7 +108,7 @@ function sanLine(fen: string, ucis: string[]): string {
 }
 
 function sample(row: Row): string {
-  const { game, index, uci, why, named } = row;
+  const { game, index, uci, why, pattern, named } = row;
   const turn = game.turns[index];
   const move = playLine(turn.fen, [uci])[0];
   const user = game.side === 'w' ? 'White' : 'Black';
@@ -111,7 +118,8 @@ function sample(row: Row): string {
     `- FEN: \`${turn.fen}\` (${turn.kinds.join('/')}, user ${user})`,
     `- Move: ${move.san} (${uci}), loses ${turn.grades[uci]}%`,
     `- Says: ${why.text}`,
-    named.text !== why.text ? `- At hint 2: ${named.text}` : '',
+    pattern.text !== why.text ? `- At hint 1: ${pattern.text}` : '',
+    named.text !== pattern.text ? `- At hint 2: ${named.text}` : '',
     `- Board: ${reply}`,
     `- Line: ${sanLine(turn.fen, [uci, ...(turn.refutations[uci] ?? [])]) || move.san}`,
   ]
@@ -119,9 +127,12 @@ function sample(row: Row): string {
     .join('\n');
 }
 
-/** One JSON line per thing the coach says, hint 2 included when it says more. */
+/** One JSON line per thing the coach says, hints 1 and 2 included when they say something else. */
 function claims(rows: Row[]): string {
-  const said = rows.flatMap((row) => [{ row, told: row.why }, ...(row.named.text !== row.why.text ? [{ row, told: row.named }] : [])]);
+  const said = rows.flatMap((row) => {
+    const told = [row.why, row.pattern, row.named].filter((t, i, all) => all.findIndex((u) => u.text === t.text) === i);
+    return told.map((t) => ({ row, told: t }));
+  });
   return said
     .map(({ row: { game, index, uci }, told }) => {
       const turn = game.turns[index];

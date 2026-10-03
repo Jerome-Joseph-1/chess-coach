@@ -195,7 +195,7 @@ test('a move that loses material stays on the board while the reply shows what i
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
 
   await tapSquares(page, 'c4', 'f7');
-  const why = 'After Bxf7+, Kxf7 takes your bishop on f7, and you get only a pawn for it.';
+  const why = "Black's king takes your bishop. You lose a bishop and only get a pawn back.";
   await expect(page.getByText(why)).toBeVisible();
   await expect(page.locator('.cm-chessboard .arrow-threat')).toHaveCount(1);
   await expect(page.locator(".cm-chessboard .pieces g[data-square='f7']")).toHaveAttribute('data-piece', 'bk');

@@ -4,6 +4,7 @@ import { italian1 } from '../pause/testGames';
 import { playLine } from './board';
 import { learnGame, learnGames } from './fixtures';
 import samples from './fixtures/why-wrong-turns.json';
+import { nothingHangs } from './loss';
 import { whyWrong } from './whyWrong';
 
 const caroKann = learnGame('caro-kann-1100-0025');
@@ -16,220 +17,354 @@ function sample(key: SampleKey): Game {
   return { id: key, opening: 'italian', level: 1400, side, start, moves, turns: [turn] };
 }
 
-/** What the coach says about `uci` at the sample's turn, from no hint to the hint that marks the piece in trouble. */
+/** What the coach says about `uci` at the sample's turn: with no hint, once the pattern is named, and once the piece is marked. */
 function told(key: SampleKey, uci: string) {
   const game = sample(key);
-  return { early: whyWrong(game, 0, uci, 0), named: whyWrong(game, 0, uci, 2) };
+  return { early: whyWrong(game, 0, uci, 0), pattern: whyWrong(game, 0, uci, 1), named: whyWrong(game, 0, uci, 2) };
 }
 
+const sentences = (text: string) => text.split(/(?<=[.?])\s+(?=[A-Z])/);
+const words = (sentence: string) => sentence.split(/\s+/).length;
+
 describe('a move that loses material', () => {
-  it('names the reply and the piece it wins, where it is taken', () => {
+  it('names the reply in words and the piece it takes, and says the loss last', () => {
     expect(whyWrong(caroKann, 8, 'f6g4', 0)).toEqual({
       kind: 'blunder',
-      text: 'After Ng4, Qxg4 wins your knight on g4.',
+      text: "White's queen takes your knight for free.",
       reply: 'f3g4',
       targets: ['g4'],
       pattern: 'free-piece',
     });
     expect(whyWrong(caroKann, 28, 'g8g7', 0).text).toBe(
-      'After Kg7, Bd4+ opens the line from the queen on e4 to your rook on e2, and after Kg8, Qxe2 wins the rook.',
+      "White's bishop moves to d4 with check, and now White's queen attacks your rook on e2. You lose a rook.",
     );
     expect(whyWrong(caroKann, 6, 'e8d7', 0)).toMatchObject({
       kind: 'blunder',
-      text: 'After Kd7, Nxf7 takes your pawn on f7 and attacks your queen on d8 and your rook on h8 at once, and after Qf8, Nxh8 wins the rook.',
+      text: "White's knight takes your pawn on f7 and attacks your queen and rook on h8 at once. You lose a rook and a pawn.",
       reply: 'g5f7',
       targets: ['d8', 'h8'],
     });
   });
 
   it('says what comes back, from the move itself or a recapture', () => {
-    expect(whyWrong(italian1, 1, 'c4f7', 0).text).toBe('After Bxf7+, Kxf7 takes your bishop on f7, and you get only a pawn for it.');
-    expect(told('italian-1700-0086#8', 'c2e4').early.text).toBe('After Qxe4, Bxe4 takes your queen on e4, and you get only a knight for it.');
+    expect(whyWrong(italian1, 1, 'c4f7', 0).text).toBe("Black's king takes your bishop. You lose a bishop and only get a pawn back.");
+    expect(told('italian-1700-0086#8', 'c2e4').early.text).toBe("Black's bishop takes your queen. You lose your queen and only get a knight back.");
   });
+});
+
+describe('words a beginner can follow', () => {
+  it('names at most the reply and the move that matters, and tells a long way there in a few words', () => {
+    // Once the #1 complaint: "After Rg8 Bxc6 Bxc6 a3 Bxc5, b4 attacks your queen on a5 and your bishop on c5 at once, ..."
+    expect(told('caro-kann-1400-0128#10', 'h8g8').early.text).toBe(
+      "A few moves later, White's pawn moves to b4 and attacks your queen and bishop on c5 at once. In the end, you lose your queen for a bishop, a knight and a pawn.",
+    );
+    // Once "Re1 moves your rook out of danger, but after Qb6+ d4, Bd5 traps your queen on f7, and after c3, Bxf7 takes the queen, ..."
+    expect(told('italian-1700-0069#9', 'f1e1').early.text).toBe(
+      "After a check, Black's bishop moves to d5, and your queen can't escape. You lose your queen and only get a bishop back.",
+    );
+    expect(told('italian-1700-0120#19', 'g4g7').early.text).toBe(
+      "Black takes back on g7, and a few moves later Black's rook takes your knight. In the end, you lose a knight and only get a pawn back.",
+    );
+    expect(told('caro-kann-1700-0213#25', 'b8b6').early.text).toBe(
+      "White's knight moves to e5, and then it moves to d7 and lures your queen away from your rook. You lose a rook and only get a knight back.",
+    );
+  });
+
+  it('tells the reply on the board alone when the middle of the line hides captures of the user', () => {
+    expect(told('caro-kann-1400-0096#17', 'c8b8').early).toMatchObject({
+      text: "That doesn't stop White's threat: White's bishop moves to f4 and attacks your queen. In the end, you lose a rook and only get a pawn back.",
+      reply: 'e3f4',
+    });
+  });
+
+  it('says castling in words', () => {
+    expect(told('italian-1400-0169#9', 'e1g1').early.text).toBe(
+      "Castling looks natural, but it allows checkmate: Black's queen takes your pawn on h2.",
+    );
+    expect(told('italian-1700-0083#5', 'e1g1').named.text).toBe(
+      "One of your pieces is still in danger: Black's queen takes your knight on e5 for free.",
+    );
+  });
+
+  it('says a rook for a minor piece plainly, and "only" only of what comes back', () => {
+    expect(told('caro-kann-1700-0180#28', 'b2c3').early.text).toBe(
+      "That doesn't stop White's threat: White's knight takes your rook. You lose a rook and only get a knight back.",
+    );
+    expect(told('caro-kann-2000-0206#25', 'g7g6').early.text).toBe(
+      "After the queens are traded, White's knight takes your pawn on f6, checks your king and attacks your rook at once. You lose a rook and a pawn for a knight.",
+    );
+  });
+
+  it('stays within two short sentences for every graded move of the fixture games', () => {
+    const games: Game[] = [...learnGames, italian1, ...Object.keys(samples).map((key) => sample(key as SampleKey))];
+    for (const game of games) {
+      game.turns.forEach((turn, i) => {
+        if (turn.label !== 'critical') return;
+        for (const uci of Object.keys(turn.grades)) {
+          for (const hint of [0, 1, 2] as const) {
+            const { text } = whyWrong(game, i, uci, hint);
+            const where = `${game.id} ${i} ${uci}: ${text}`;
+            expect(sentences(text).length, where).toBeLessThanOrEqual(2);
+            for (const sentence of sentences(text)) expect(words(sentence), where).toBeLessThanOrEqual(24);
+            expect(text, where).not.toMatch(/\b[KQRBN][a-h1-8]?x?[a-h][1-8]|\b[a-h]x[a-h][1-8]|O-O|the exchange|chance go|end up worse|goes on|stronger move here|only (?:a|two)\b/);
+          }
+        }
+      });
+    }
+  }, 60_000);
 });
 
 describe('the cost counts only the move, the punishing reply and the exchange it starts (R1)', () => {
   it('leaves out the grabs and desperado moves later in the line', () => {
-    expect(told('italian-1100-0140#7', 'd5f7').early.text).toBe('After Bf7+, Kxf7 wins your bishop on f7.');
-    expect(told('caro-kann-1700-0016#10', 'f5d3').early.text).toBe('After Bd3, Bxd3 wins your bishop on d3.');
-    expect(told('caro-kann-1400-0028#15', 'd7d5').early.text).toBe('After Qd5, Qxd5 wins your queen on d5.');
+    expect(told('italian-1100-0140#7', 'd5f7').early.text).toBe("Black's king takes your bishop for free.");
+    expect(told('caro-kann-1700-0016#10', 'f5d3').early.text).toBe("White's bishop takes your bishop for free.");
+    expect(told('caro-kann-1400-0028#15', 'd7d5').early.text).toBe("White's queen takes your queen for free.");
   });
 
   it('counts a later capture of the piece the move put en prise', () => {
-    expect(told('caro-kann-1700-0043#7', 'g7g5').named.text).toBe(
-      "That doesn't stop White's threat: Nxd5 wins your pawn on d5, and Bxg5 then takes your pawn on g5.",
+    expect(told('caro-kann-1700-0043#7', 'g7g5').early.text).toBe(
+      "That doesn't stop White's threat: White's knight takes your pawn on d5, and later White takes your pawn on g5. You lose two pawns.",
     );
   });
 });
 
 describe('a capture that is taken back (R2)', () => {
   it('takes the piece, and says what the user gets for it', () => {
-    expect(told('italian-1400-0245#10', 'a2a3').named.text).toBe(
-      "That doesn't stop Black's threat: Bxf3 takes your queen on f3, and you get only a bishop for it.",
-    );
-    expect(told('caro-kann-1700-0180#28', 'b2c3').named.text).toBe(
-      "That doesn't stop White's threat: Nxf8 takes your rook on f8, and you lose the exchange.",
+    expect(told('italian-1400-0245#10', 'a2a3').early.text).toBe(
+      "That doesn't stop Black's threat: Black's bishop takes your queen. You lose your queen and only get a bishop back.",
     );
     expect(told('italian-2000-0231#25', 'e1e4').early.text).toBe(
-      'Rxe4 grabs the knight, but Qxe4 takes your rook on e4, and you lose the exchange.',
+      "Taking the knight on e4 looks free, but Black's queen takes your rook. You lose a rook and only get a knight back.",
+    );
+  });
+
+  it('gives the loss as the end result when the pieces the text names come back', () => {
+    expect(told('italian-2000-0077#2', 'e5f6').early.text).toBe(
+      "Taking the knight on f6 doesn't stop Black's threat: Black's pawn takes your bishop on c4 in return. In the end, you lose a pawn.",
     );
   });
 });
 
 describe('the real payoff of a line (R3)', () => {
   it('names a promotion and an attack on the king that goes on', () => {
-    expect(told('caro-kann-1100-0007#13', 'g7g5').named.text).toBe(
-      "That doesn't stop White's threat: bxa8=Q+ wins your rook on a8 and makes a new queen, and the attack on your king goes on.",
+    expect(told('caro-kann-1100-0007#13', 'g7g5').early.text).toBe(
+      "That doesn't stop White's threat: White's pawn takes your rook on a8 with check and becomes a queen. You lose a rook, White gets a new queen, and White keeps checking your king.",
     );
     expect(told('caro-kann-2000-0150#25', 'g7g6').early.text).toBe(
-      'After g6 Qg5 Kg7, Qxh6+ wins your pawn on h6, and the attack on your king goes on.',
+      "White's queen moves to g5, and then it takes your pawn on h6 with check. You lose a pawn, and White keeps checking your king.",
     );
   });
 
   it('names the pieces a capture then attacks, and the bigger piece a later capture takes', () => {
-    expect(told('caro-kann-1700-0024#3', 'e8d7').named).toMatchObject({
-      text: "That doesn't stop White's threat: Nxf7 wins your pawn on f7 and then attacks your queen on d8 and your rook on h8 at once.",
+    expect(told('caro-kann-1700-0024#3', 'e8d7').early).toMatchObject({
+      text: "That doesn't stop White's threat: White's knight takes your pawn on f7 and then attacks your queen and rook on h8. You lose a pawn.",
       targets: ['f7', 'd8', 'h8'],
     });
-    expect(told('caro-kann-2000-0010#24', 'b2b3').named.text).toBe(
-      "That doesn't stop White's threat: Rxe8+ wins your rook on e8, and axb3 then takes your queen on b3, and the attack on your king goes on.",
+    expect(told('caro-kann-2000-0010#24', 'b2b3').early.text).toBe(
+      "That doesn't stop White's threat: White's rook takes your rook with check, and later White takes your queen on b3. You lose your queen and a rook, and White keeps checking your king.",
     );
   });
 
   it('plays a line that stops mid-exchange to its end', () => {
-    expect(told('caro-kann-2000-0206#25', 'g7g6').early.text).toBe(
-      'Qg6 attacks the queen on h5, but after Qxg6+ hxg6, Nxf6+ takes your pawn on f6, checks your king and attacks your rook on e8 at once, and after Kf8, Nxe8 takes the rook, and you lose the exchange and a pawn.',
-    );
-    expect(told('italian-1400-0068#25', 'a1a6').named.text).toBe(
-      "That doesn't stop Black's threat: Rxf2+ checks your king and attacks your queen on e2 at once, and after Qxf2, Rxf2+ takes your queen on f2, and you get only a rook for your queen and a pawn.",
+    expect(told('italian-1400-0068#25', 'a1a6').early.text).toBe(
+      "That doesn't stop Black's threat: Black's rook takes your pawn on f2, checks your king and attacks your queen at once. You lose your queen and a pawn for a rook.",
     );
   });
 });
 
 describe('the squares and moves of a line (R4)', () => {
-  it('spells a short line out and names the square, never "the line that follows"', () => {
+  it('says what the moves before the capture do, never spelling them out', () => {
     expect(told('italian-1400-0245#13', 'd2e4').early.text).toBe(
-      'Ne4 moves the knight that was guarding your knight on c4, and after Bxc1 Rfxc1, Bxc4 wins it.',
+      "The knight you moved was guarding your knight on c4, and after a trade on c1, Black's bishop takes it for free.",
     );
-    expect(told('caro-kann-2000-0187#26', 'a5a3').early.text).toBe('After Qa3 Nxe4 dxe4, Qxe4 wins your pawn on e4.');
+    expect(told('caro-kann-2000-0187#26', 'a5a3').early.text).toBe("After a trade on e4, White's queen takes your pawn on e4 for free.");
   });
 });
 
 describe('a pattern with what it costs (R5)', () => {
   it('ends a pin, a discovered attack or a removed defender on the material', () => {
     expect(told('caro-kann-2000-0132#15', 'h8g8').early.text).toBe(
-      "Rg8 attacks the rook on g7, but Rxg8+ wins your rook on g8, because your knight on f6 is pinned to your king and can't take back, and Rxc8 then takes your rook on c8.",
+      "White's rook takes your rook with check, and your pinned knight can't take back, and later White takes your rook on c8. You lose two rooks.",
     );
     expect(told('caro-kann-1700-0235#8', 'f8d6').early.text).toBe(
-      'Bd6 attacks the knight on e5, but dxc5 wins your pawn on c5 and opens the line from the queen on d1 to your bishop on d6.',
+      "White's pawn takes your pawn on c5, and now White's queen attacks your bishop on d6. You lose a pawn.",
     );
-    expect(told('italian-1400-0135#14', 'b2b4').named.text).toBe(
-      "That doesn't stop Black's threat: Bxd4 trades off your knight on d4, which guards your bishop on e6, and after Qxd4, Qxe6 wins the bishop.",
+    expect(told('italian-1400-0135#14', 'b2b4').early.text).toBe(
+      "That doesn't stop Black's threat: Black's bishop takes your knight, and your bishop on e6 is left unguarded. In the end, you lose a bishop.",
     );
   });
 });
 
-describe('a threat or a loose piece that was there before the move (R6)', () => {
-  it('only says the threat stands until the piece in trouble is marked, and shows nothing on the board', () => {
-    const { early, named } = told('caro-kann-1400-0003#11', 'e8g8');
-    expect(early).toEqual({ kind: 'ignores-threat', text: "That doesn't stop White's threat.", reply: null, targets: [], pattern: 'fork' });
-    expect(whyWrong(sample('caro-kann-1400-0003#11'), 0, 'e8g8', 1).text).toBe(early.text);
-    expect(named).toMatchObject({
-      text: "That doesn't stop White's threat: b4 attacks your queen on a5 and your bishop on c5 at once, and after Bxb4, axb4 takes your bishop on b4, and you get only two pawns for it.",
+describe('a threat that was there before the move (R6)', () => {
+  it('is shown at once: the user has moved, and what the threat does gives away nothing about stopping it', () => {
+    const { early, pattern, named } = told('caro-kann-1400-0003#11', 'e8g8');
+    expect(early).toEqual({
+      kind: 'ignores-threat',
+      text: "That doesn't stop White's threat: White's pawn moves to b4 and attacks your queen and bishop on c5 at once. You lose a bishop for two pawns.",
       reply: 'b2b4',
+      targets: ['a5', 'c5'],
+      pattern: 'fork',
     });
-  });
-
-  it('names the threat and plays it once the piece in trouble is marked', () => {
-    expect(whyWrong(caroKann, 8, 'd7c5', 0)).toMatchObject({ kind: 'ignores-threat', text: "That doesn't stop White's threat.", reply: null });
-    expect(whyWrong(caroKann, 8, 'd7c5', 2)).toMatchObject({
-      text: "That doesn't stop White's threat: Nxf6+ trades off your knight on f6, which guards your pawn on h7, and after gxf6, Bxh7+ wins the pawn, and the attack on your king goes on.",
+    expect(pattern).toEqual(early);
+    expect(named).toEqual(early);
+    expect(whyWrong(caroKann, 8, 'd7c5', 0)).toMatchObject({
+      kind: 'ignores-threat',
+      text: "That doesn't stop White's threat: White's knight takes your knight on f6 with check, and your pawn on h7 is left unguarded. In the end, you lose a pawn, and White keeps attacking your king.",
       reply: caroKann.turns[8].refutations.d7c5[0],
     });
-    expect(whyWrong(caroKann, 15, 'a8d8', 2).text).toBe("That doesn't stop White's threat: Qh7 is checkmate.");
-    expect(whyWrong(caroKann, 15, 'f8d8', 0).text).toBe("There's a better answer to White's threat.");
+    expect(whyWrong(caroKann, 15, 'a8d8', 0).text).toBe("That doesn't stop White's threat: White's queen moves to h7, and that's checkmate.");
   });
 
-  it('holds back the blunders and baits that carry out the threat', () => {
-    expect(told('italian-1400-0161#10', 'b2b4').early.text).toBe("That doesn't stop Black's threat.");
-    expect(told('italian-1400-0161#10', 'b2b4').named.text).toBe("That doesn't stop Black's threat: Nxc4 wins your bishop on c4.");
-    expect(told('italian-1400-0004#14', 'd2e2').named.text).toBe(
-      "That doesn't stop Black's threat: after Nf4 Qe1, Qxh4 wins your knight on h4.",
+  it('shows the threat the blunders and baits carry out', () => {
+    expect(told('italian-1400-0161#10', 'b2b4').early).toMatchObject({
+      text: "That doesn't stop Black's threat: Black's knight takes your bishop on c4 for free.",
+      reply: 'e5c4',
+    });
+    expect(told('italian-1400-0004#14', 'd2e2').early.text).toBe(
+      "That doesn't stop Black's threat: Black's knight moves to f4, and then Black's queen takes your knight on h4 for free.",
     );
-    expect(told('italian-2000-0077#2', 'e5f6').early.text).toBe("exf6 grabs the knight, but it doesn't stop Black's threat.");
-    expect(told('italian-2000-0077#2', 'e5f6').named.text).toBe(
-      "exf6 grabs the knight, but it doesn't stop Black's threat: dxc4 takes your bishop on c4 in return, and Qxf6 then takes your pawn on f6.",
-    );
+    expect(told('caro-kann-1100-0217#14', 'd8d7').early).toMatchObject({
+      kind: 'ignores-threat',
+      text: "That doesn't stop White's threat: White's knight moves to d6, gives check and attacks your bishop.",
+      reply: 'b5d6',
+    });
+    expect(told('italian-1100-0169#6', 'h1h2').early).toEqual({
+      kind: 'ignores-threat',
+      text: "That doesn't stop Black's threat: Black's pawn takes your knight.",
+      reply: 'f6g5',
+      targets: ['g5'],
+    });
   });
 
-  it('says a piece already hung only as hanging, until it is marked', () => {
-    const { early, named } = told('caro-kann-1100-0034#7', 'c5d7');
-    expect(early).toMatchObject({ kind: 'bait', text: 'Ncd7 looks natural, but it leaves a piece hanging.', reply: null, targets: [] });
-    expect(named).toMatchObject({ text: 'Ncd7 looks natural, but it leaves a piece hanging: Qxa8 wins your rook on a8.', reply: 'c6a8' });
+  it('holds back a piece that already hung until it is marked, since naming it would point at the answer', () => {
+    const { early, pattern, named } = told('caro-kann-1100-0034#7', 'c5d7');
+    expect(early).toMatchObject({ kind: 'bait', text: 'One of your pieces is still in danger. Which one can White take?', reply: null, targets: [] });
+    expect(pattern.text).toBe(early.text);
+    expect(named).toMatchObject({ text: "One of your pieces is still in danger: White's queen takes your rook on a8 for free.", reply: 'c6a8' });
   });
 });
 
 describe('a move that leaves material down (R7)', () => {
   it('says the user stays down what was just taken, and from hint 2 how the piece gets away', () => {
-    expect(told('italian-2000-0176#11', 'b3d5').early).toEqual({ kind: 'missed', text: 'After Bd5, you stay a queen down.', reply: null, targets: [] });
-    expect(told('italian-2000-0176#11', 'b3d5').named.text).toBe("After Bd5, you stay a queen down: Black's queen gets away with Qd3.");
+    expect(told('italian-2000-0176#11', 'b3d5').early).toEqual({
+      kind: 'missed',
+      text: 'After that move, you are still a queen down.',
+      reply: null,
+      targets: [],
+    });
+    expect(told('italian-2000-0176#11', 'b3d5').named.text).toBe("After that move, you are still a queen down: Black's queen gets away to d3.");
     expect(told('italian-1400-0116#14', 'b2b3').named.text).toBe(
-      "After b3, you stay a queen down: Black's queen gets away with Qxe1+, taking your rook on e1.",
+      "After that move, you are still a queen down: Black's queen gets away by taking your rook on e1.",
     );
   });
 });
 
 describe('a move no line punishes (R8)', () => {
-  it('never calls it safe', () => {
-    expect(whyWrong(italian1, 1, 'd4d5', 0)).toEqual({ kind: 'weaker', text: "There's a stronger move here.", reply: null, targets: [] });
-    expect(told('caro-kann-1400-0029#17', 'e6e5').early.text).toBe("There's a stronger move here.");
+  it('says what the move takes where the user is looking to win, and where to look', () => {
+    expect(whyWrong(italian1, 1, 'd4d5', 0)).toEqual({
+      kind: 'weaker',
+      text: "That's safe, but it doesn't win material right away. Look for an enemy piece that isn't protected enough.",
+      reply: null,
+      targets: [],
+    });
+    expect(told('caro-kann-1100-0001#5', 'f8c5').early.text).toBe(
+      "That's safe, but it doesn't win material right away. Look for an enemy piece that isn't protected enough.",
+    );
   });
 
-  it('names a piece the move leaves hanging, held back when it hung before', () => {
-    expect(told('italian-1100-0169#6', 'h1h2').early).toEqual({ kind: 'ignores-threat', text: "That doesn't stop Black's threat.", reply: null, targets: [] });
-    expect(told('italian-1100-0169#6', 'h1h2').named.text).toBe("That doesn't stop Black's threat: fxg5 wins your knight on g5.");
+  it('points at the pattern once the hint has named it', () => {
+    expect(told('caro-kann-1100-0001#5', 'f8c5').pattern.text).toBe(
+      "That's safe, but it doesn't win material right away. Look for a big piece you can attack with another piece behind it.",
+    );
+    expect(told('italian-1100-0094#24', 'f1h1').pattern.text).toBe(
+      "That doesn't win material right away. Look for a piece you can move out of the way of another.",
+    );
+  });
+
+  it('calls a move safe only when nothing of the user hangs after it', () => {
+    const [unsafe] = playLine(sample('italian-1100-0094#24').turns[0].fen, ['f1h1']);
+    expect(nothingHangs(unsafe)).toBe(false);
+    expect(told('italian-1100-0094#24', 'f1h1').early.text).toBe("That doesn't win material right away. Look for an enemy piece that isn't protected enough.");
+    expect(told('caro-kann-1700-0127#18', 'f6d7').early.text).toBe("That doesn't win material right away. Look for an enemy piece that isn't protected enough.");
+  });
+
+  it('says how the position stands after a missed win, from the grades', () => {
+    expect(told('caro-kann-1400-0204#12', 'c6d8').early.text).toBe(
+      "That misses a chance to win material: after it, you are worse. Look for an enemy piece that isn't protected enough.",
+    );
+    expect(told('italian-1700-0073#9', 'd1b3').early.text).toBe(
+      "That misses a chance to win material: after it, the position is about even. Look for an enemy piece that isn't protected enough.",
+    );
+    expect(told('italian-2000-0110#9', 'f3d2').early.text).toBe(
+      "Another move wins more: after yours, the position is about even. Look for an enemy piece that isn't protected enough.",
+    );
+    expect(told('italian-2000-0058#21', 'g1h2').early.text).toBe(
+      'That misses a strong attack on the king: after it, you are still better, but by less. Look at every check and threat you have.',
+    );
+  });
+
+  it('tells a defence that stops the threat from one that leaves it standing, and shows the threat', () => {
+    expect(told('caro-kann-1400-0229#19', 'c4a5').early.text).toBe(
+      "That stops White's threat, but there is a better way to do it. Look at every way to defend.",
+    );
+    expect(whyWrong(caroKann, 15, 'f8d8', 0).text).toBe(
+      "That stops White's threat, but after it the position is about even. Look at every way to defend.",
+    );
+    expect(told('italian-1100-0177#6', 'a1c1').early).toMatchObject({
+      kind: 'missed',
+      text: "That doesn't stop Black's threat: Black's pawn moves to a6 and attacks your bishop on b5. After your move, you are still better, but by less.",
+      reply: 'a7a6',
+    });
+  });
+
+  it('sends the user looking for the trap without naming it', () => {
+    expect(told('caro-kann-1100-0088#3', 'c8d7').early.text).toBe(
+      'That avoids the trap, but there is a better move. Think about what your opponent can do after each natural move.',
+    );
+    expect(told('italian-2000-0234#20', 'f2f3').early.text).toBe(
+      'That avoids the trap, but after it you are worse. Think about what your opponent can do after each natural move.',
+    );
   });
 
   it("doesn't claim a capture that loses for the opponent or is paid back", () => {
-    expect(told('caro-kann-1700-0127#18', 'f6d7').early.text).toBe("There's a stronger move here.");
-    expect(told('italian-1100-0094#24', 'f1h1').early.text).toBe("There's a stronger move here.");
-    expect(told('italian-2000-0110#9', 'f3d2').early.text).toBe('Nd2 lets the chance go.');
-  });
-
-  it('says when the user ends up worse', () => {
-    expect(told('caro-kann-1400-0204#12', 'c6d8').early.text).toBe('Nd8 lets the chance go, and you end up worse.');
-    expect(told('italian-2000-0234#20', 'f2f3').early.text).toBe("There's a much stronger move here, and after f3 you end up worse.");
+    expect(told('caro-kann-1400-0029#17', 'e6e5').early.reply).toBeNull();
+    expect(told('caro-kann-1700-0127#18', 'f6d7').early.reply).toBeNull();
+    expect(told('italian-2000-0110#9', 'f3d2').early.reply).toBeNull();
   });
 });
 
 describe('phrasing (R9)', () => {
-  it('names a trade instead of repeating a move, and finishes a mate threat', () => {
-    expect(told('caro-kann-1700-0145#27', 'c7c3').early.text).toBe('Qxc3 grabs a pawn, but once the queens come off, Rxe7 wins your knight on e7.');
+  it('names a trade instead of telling its moves, and finishes a mate threat', () => {
+    expect(told('caro-kann-1700-0145#27', 'c7c3').early.text).toBe(
+      "After the queens are traded, White's rook takes your knight. You lose a knight and only get a pawn back.",
+    );
     expect(told('italian-2000-0112#1', 'f3e5').early.text).toBe(
-      'Nxe5 grabs a pawn, but the knight on c6 takes back and wins your knight on e5.',
+      "You take the pawn on e5, but Black's knight takes your knight. You lose a knight and only get a pawn back.",
     );
     expect(told('caro-kann-2000-0148#26', 'e5c7').early.text).toBe(
-      'After Bc7, Qg4 threatens mate on g7, and stopping it costs you your rook.',
+      "White's queen moves to g4 and threatens checkmate on g7. Stopping it costs you a rook.",
     );
   });
 });
 
 describe('material the line only wins after a poor move of the user (R11)', () => {
   it('is not claimed', () => {
-    expect(told('caro-kann-1100-0217#14', 'd8d7').named.text).toBe(
-      "That doesn't stop White's threat: Nd6+ checks your king and attacks your bishop on f5 at once.",
+    expect(told('caro-kann-1100-0217#14', 'd8d7').early.text).toBe(
+      "That doesn't stop White's threat: White's knight moves to d6, gives check and attacks your bishop.",
     );
-    expect(told('caro-kann-2000-0193#13', 'g6f4').early.text).toBe('Nf4 lets the chance go, and you end up worse.');
-    expect(told('italian-1700-0073#9', 'd1b3').early.text).toBe('Qb3 lets the chance go.');
-    expect(told('italian-1700-0058#15', 'g2g4').named.text).toBe(
-      "That doesn't stop Black's threat: after Ne2+ Kf2, Nxf4 wins your pawn on f4.",
+    expect(told('caro-kann-2000-0193#13', 'g6f4').early.text).toBe(
+      "That misses a chance to win material: after it, you are worse. Look for an enemy piece that isn't protected enough.",
+    );
+    expect(told('italian-1700-0073#9', 'd1b3').early.reply).toBeNull();
+    expect(told('italian-1700-0058#15', 'g2g4').early.text).toBe(
+      "That doesn't stop Black's threat: after a check, Black's knight takes your pawn on f4 for free.",
     );
   });
 
   it('still blames the move when the piece falls without that poor move too', () => {
     // Taking back at once with dxe4 drops the bishop on c4 as well, so Qb7 isn't what loses it.
     expect(told('caro-kann-1400-0128#15', 'f6e4').early.text).toBe(
-      'Ne4 attacks the knight on c3, but after Nxe4 Qb7 a3 dxe4, Qxc4 wins your bishop on c4.',
+      "White's knight takes your knight, and a few moves later White's queen takes your bishop on c4. In the end, you lose a bishop.",
     );
   });
 });
@@ -238,15 +373,16 @@ describe('the common mistake', () => {
   it('is told the way the lesson opens the trap', () => {
     expect(whyWrong(italian1, 3, 'c4f7', 0)).toMatchObject({
       kind: 'bait',
-      text: 'Bxf7+ grabs a pawn, but Kxf7 wins your bishop on f7.',
+      text: "You take the pawn on f7, but Black's king takes your bishop. You lose a bishop and only get a pawn back.",
       reply: 'e8f7',
       targets: ['f7'],
     });
     expect(whyWrong(caroKann, 6, 'f6d5', 0)).toMatchObject({
       kind: 'bait',
-      text: 'Nd5 attacks the bishop on f4 and the knight on c3, but Nxf7 takes your pawn on f7 and attacks your queen on d8 and your rook on h8 at once, and after Nxf4, Nxd8 takes the queen, and you get only a bishop for your queen and a pawn.',
+      text: "White's knight takes your pawn on f7 and attacks your queen and rook on h8 at once. You lose your queen and a pawn for a bishop.",
       targets: ['d8', 'h8'],
     });
+    expect(told('italian-2000-0231#25', 'e1e4').early.kind).toBe('bait');
   });
 });
 
@@ -263,7 +399,7 @@ describe('the plain answer', () => {
 describe('every graded move of the fixture games', () => {
   const games: Game[] = [...learnGames, italian1];
 
-  it('never names the best move or the game move, never says safe, and only plays a legal reply', () => {
+  it('never names the best move or the game move, says safe only when nothing hangs, and only plays a legal reply', () => {
     for (const game of games) {
       game.turns.forEach((turn, i) => {
         if (turn.label !== 'critical') return;
@@ -274,7 +410,8 @@ describe('every graded move of the fixture games', () => {
           for (const hint of [0, 2] as const) {
             const why = whyWrong(game, i, uci, hint);
             for (const san of answers) expect(why.text.split(/[\s,.:]+/), `${game.id} ${i} ${uci}`).not.toContain(san);
-            expect(why.text).not.toMatch(/\bsafe\b|line that follows/);
+            if (/That's safe/.test(why.text)) expect(nothingHangs(move), `${game.id} ${i} ${uci}: ${why.text}`).toBe(true);
+            expect(why.text).not.toMatch(/line that follows/);
             if (why.reply) expect(playLine(move.after, [why.reply])).toHaveLength(1);
           }
         }
