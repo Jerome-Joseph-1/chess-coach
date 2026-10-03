@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Game } from '../content/types';
 import olderItalian from './fixtures/italian-1400-0003.json';
-import { captionOf, fenAt, sequenceKey, stepsOf } from './sequence';
+import { captionParts, fenAt, sequenceKey, stepsOf } from './sequence';
 import { italian1 } from './testGames';
 
 const older = olderItalian as unknown as Game;
@@ -17,22 +17,22 @@ describe('fenAt', () => {
   });
 });
 
-describe('captionOf', () => {
-  it('gives the move number, the move and what it does', () => {
-    expect(captionOf(steps[2], 'w')).toBe('8. bxa5 — you take the knight');
-    expect(captionOf(steps[0], 'w')).toBe('7. b4 — attacks the knight');
+describe('captionParts', () => {
+  it('gives the numbered move and what it does, as a sentence', () => {
+    expect(captionParts(steps[2], 'w')).toEqual({ move: '8. bxa5', text: 'You take the knight' });
+    expect(captionParts(steps[0], 'w')).toEqual({ move: '7. b4', text: 'Attacks the knight' });
   });
 
   it('numbers a Black move with an ellipsis', () => {
-    expect(captionOf(steps[3], 'w')).toBe('8… cxd5 — takes your pawn');
+    expect(captionParts(steps[3], 'w')).toEqual({ move: '8… cxd5', text: 'Takes your pawn' });
   });
 
   it('gives just the move when there is nothing to say', () => {
-    expect(captionOf(steps[1], 'w')).toBe('7… c6');
+    expect(captionParts(steps[1], 'w')).toEqual({ move: '7… c6', text: '' });
   });
 
   it('prefers a note over the usual description', () => {
-    expect(captionOf({ ...steps[2], note: 'That loses your knight.' }, 'w')).toBe('8. bxa5 — That loses your knight.');
+    expect(captionParts({ ...steps[2], note: 'That loses your knight.' }, 'w').text).toBe('That loses your knight.');
   });
 });
 

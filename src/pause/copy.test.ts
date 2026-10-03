@@ -99,7 +99,7 @@ describe('resultLine', () => {
   const right = (...steps: StepOutcome['step'][]): StepOutcome[] => steps.map((step) => ({ step, correct: true }));
 
   it('says what the user found', () => {
-    expect(resultLine('pause', right('spot', 'solve'))).toEqual({ kind: 'success', text: 'You spotted it and found the move' });
+    expect(resultLine('pause', right('spot', 'solve'))).toEqual({ kind: 'success', text: 'You found the move' });
     expect(resultLine('pause', right('spot', 'solve', 'hold')).kind).toBe('success');
   });
 
@@ -113,7 +113,7 @@ describe('resultLine', () => {
   it('says solved with a hint, neutral, when a hint carried the user through', () => {
     const outcomes: StepOutcome[] = [...right('spot'), { step: 'solve', correct: false }];
     expect(resultLine('pause', outcomes, true)).toBe(HINTED);
-    expect(HINTED).toEqual({ kind: 'quiet', text: 'Solved with a hint' });
+    expect(HINTED).toEqual({ kind: 'hint', text: 'Solved with a hint' });
     expect(resultLine('pause', right('spot', 'solve'), true).kind).toBe('success');
   });
 

@@ -33,11 +33,10 @@ export function numberedSan(fenBefore: string, san: string): string {
   return `${Number(number) || 1}${turn === 'b' ? '…' : '.'} ${san}`;
 }
 
-/** "8. bxa5 — you take the knight": the move, then what it does when there is something to say. */
-export function captionOf(step: SequenceStep, userSide: Side): string {
-  const move = numberedSan(step.before, step.san);
+/** The numbered move and, when there is something to say, what it does: "8. bxa5" and "You take the knight". */
+export function captionParts(step: SequenceStep, userSide: Side): { move: string; text: string } {
   const text = step.note ?? captionFor(step.before, step.uci, userSide);
-  return text ? `${move} — ${text}` : move;
+  return { move: numberedSan(step.before, step.san), text: text && text.charAt(0).toUpperCase() + text.slice(1) };
 }
 
 /** Same moves from the same position are the same sequence, whatever object carries them. */

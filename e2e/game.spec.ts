@@ -1,18 +1,20 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import {
+  coachLine,
   continueAfterPause,
   continueButton,
-  lookingBackLine,
   moveList,
   pauseButton,
   playButton,
   previousKeyButton,
   stepBackButton,
   stepForwardButton,
+  yesButton,
 } from './board';
 
 const PLAY_URL = './#/play/italian/1400';
 const FIRST_KEY_POSITION = 'Is something important happening?';
+const LOOKING_BACK = /^Move \d+ of \d+ · you are looking back$/;
 const RUN_MS = 15_000;
 
 test.use({ serviceWorkers: 'block' });
@@ -41,34 +43,44 @@ test('shows the game screen at phone width, waiting for play', async ({ page }) 
   await expect(playButton(page)).toBeVisible();
 
   await expect(page.getByRole('heading', { name: 'Italian Game' })).toBeVisible();
-  await expect(page.locator('.game-pill')).toHaveText(/^Key position 1 of \d+$/);
-  await expect(page.getByText('Rated 1400')).toBeVisible();
-  await expect(page.getByText('Black', { exact: true })).toBeVisible();
+  await expect(page.locator('.game-sub')).toHaveText(/^Key positions · 0 of \d+$/);
+  await expect(page.locator('.game-player.is-opponent')).toContainText('Black1400');
   await expect(page.getByText('You', { exact: true })).toBeVisible();
   await expect(moveList(page).last()).toHaveText(/Bc4$/);
+  await expect(moveList(page).last()).toHaveAttribute('aria-current', 'step');
   await expect(page.locator('.cm-chessboard .piece')).toHaveCount(32);
+  await expect(coachLine(page)).toHaveText("Press Play and I'll stop at the next key position.");
 
-  const width = page.viewportSize()!.width;
-  expect((await page.locator('.board-host').boundingBox())!.width).toBeCloseTo(width - 32, 0);
+  // The board takes the whole width when the screen is tall enough, and stays centred when it is not.
+  const { width, height } = page.viewportSize()!;
+  const board = (await page.locator('.board-host').boundingBox())!;
+  expect(board.width).toBeLessThanOrEqual(width);
+  expect(board.x).toBeCloseTo((width - board.width) / 2, 0);
+  if (height >= 740) expect(board.width).toBeCloseTo(width, 0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
   const back = (await page.getByRole('button', { name: 'Back' }).boundingBox())!;
-  expect([back.width, back.height]).toEqual([40, 40]);
+  expect([back.width, back.height]).toEqual([44, 44]);
+  const dock = (await page.locator('.dock').boundingBox())!;
+  expect(dock.y + dock.height).toBeCloseTo(height, 0);
 });
 
-test('the controls are three round buttons around Play, with nothing to step back to yet', async ({ page }) => {
+test('the dock has two round buttons around Play and a quiet row above, with nothing to step back to yet', async ({ page }) => {
   await page.goto(PLAY_URL);
   await expect(playButton(page)).toBeVisible();
 
-  for (const button of [previousKeyButton(page), stepBackButton(page), stepForwardButton(page)]) {
+  for (const button of [stepBackButton(page), stepForwardButton(page)]) {
     const box = (await button.boundingBox())!;
-    expect([box.width, box.height]).toEqual([44, 44]);
+    expect([box.width, box.height]).toEqual([52, 52]);
     expect(await button.evaluate((el) => el.textContent)).toBe('');
   }
+  await expect(previousKeyButton(page)).toHaveText('Previous key position');
   await expect(previousKeyButton(page)).toBeDisabled();
+  await expect(previousKeyButton(page)).toHaveCSS('opacity', '0.4');
+  await expect(page.getByRole('button', { name: 'Analyse', exact: true })).toBeEnabled();
   await expect(stepBackButton(page)).toBeDisabled();
   await expect(stepForwardButton(page)).toBeEnabled();
-  await expect(lookingBackLine(page)).toHaveText('');
+  await expect(coachLine(page)).not.toHaveText(LOOKING_BACK);
 });
 
 test('nothing moves until Play is tapped', async ({ page }) => {
@@ -85,14 +97,15 @@ test('the main button keeps its place when it turns into Pause', async ({ page }
   const board = (await page.locator('.board-host').boundingBox())!;
   const before = (await playButton(page).boundingBox())!;
   expect(before.y).toBeGreaterThanOrEqual(board.y + board.height);
-  const first = (await previousKeyButton(page).boundingBox())!;
+  const first = (await stepBackButton(page).boundingBox())!;
   const last = (await stepForwardButton(page).boundingBox())!;
   expect(first.x).toBeCloseTo(16, 0);
   expect(last.x + last.width).toBeCloseTo(page.viewportSize()!.width - 16, 0);
 
   await playButton(page).click();
   await expect(pauseButton(page)).toBeVisible();
-  expect(await pauseButton(page).boundingBox()).toEqual(before);
+  // Read once the press has sprung back.
+  await expect.poll(() => pauseButton(page).boundingBox()).toEqual(before);
   expect(await page.locator('.board-host').boundingBox()).toEqual(board);
 });
 
@@ -128,14 +141,15 @@ test('after a key position the game plays on by itself to the next one', async (
   await page.goto(PLAY_URL);
   await playButton(page).click();
   await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
-  await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  await yesButton(page).click();
   await page.getByRole('button', { name: 'Show solution' }).click();
   const played = await moveList(page).count();
 
   await continueAfterPause(page);
+  await expect(moveList(page).filter({ hasText: /dxe5$/ }).getByRole('img', { name: 'Missed' })).toBeVisible();
   await expect.poll(() => moveList(page).count()).toBeGreaterThanOrEqual(played + 2);
   await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
-  await expect(page.locator('.game-pill')).toHaveText(/^Key position 2 of \d+$/);
+  await expect(page.locator('.game-sub')).toHaveText(/^Key position 2 of \d+$/);
 });
 
 test('Next move plays one scripted move per tap and walks into the first key position', async ({ page }) => {
@@ -157,7 +171,7 @@ test('after a key position the user can stop, look back, step on, continue and t
   await page.goto(PLAY_URL);
   await playButton(page).click();
   await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
-  await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  await yesButton(page).click();
   await page.getByRole('button', { name: 'Show solution' }).click();
   const played = await moveList(page).count();
   await continueAfterPause(page);
@@ -166,11 +180,11 @@ test('after a key position the user can stop, look back, step on, continue and t
   await pauseButton(page).click();
   await expect(playButton(page)).toBeVisible();
   const board = await page.locator('.board-host').boundingBox();
-  await expect(lookingBackLine(page)).toHaveText('');
+  await expect(coachLine(page)).not.toHaveText(LOOKING_BACK);
   await stepBackButton(page).click();
   await stepBackButton(page).click();
-  const looking = lookingBackLine(page);
-  await expect(looking).toHaveText(/^Move \d+ of \d+ · you are looking back$/);
+  const looking = coachLine(page);
+  await expect(looking).toHaveText(LOOKING_BACK);
   await expect(continueButton(page)).toBeVisible();
   await expect(playButton(page)).toHaveCount(0);
   expect(await page.locator('.board-host').boundingBox()).toEqual(board);
@@ -184,20 +198,20 @@ test('after a key position the user can stop, look back, step on, continue and t
   await expect(looking).toHaveText(twoBack!);
 
   await continueButton(page).click();
-  await expect(looking).toHaveText('');
+  await expect(looking).not.toHaveText(LOOKING_BACK);
   await expect(pauseButton(page)).toBeVisible();
   await expect.poll(() => moveList(page).count()).toBeGreaterThan(total);
 
   await previousKeyButton(page).click();
   await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible();
-  await expect(page.locator('.game-pill')).toHaveText('Practice');
-  await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  await expect(page.locator('.game-sub')).toHaveText('Practice');
+  await yesButton(page).click();
   await page.getByRole('button', { name: 'Show solution' }).click();
-  await page.getByRole('button', { name: 'Continue' }).click();
+  await continueButton(page).click();
 
   await expect(page.locator('.pause-sheet')).toHaveCount(0);
   await expect(continueButton(page)).toBeVisible();
-  await expect(page.locator('.game-pill')).toHaveText(/^Key position 2 of \d+$/);
+  await expect(page.locator('.game-sub')).toHaveText(/^Key positions · 1 of \d+$/);
   const live = await moveList(page).count();
   await page.waitForTimeout(1500);
   await expect(moveList(page)).toHaveCount(live);

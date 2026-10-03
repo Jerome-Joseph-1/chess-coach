@@ -6,15 +6,12 @@ import { flipTurn, moveBefore, playLine, sanOf, type OpponentMove, type PlayedMo
 
 export const COPY = {
   spotTitle: 'Is something important happening?',
-  spotYes: "Yes, something's going on",
-  spotNo: 'No, nothing special',
+  spotYes: 'Yes',
+  spotNo: 'No',
   lookAgain: 'Not quite. Look again.',
   solveTitle: 'Your move',
   solveSub: 'Play the best move on the board.',
   tryAgain: 'Not quite. Try again.',
-  hint: 'Hint',
-  showPiece: 'Show the piece',
-  showMove: 'Show the move',
   showSolution: 'Show solution',
   hintPiece: 'Move the highlighted piece.',
   hintMove: 'Play the move shown.',
@@ -24,6 +21,7 @@ export const COPY = {
   next: 'Continue',
   watchAgain: 'Watch again',
   lineIntro: 'Watch how it plays out.',
+  remember: 'Remember',
   whyMove: 'Why this move?',
   backToLine: 'Back to the line',
 } as const;
@@ -77,7 +75,7 @@ export function replySub(game: Game): string {
   return `${opponentName(game)} is answering.`;
 }
 
-export type ResultKind = 'success' | 'danger' | 'quiet';
+export type ResultKind = 'success' | 'danger' | 'hint' | 'quiet';
 
 export interface ResultLine {
   kind: ResultKind;
@@ -85,7 +83,7 @@ export interface ResultLine {
 }
 
 export const MISSED: ResultLine = { kind: 'danger', text: 'Missed it' };
-export const HINTED: ResultLine = { kind: 'quiet', text: 'Solved with a hint' };
+export const HINTED: ResultLine = { kind: 'hint', text: 'Solved with a hint' };
 
 /** The line that opens the reveal: how this attempt went. A quiet position is neither a win nor a miss. */
 export function resultLine(type: 'pause' | 'nothing', outcomes: StepOutcome[], hinted = false): ResultLine {
@@ -93,7 +91,7 @@ export function resultLine(type: 'pause' | 'nothing', outcomes: StepOutcome[], h
     return { kind: 'quiet', text: outcomes[0]?.correct ? 'You saw it was quiet' : 'This one was quiet' };
   }
   const allRight = outcomes.length > 0 && outcomes.every((o) => o.correct);
-  if (allRight) return { kind: 'success', text: 'You spotted it and found the move' };
+  if (allRight) return { kind: 'success', text: 'You found the move' };
   return hinted ? HINTED : MISSED;
 }
 

@@ -21,7 +21,7 @@ async function reachReveal(page: Page) {
   await page.goto('./#/play/italian/1400');
   await playButton(page).click();
   await expect(page.getByText('Is something important happening?')).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await page.getByRole('button', { name: 'Show solution' }).click();
   await expect(page.getByText('Missed it')).toBeVisible();
   await expect(caption(page)).toContainText('5. dxe5');
@@ -33,8 +33,10 @@ async function expectRows(page: Page, count = 3, timeout = SEARCH_MS) {
 }
 
 async function expectBoardUncovered(page: Page) {
-  const board = (await page.locator('.board-host').boundingBox())!;
-  const sheet = (await page.locator('.pause-sheet').boundingBox())!;
+  // Both boxes from one frame: the board may be resizing to the answer layout.
+  const [board, sheet] = await page.evaluate(() =>
+    ['.board-host', '.pause-sheet'].map((selector) => document.querySelector(selector)!.getBoundingClientRect().toJSON()),
+  );
   expect(sheet.y).toBeGreaterThanOrEqual(board.y + board.height - 1);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 }
@@ -119,7 +121,10 @@ test('Analyse on the game screen opens the engine on the board and Done puts the
   const pieces = await page.locator('.cm-chessboard .piece').count();
 
   await page.getByRole('button', { name: 'Analyse', exact: true }).click();
+  // A thin bar runs while the engine thinks, then the lines fade in one after another.
+  await expect(page.locator('.analysis-progress')).toBeVisible();
   await expectRows(page, 3, ENGINE_LOAD_MS);
+  await expect(rows(page).nth(2)).toHaveCSS('animation-delay', '0.1s');
   await expect(barLabel(page)).not.toBeEmpty();
   await expectBoardUncovered(page);
 

@@ -5,7 +5,7 @@ import type { Depth, Game, MomentType, SetIndex, Side, StepOutcome, Turn } from 
 import { fixtureGame, fixtureSet } from './fixtures';
 import { chooseMoments } from './pauses';
 import { parseUci } from './position';
-import { AUTOPLAY_MS, GameSession, type SessionDeps } from './session';
+import { AUTOPLAY_MS, GameSession, KEY_BEAT_MS, RESUME_MS, type SessionDeps } from './session';
 
 vi.mock('./pauses', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./pauses')>();
@@ -179,6 +179,7 @@ async function beatsUntilPause(started: Started, beat: () => Promise<void>): Pro
 async function answerAndStopAfter(started: Started, beat: () => Promise<void>, resumePly: number, moves: number): Promise<void> {
   started.session.pauseDone({ outcomes: outcomes(true, false), resumePly });
   await flush();
+  await beat();
   for (let i = 1; i < moves; i++) await beat();
   started.session.pausePlayback();
   await beat();
@@ -237,9 +238,10 @@ describe('autoplay', () => {
     const { session, board, deps } = await playToPause();
     expect(board.calls).toEqual(['set:false', 'play:g8f6', 'play:d2d4', 'play:f6e4']);
     expect(session.getView().history.slice(-3)).toEqual(['Nf6', 'd4', 'Nxe4']);
-    expect(deps.wait).toHaveBeenCalledTimes(3);
-    expect(deps.wait.mock.calls.every(([ms]) => ms === AUTOPLAY_MS)).toBe(true);
+    // The beat before the move onto the key position is longer.
+    expect(deps.wait.mock.calls.map(([ms]) => ms)).toEqual([AUTOPLAY_MS, AUTOPLAY_MS + KEY_BEAT_MS, AUTOPLAY_MS]);
     expect(AUTOPLAY_MS).toBe(600);
+    expect(KEY_BEAT_MS).toBe(350);
   });
 
   it('does not move until the next beat', async () => {
@@ -385,6 +387,9 @@ describe('a pause', () => {
     started.session.pauseDone({ outcomes: outcomes(true), resumePly: 3 });
     await flush();
     expect(started.session.getView().phase).toEqual({ kind: 'playing' });
+    expect(started.deps.wait).toHaveBeenLastCalledWith(RESUME_MS);
+    expect(started.board.calls.at(-1)).toBe('play:f6e4');
+    await beat();
     expect(started.board.calls.at(-1)).toBe('play:d4e5');
     await beat();
     expect(started.board.calls.at(-1)).toBe('play:d7d6');
@@ -405,6 +410,8 @@ describe('a pause', () => {
     const beat = gateBeats(started);
     started.session.pauseDone({ outcomes: outcomes(true), resumePly: 6 });
     await flush();
+    expect(started.board.calls.at(-1)).toBe('set:false');
+    await beat();
     expect(started.board.calls.slice(-2)).toEqual(['set:false', 'play:d6e5']);
     const model = new Chess();
     started.session.getView().history.forEach((san) => model.move(san));
@@ -521,6 +528,7 @@ describe('stepping through the moves', () => {
     const beat = gateBeats(started);
     started.session.pauseDone({ outcomes: outcomes(true), resumePly: 3 });
     await flush();
+    await beat();
     expect(started.board.calls.at(-1)).toBe('play:d4e5');
     expect(started.session.getView().phase).toEqual({ kind: 'playing' });
     expect(started.session.getView().controls.back).toBe(true);
@@ -642,6 +650,7 @@ describe('a key position tried again', () => {
     await beatsUntilPause(started, beat);
     started.session.pauseDone({ outcomes: outcomes(true), resumePly: 3 });
     await flush();
+    await beat();
     expect(started.session.getView().controls.previousKey).toBe(true);
   });
 

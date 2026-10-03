@@ -1,226 +1,492 @@
-/* The pause sheet sits in the slot under the board, in the flow, so it can never cover the board. */
+/* The coach's panel sits in the flow under the board, so it can never cover the board; the dock stays at the bottom. */
 .pause-sheet {
   display: flex;
   flex: 1;
   flex-direction: column;
-  /* Fills the slot edge to edge: cancels the slot's 16px sides and 20px bottom padding. */
-  margin: 0 -16px calc(-20px - var(--safe-bottom));
-  background: var(--surface);
-  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
-  box-shadow: inset 0 1px 0 var(--hairline);
+  min-height: 0;
 }
-/* What does not fit under the board scrolls here; Sheet.tsx caps the height. */
-.pause-sheet-scroll {
+/* What does not fit between the board and the dock scrolls here. */
+.coach-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 12px 16px 4px;
+  animation: coach-rise var(--d-slow) var(--spring) both;
 }
-.pause-sheet-foot {
-  display: grid;
-  justify-items: center;
-  padding: 4px 16px calc(10px + var(--safe-bottom));
-}
-.pause-sheet-foot .btn-lg {
-  min-height: 44px;
-}
-.pause-sheet-scroll:last-child {
-  padding-bottom: calc(12px + var(--safe-bottom));
-}
-.pause-phase {
-  animation: pause-phase 240ms ease-out both;
-}
-@keyframes pause-phase {
+@keyframes coach-rise {
   from {
-    transform: translateY(6px);
+    transform: translateY(calc(var(--rise) * 3));
+    opacity: 0;
+  }
+}
+.coach-panel {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 12px 16px;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .coach-panel {
+    /* Lines that change slide in by 8px. */
+    --rise: 8px;
+  }
+}
+
+/* Cross-fade: the old and the new content share one grid cell while they swap. */
+.xfade {
+  display: inline-grid;
+}
+.xfade > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.xfade-in {
+  animation: xfade-in var(--d-quick) var(--spring) both;
+}
+.xfade-out {
+  pointer-events: none;
+  animation: xfade-out var(--d-quick) var(--ease-leave) both;
+}
+@keyframes xfade-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--rise));
+  }
+}
+@keyframes xfade-out {
+  to {
     opacity: 0;
   }
 }
 
-/* "Step 1 of 3" and one dot per step. */
-.pause-head {
+/* The coach: a knight on an orange disc, then the speech bubble. */
+.coach {
   display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.coach-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--coach);
+  animation: coach-pop var(--d-base) var(--spring) both;
+}
+.coach-mark.is-small {
+  width: 24px;
+  height: 24px;
+  animation: none;
+}
+.coach-mark svg {
+  width: 62%;
+  height: 62%;
+  margin: 0 0 2px 2px;
+  overflow: visible;
+}
+.coach-knight {
+  fill: #0a0a0b;
+  stroke: #0a0a0b;
+  stroke-width: 0.87;
+  stroke-linejoin: round;
+}
+.coach-knight-line {
+  fill: #ececec;
+}
+@keyframes coach-pop {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+}
+
+.coach-bubble {
+  display: grid;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px 14px;
+  border-radius: 4px 18px 18px 18px;
+  background: var(--surface-2);
+}
+.coach-bubble > .rise-in {
+  animation-delay: calc(80ms + var(--i, 0) * 40ms);
+}
+.coach-head {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-  color: var(--text-muted);
-  font: var(--text-label);
+  gap: 6px 12px;
+  min-height: 16px;
 }
-.pause-dots {
-  display: flex;
+.coach-eyebrow > * {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
 }
-.pause-dots i {
+.coach-eyebrow .eyebrow {
+  color: var(--text-muted);
+}
+.coach.is-hint .coach-eyebrow .eyebrow {
+  color: var(--coach-text);
+}
+.coach.is-error .coach-eyebrow .eyebrow {
+  color: var(--danger);
+}
+.coach.is-success .coach-eyebrow .eyebrow {
+  color: var(--success);
+}
+.tone-icon {
+  flex: none;
+  color: var(--coach);
+}
+.coach-title {
+  margin: 0;
+  color: var(--text-strong);
+  font: 600 17px/24px var(--font);
+  letter-spacing: -0.005em;
+  text-wrap: pretty;
+}
+.coach-title .xfade,
+.coach-body .xfade {
+  display: grid;
+}
+.coach-body {
+  margin: 0;
+  color: var(--text);
+  font: var(--text-body);
+  text-wrap: pretty;
+}
+.pause-answer .coach-body {
+  color: var(--text-strong);
+}
+.coach-note {
+  color: var(--text-muted);
+}
+
+/* The verdict mark: a disc that pops, then its glyph draws itself. */
+.tone-mark {
+  flex: none;
+  animation: coach-pop var(--d-quick) var(--spring) both;
+}
+.tone-mark circle {
+  fill: var(--text-muted);
+}
+.tone-mark.is-success circle {
+  fill: var(--success);
+}
+.tone-mark.is-error circle {
+  fill: var(--danger);
+}
+.tone-mark path {
+  fill: none;
+  stroke: var(--bg);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 200ms ease-out 100ms forwards;
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* The pattern's name, as a chip; on the answer it slides in from the right. */
+.pattern-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px 0 8px;
+  border-radius: 14px;
+  background: var(--surface-3);
+  color: var(--text-strong);
+  font: 600 13px/16px var(--font);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.pattern-in {
+  display: inline-flex;
+  animation: slide-in-right var(--d-base) var(--spring) 160ms both;
+}
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--rise) * 2));
+  }
+}
+
+/* One dot per step: the current one stretches into a pill. */
+.step-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.step-dots i {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: 3px;
   background: var(--surface-3);
+  transition:
+    width var(--d-base) var(--spring),
+    background var(--d-quick) ease-out;
 }
-.pause-dots i.is-on {
+.step-dots i.is-done {
+  background: var(--text-muted);
+}
+.step-dots i.is-now {
+  width: 16px;
   background: var(--text-strong);
 }
 
-.pause-title {
-  font: var(--text-title);
+/* Hint ladder: Pattern · Piece · Move. The rule fills to the next stop, then the stop fills with a check. */
+.coach-ladder {
+  padding-top: 6px;
 }
-.pause-sub {
-  margin: 4px 0 0;
-  color: var(--text-muted);
-  font: var(--text-body);
-}
-.pause-sub.is-right {
+.hint-ladder {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--success);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-
-/* Step 1: two rows with a leading circle that becomes a check or a cross. */
-.pause-choices {
-  display: grid;
-  gap: 8px;
-  margin-top: 12px;
-}
-.pause-choice {
+.hint-stop {
+  --fill-delay: 0ms;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 56px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: var(--r-row);
-  background: var(--surface-2);
-  box-shadow: inset 0 0 0 1px var(--hairline);
-  color: var(--text-strong);
-  font: var(--text-headline);
-  text-align: left;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition:
-    transform var(--t-quick) var(--spring),
-    opacity var(--t-quick) var(--spring);
-}
-.pause-choice:active:not([aria-disabled='true']) {
-  transform: scale(0.985);
-}
-.pause-choice[aria-disabled='true'] {
-  cursor: default;
-}
-.pause-choice.is-dim {
-  opacity: 0.5;
-}
-.pause-ring {
   flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--text-muted);
-  opacity: 0.7;
-}
-
-/* Reveal: the verdict, what the position asked for, the lines, then the two ways on. */
-.pause-result {
-  display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 4px;
-  font: var(--text-callout);
+  gap: 6px;
+  color: var(--text-muted);
+  font: 500 13px/16px var(--font);
+  letter-spacing: 0.01em;
 }
-.pause-reveal .pause-title {
-  font: var(--text-headline);
-  font-weight: 600;
+.hint-rule + .hint-stop {
+  --fill-delay: var(--d-base);
+}
+.hint-stop.is-used,
+.hint-stop.is-next {
   color: var(--text-strong);
+  font-weight: 600;
 }
-.pause-result.is-success {
-  color: var(--success);
-}
-.pause-result.is-danger {
-  color: var(--danger);
-}
-.pause-result.is-quiet {
-  color: var(--text-muted);
-}
-.pause-actions {
+.hint-dot {
   display: grid;
-  justify-items: center;
-  width: 100%;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+  font: 600 11px/12px var(--font);
 }
-.pause-actions.is-pair {
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+.hint-dot > * {
+  grid-area: 1 / 1;
 }
-.pause-actions.is-pair .btn {
-  width: 100%;
-}
-/* The quiet way to watch again, under Continue. */
-.pause-link {
-  min-height: 36px;
-  padding: 0 16px;
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font: var(--text-callout);
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: transform 100ms ease-out;
-}
-.pause-link:active:not(:disabled) {
-  transform: scale(0.94);
-}
-
-/* "Why this move?" under the caption; it keeps its place before the first move so nothing jumps. */
-.stepper-why {
-  display: flex;
-  justify-content: center;
-}
-.stepper-why.is-waiting {
+.hint-check {
+  width: 14px;
+  height: 14px;
   visibility: hidden;
 }
+.hint-check path {
+  fill: none;
+  stroke: #0a0a0b;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.hint-stop.is-used .hint-dot {
+  animation: hint-fill var(--d-quick) var(--spring) var(--fill-delay) both;
+}
+.hint-stop.is-used .hint-num {
+  visibility: hidden;
+}
+.hint-stop.is-used .hint-check {
+  visibility: visible;
+}
+.hint-stop.is-used .hint-check path {
+  animation: draw 200ms ease-out calc(var(--fill-delay) + 80ms) forwards;
+}
+@keyframes hint-fill {
+  from {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--text-strong);
+  }
+  to {
+    background: var(--coach);
+    box-shadow: inset 0 0 0 1.5px var(--coach);
+  }
+}
+.hint-rule {
+  position: relative;
+  flex: 1;
+  min-width: 12px;
+  height: 1px;
+  background: var(--hairline);
+}
+.hint-rule::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--coach);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.hint-rule.is-filled::after {
+  animation: rule-fill var(--d-base) var(--spring) both;
+}
+@keyframes rule-fill {
+  to {
+    transform: scaleX(1);
+  }
+}
 
-/* Line stepper: previous, the caption of the move on show, next. */
+/* The takeaway, on the coach's tint. It rises in once the line has played. */
+.remember-in {
+  animation: rise-in var(--d-slow) var(--spring) both;
+}
+.remember-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px 16px;
+  border-radius: 16px;
+  background: var(--coach-tint);
+}
+.remember-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--coach-text);
+}
+.remember-card p {
+  margin: 0;
+  color: var(--text-strong);
+  font: 500 16px/22px var(--font);
+  letter-spacing: -0.005em;
+}
+
+/* Line stepper: ‹ the move on show and what it does › then replay. */
 .stepper {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 4px;
+  gap: 8px;
+  min-height: 52px;
+  padding: 3px 6px;
+  border-radius: 26px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hairline);
   touch-action: pan-y;
 }
 .stepper-caption {
+  display: grid;
   flex: 1;
-  /* Room for two lines, so the arrows do not jump from move to move. */
-  min-height: 44px;
+  min-width: 0;
+  min-height: 40px;
+  place-items: center;
   margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text);
-  font: var(--text-body);
+  color: var(--text-muted);
+  font: var(--text-caption);
   text-align: center;
 }
-.stepper-nav {
+.stepper-text {
+  display: grid;
+  width: 100%;
+}
+.stepper-text > * {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+}
+.stepper-move {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.stepper-move b {
+  color: var(--text-strong);
+  font: 500 15px/20px var(--font-mono);
+  font-weight: 700;
+}
+.stepper-says {
+  max-width: 100%;
+}
+.stepper-says:only-child {
+  color: var(--text);
+  font: var(--text-callout);
+}
+.stepper-pips {
+  display: inline-flex;
+  gap: 4px;
+}
+.stepper-pips i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-muted) 50%, transparent);
+  transition: background var(--d-quick) ease-out;
+}
+.stepper-pips i.is-on {
+  background: var(--text-strong);
+}
+.stepper-nav,
+.stepper-replay {
   display: grid;
   flex: none;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--surface-2);
-  box-shadow: inset 0 0 0 1px var(--hairline);
   color: var(--text-strong);
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform 100ms ease-out;
+  transition:
+    transform var(--d-press) var(--spring),
+    opacity var(--d-quick) ease-out;
 }
-.stepper-nav:active:not(:disabled) {
+.stepper-nav {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.stepper-replay {
+  background: transparent;
+}
+.stepper-nav:active:not(:disabled),
+.stepper-replay:active {
   transform: scale(0.94);
 }
 .stepper-nav:disabled {
   opacity: 0.4;
   cursor: default;
+}
+.stepper-divider {
+  flex: none;
+  width: 1px;
+  height: 28px;
+  background: var(--hairline);
+}
+.stepper-replay > span {
+  display: grid;
+}
+.stepper-replay .is-turning {
+  animation: replay-turn var(--d-slow) var(--spring);
+}
+@keyframes replay-turn {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
 }
 /* A soft ring that asks to be pressed while the line waits. */
 .stepper-nav.is-pulsing {
@@ -239,32 +505,168 @@
       0 0 0 10px transparent;
   }
 }
+
+.pause-answer {
+  display: grid;
+  gap: 12px;
+}
+
+/* A quiet text link, e.g. the way back from the engine to the line. */
+.pause-link {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: var(--text-callout);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--d-press) var(--spring);
+}
+.pause-link:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* The dock: one bar at the bottom, the main action always in its last row. */
+.dock {
+  flex: none;
+  display: grid;
+  gap: 4px;
+  padding: 12px 16px 8px;
+  border-top: 1px solid var(--hairline);
+  background: var(--bg);
+}
+.dock-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  animation: fade-in var(--d-quick) ease-out both;
+}
+.dock-fade {
+  display: grid;
+}
+.dock-fade > * {
+  display: grid;
+}
+.dock-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 24px;
+  border-radius: 26px;
+  font: 500 16px/20px var(--font);
+  letter-spacing: -0.002em;
+  white-space: nowrap;
+}
+.dock-btn.btn {
+  width: auto;
+}
+.dock-btn.is-wide {
+  flex: 1;
+  min-width: 0;
+}
+.dock-btn.btn-primary {
+  font-weight: 600;
+}
+.dock .dock-btn {
+  transition:
+    transform var(--d-press) var(--spring),
+    opacity var(--d-quick) ease-out,
+    background var(--d-quick) ease-out;
+}
+.dock .dock-btn:active:not(:disabled):not([aria-disabled='true']) {
+  transform: scale(0.97);
+}
+.dock .dock-btn:disabled {
+  opacity: 0.4;
+}
+.dock-btn .xfade > * {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.dock-quiet {
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.dock-quiet:disabled {
+  cursor: default;
+}
+
+/* Step 1's answers: a ring that fills and draws a check, or a cross, on the chosen pill. */
+.pause-choices {
+  display: flex;
+  gap: 12px;
+}
+.pause-choice[aria-disabled='true'] {
+  cursor: default;
+}
+.pause-choice.is-dim {
+  opacity: 0.4;
+}
+.choice-ring {
+  flex: none;
+  overflow: visible;
+}
+.choice-ring circle {
+  fill: transparent;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  transition:
+    fill var(--d-quick) ease-out,
+    stroke var(--d-quick) ease-out;
+}
+.choice-ring.is-right circle {
+  fill: var(--success);
+  stroke: var(--success);
+}
+.choice-ring.is-wrong circle {
+  fill: var(--danger);
+  stroke: var(--danger);
+}
+.choice-ring path {
+  fill: none;
+  stroke: var(--bg);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 200ms ease-out 60ms forwards;
+}
+
+/* Under reduced motion every movement becomes a short fade. */
 @media (prefers-reduced-motion: reduce) {
+  .coach-mark,
+  .tone-mark {
+    animation-name: fade-in;
+  }
+  .stepper-replay .is-turning,
   .stepper-nav.is-pulsing {
     animation: none;
   }
+  .hint-rule.is-filled::after {
+    animation: none;
+    transform: none;
+  }
+  .tone-mark path,
+  .choice-ring path,
+  .hint-stop.is-used .hint-check path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
 }
-
-/* The pattern's name, at the end of the result row. */
-.pause-pattern {
-  margin-left: auto;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--text-strong);
-  font: var(--text-label);
-  white-space: nowrap;
-}
-.pause-remember {
-  margin: 8px 0 0;
-  padding: 10px 12px;
-  border-radius: var(--r-row);
-  background: var(--surface-2);
-  color: var(--text);
-  font: var(--text-caption);
-}
-.pause-remember span {
-  margin-right: 4px;
-  color: var(--text-strong);
-  font-weight: 600;
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
 }

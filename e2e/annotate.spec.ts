@@ -51,7 +51,7 @@ test('drawings do not block moving a piece, and playing a move clears them', asy
   await page.addInitScript(() => localStorage.setItem('cc.settings.v1', JSON.stringify({ depthOverride: 3 })));
   await page.goto('./#/play/italian/1400');
   await playButton(page).click();
-  await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
   const at = await boardSquares(page);
 

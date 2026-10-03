@@ -15,8 +15,7 @@ export interface FlowContext {
 
 export type Phase = 'spot' | 'solve' | 'hold' | 'reply' | 'reveal' | 'done';
 
-/** 0 none yet, 1 the piece is marked, 2 the move is drawn. */
-/** 1 names the pattern, 2 marks the piece, 3 draws the move. */
+/** 1 names the pattern, 2 marks the piece in trouble, 3 draws the move. */
 export type HintLevel = 0 | 1 | 2 | 3;
 
 /** What the view should react to after an event: sound, confetti, highlights. */
@@ -134,9 +133,18 @@ export function revealTurn(ctx: FlowContext, state: FlowState): number {
   return state.missedTurn ?? ctx.turnIndex;
 }
 
+/** How a pause went, for the mark on its move: found, found with a hint, missed, or a quiet position. */
+export type Verdict = 'found' | 'hinted' | 'missed' | 'quiet';
+
+export function verdictOf(ctx: FlowContext, state: FlowState): Verdict {
+  if (ctx.type === 'nothing') return 'quiet';
+  if (state.outcomes.length > 0 && state.outcomes.every((o) => o.correct)) return 'found';
+  return state.hinted ? 'hinted' : 'missed';
+}
+
 /** The sheet hands the board back on the pause position, so the game resumes at the scripted move there. */
 export function flowResult(ctx: FlowContext, state: FlowState) {
-  return { outcomes: state.outcomes, resumePly: ctx.game.turns[ctx.turnIndex].ply };
+  return { outcomes: state.outcomes, resumePly: ctx.game.turns[ctx.turnIndex].ply, verdict: verdictOf(ctx, state) };
 }
 
 export function flowReducer(ctx: FlowContext, state: FlowState, event: FlowEvent): FlowState {

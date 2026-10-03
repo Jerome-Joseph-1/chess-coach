@@ -20,6 +20,10 @@ import { placement, playSan } from './position';
 
 /** One scripted move every 600 ms while the game plays by itself. */
 export const AUTOPLAY_MS = 600;
+/** Added to the beat before a move that lands on a key position, so the stop does not come abruptly. */
+export const KEY_BEAT_MS = 350;
+/** After a key position, the game waits this long before it plays on. */
+export const RESUME_MS = 300;
 const REPLAY_PLIES = 4;
 const REPLAY_MS = 250;
 
@@ -399,9 +403,13 @@ export class GameSession {
 
   /** The key position waiting at the live position, if it has not been answered yet. */
   private nextMoment(): { turnIndex: number; type: PausedType } | null {
-    const turnIndex = this.game.turns.findIndex((t) => t.ply === this.ply);
+    return this.momentAt(this.ply);
+  }
+
+  private momentAt(ply: number): { turnIndex: number; type: PausedType } | null {
+    const turnIndex = this.game.turns.findIndex((t) => t.ply === ply);
     const type = this.moments.get(turnIndex);
-    if (!isPrompted(type) || this.handledPlies.has(this.ply)) return null;
+    if (!isPrompted(type) || this.handledPlies.has(ply)) return null;
     return { turnIndex, type };
   }
 
@@ -426,9 +434,10 @@ export class GameSession {
     this.board.setLastMove(this.lastUciAt(ply));
   }
 
-  /** One move per beat, however long the animation takes. */
+  /** One move per beat, however long the animation takes; the beat before a move onto a key position is longer. */
   private async playPaced(): Promise<void> {
-    await this.until(Promise.all([this.playForward(), this.deps.wait(AUTOPLAY_MS)]));
+    const beat = this.momentAt(this.ply + 2) ? AUTOPLAY_MS + KEY_BEAT_MS : AUTOPLAY_MS;
+    await this.until(Promise.all([this.playForward(), this.deps.wait(beat)]));
   }
 
   private async runPause(turnIndex: number, type: PausedType): Promise<void> {
@@ -440,6 +449,8 @@ export class GameSession {
     }
     this.update({ phase: { kind: 'playing' } });
     await this.catchUp(result.resumePly);
+    // One short beat while the panel settles into the dock, then the game plays on.
+    await this.until(this.deps.wait(RESUME_MS));
   }
 
   private async askPause(turnIndex: number, type: PausedType, practice = false): Promise<PauseResult> {

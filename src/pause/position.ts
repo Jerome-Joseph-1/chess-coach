@@ -68,6 +68,7 @@ export function squaresOf(uci: string): [string, string] {
 
 export interface OpponentMove {
   san: string;
+  from: string;
   to: string;
   /** Piece type taken (p, n, b, r, q), if any. */
   captured: string | null;
@@ -94,6 +95,7 @@ export function moveBefore(game: Game, ply: number): OpponentMove | null {
   const lastTake = mine.findLast((m) => m.captured);
   return {
     san: last.san,
+    from: last.from,
     to: last.to,
     captured: last.captured ?? null,
     recapture: Boolean(last.captured && lastTake?.to === last.to),

@@ -15,6 +15,7 @@ import {
   type FlowContext,
   type FlowEvent,
   type FlowState,
+  verdictOf,
 } from './flow';
 import { fenAfter, samePosition, uciOfSan } from './position';
 import { italian1, italian2 } from './testGames';
@@ -177,6 +178,7 @@ describe('a quiet turn', () => {
     expect(flowResult(ctx, done)).toEqual({
       outcomes: [{ step: 'spot', correct: true }],
       resumePly: italian1.turns[11].ply,
+      verdict: 'quiet',
     });
   });
 
@@ -465,6 +467,15 @@ describe('the reveal', () => {
       { step: 'spot', correct: true },
       { step: 'solve', correct: false },
     ]);
+  });
+
+  it('gives the verdict for the mark on the move: found, found with a hint, or missed', () => {
+    const ctx = ctxFor(italian1, 3, 3);
+    expect(verdictOf(ctx, run(ctx, perfectRun(ctx)))).toBe('found');
+    expect(verdictOf(ctx, run(ctx, [spot(true), advance, hint, move(scriptedUci(italian1, 3))]))).toBe('hinted');
+    expect(verdictOf(ctx, run(ctx, [spot(true), advance, hint, solution]))).toBe('missed');
+    expect(verdictOf(ctx, run(ctx, [spot(false), spot(true), advance, move(scriptedUci(italian1, 3))]))).toBe('missed');
+    expect(verdictOf(ctxFor(italian1, 11, 3, 'nothing'), initialState(ctxFor(italian1, 11, 3, 'nothing')))).toBe('quiet');
   });
 
   it('only continues from the reveal', () => {

@@ -1,225 +1,370 @@
+/*
+ * The board is the hero: as wide as the phone, in the same place on every game screen.
+ * Each mode sets what sits above the board and the room kept under it; the board takes what is left.
+ */
 .game {
   --screen: calc(100dvh - var(--safe-top) - var(--safe-bottom));
-  --top-bar: 56px;
-  --player-bar: 36px;
-  --move-strip: 42px;
-  /* What the slot under the board needs: the looking-back line, the 44px control row and the padding; a sheet while paused. */
-  --room: 108px;
-  --chrome: calc(var(--top-bar) + 2 * var(--player-bar) + var(--move-strip));
-  --board: max(200px, min(100vw - 32px, 488px, var(--screen) - var(--chrome) - var(--room)));
+  --nav: 44px;
+  --strip: 44px;
+  --bar: 44px;
+  --above: calc(var(--nav) + var(--strip) + var(--bar));
+  /* Under the board while playing: your bar, the coach's line and the dock; a question's bubble and dock fit the same. */
+  --below: 212px;
+  --board-max: 560px;
+  --board: max(200px, min(100vw, var(--board-max), var(--screen) - var(--above) - var(--below)));
   display: flex;
   flex-direction: column;
-  max-width: 520px;
-  min-height: var(--screen);
+  max-width: 560px;
+  height: var(--screen);
   margin: 0 auto;
+  overflow: hidden;
 }
-.game:has(.game-done) {
-  --room: 124px;
+/* The answer: the board steps back to about 320pt so the whole lesson, takeaway included, fits under it. */
+.game[data-mode='answer'] {
+  --above: calc(var(--nav) + 8px);
+  --below: 372px;
+  --board-max: 320px;
 }
-.game.is-paused {
-  --room: 304px;
-  --chrome: calc(var(--top-bar) + var(--player-bar));
+.game[data-mode='analysis'] {
+  --above: var(--nav);
+  --below: 330px;
 }
-.game:has(.pause-reveal .stepper),
-.game:has(.analysis) {
-  --room: 366px;
-  --chrome: var(--top-bar);
-}
-.game.is-paused .game-player.is-you,
-.game.is-paused .game-moves,
-.game:has(.pause-reveal .stepper) .game-player.is-opponent,
-.game:has(.analysis) .game-player.is-opponent {
+.game[data-mode='answer'] .game-strip,
+.game[data-mode='answer'] .game-player,
+.game[data-mode='analysis'] .game-strip,
+.game[data-mode='analysis'] .game-player,
+.game[data-mode='ask'] .game-player.is-you {
   display: none;
 }
+.game[data-mode='answer'] .game-board {
+  padding-top: 8px;
+}
 
+/* Nav bar: back, the title over what the screen is at, and a matching space on the right. */
 .game-top {
   display: flex;
+  flex: none;
   align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
+  height: var(--nav);
+  padding: 0 4px;
+}
+.game-back,
+.game-top-end {
+  flex: none;
+  width: 44px;
+  height: 44px;
 }
 .game-back {
-  flex: none;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--surface);
+  background: transparent;
   color: var(--text-strong);
-  box-shadow: inset 0 0 0 1px var(--hairline);
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform var(--t-quick) var(--spring);
+  transition: transform var(--d-press) var(--spring);
 }
 .game-back:active {
-  transform: scale(0.96);
+  transform: scale(0.94);
+}
+.game-heading {
+  display: grid;
+  flex: 1;
+  justify-items: center;
+  min-width: 0;
+  text-align: center;
 }
 .game-title {
-  flex: 1;
-  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
-  font: var(--text-headline);
+  font: 600 16px/20px var(--font);
+  letter-spacing: -0.002em;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.game-pill {
+.game-sub {
+  min-height: 16px;
+  margin: 0;
+  color: var(--text-muted);
+  font: var(--text-label);
+  letter-spacing: 0.01em;
+}
+
+/* Move strip: one pill slides to the current move while the strip glides to keep it in view. */
+.game-strip {
+  position: relative;
   flex: none;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  color: var(--text);
-  font: var(--text-label);
-}
-.game-pill:empty {
-  display: none;
-}
-
-.game-player {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-height: 36px;
-  padding: 8px 16px;
-}
-.game-player-name {
-  font: var(--text-callout);
-  color: var(--text-strong);
-}
-.game-player-detail {
-  font: var(--text-caption);
-  color: var(--text-muted);
-}
-.game-captured {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 15px;
-  line-height: 18px;
-  text-align: right;
-  white-space: nowrap;
-}
-.game-lead {
-  font: var(--text-label);
-  color: var(--text-muted);
-}
-
-.game-board {
-  padding: 0 16px;
-}
-.game-board .board-host {
-  width: var(--board);
-  margin: 0 auto;
-}
-
-.game-moves {
-  display: flex;
-  gap: 4px;
-  margin: 8px 16px 0;
-  padding: 6px;
-  overflow-x: auto;
-  list-style: none;
-  border-radius: var(--r-row);
+  height: var(--strip);
   background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--hairline);
-  font: var(--text-code);
-  color: var(--text-strong);
-  white-space: nowrap;
+}
+/* Fades the moves out under the left edge once some are scrolled away. */
+.game-strip::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 2;
+  width: 40px;
+  background: linear-gradient(to right, var(--surface), transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--d-quick) ease-out;
+}
+.game-strip.is-scrolled::before {
+  opacity: 1;
+}
+.game-moves {
+  position: relative;
+  height: 100%;
+  overflow-x: auto;
   scrollbar-width: none;
 }
 .game-moves::-webkit-scrollbar {
   display: none;
 }
-.game-moves li {
-  flex: none;
-  padding: 2px 8px;
-  border-radius: 8px;
-  transition: background var(--t-move) var(--spring);
+.game-moves ol {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: max-content;
+  height: 100%;
+  margin: 0;
+  padding: 0 16px 0 10px;
+  list-style: none;
 }
-.game-moves li.is-last {
-  background: var(--surface-3);
+.game-move {
+  display: flex;
+  flex: none;
+  align-items: center;
+  color: var(--text);
+  font: var(--text-code);
+  white-space: nowrap;
 }
 .game-move-no {
-  margin-right: 4px;
+  padding-left: 6px;
   color: var(--text-muted);
 }
+.game-san {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px 0 6px;
+  transition: color var(--d-quick) ease-out;
+}
+.game-move.is-current .game-san {
+  color: var(--text-strong);
+}
+.game-moves-pill {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  opacity: 0;
+  transition:
+    transform var(--d-base) var(--spring),
+    width var(--d-base) var(--spring),
+    opacity var(--d-quick) ease-out;
+}
 
+/* Quality marks: drawn discs, only on key positions already answered. */
+.quality-mark {
+  flex: none;
+  animation: coach-pop var(--d-base) var(--spring) both;
+}
+.quality-mark circle {
+  fill: var(--success);
+}
+.quality-mark.is-missed circle {
+  fill: var(--danger);
+}
+.quality-mark.is-hinted circle {
+  fill: var(--coach);
+}
+.quality-mark path {
+  fill: none;
+  stroke: #0a0a0b;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.quality-mark path.is-solid {
+  fill: #0a0a0b;
+  stroke: none;
+}
+
+/* Player bars: avatar, name, rating or side, what they have taken, and by how much they lead. */
+.game-player {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  height: var(--bar);
+  padding: 0 16px;
+}
+.game-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text-strong);
+  font: 600 13px/16px var(--font);
+}
+.game-player-name {
+  margin-right: -4px;
+  color: var(--text-strong);
+  font: var(--text-callout);
+}
+.game-player-detail {
+  color: var(--text-muted);
+  font: var(--text-caption);
+}
+.game-player-detail.is-mono {
+  font: var(--text-code);
+}
+.game-captured {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+}
+.game-piece {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.game-piece + .game-piece {
+  margin-left: -3px;
+}
+.game-piece.is-popping {
+  animation: piece-pop var(--d-base) var(--spring);
+}
+@keyframes piece-pop {
+  from {
+    transform: scale(1.5);
+  }
+}
+.game-lead {
+  color: var(--text-muted);
+  font: 500 12px/18px var(--font-mono);
+}
+.game-lead.is-level {
+  visibility: hidden;
+}
+
+/* The board, edge to edge when it is as wide as the phone; with room at the sides it gets its corners back. */
+.game-board {
+  flex: none;
+}
+.game-board .board-host {
+  width: var(--board);
+  margin: 0 auto;
+  border-radius: clamp(0px, (100vw - var(--board)) * 100, 8px);
+  transition: width var(--d-slow) var(--spring);
+}
+/* During a key position the dim is a light veil: the move that led there stays bright. */
+.game .cm-chessboard .marker-dim {
+  opacity: 0.22;
+}
+/* The coach's marks on the board are in its orange: the hint ring, and the move to learn over the others. */
+.game .cm-chessboard .marker-hint {
+  stroke: var(--coach);
+}
+.game .cm-chessboard .arrow-best {
+  --arrow: var(--coach);
+}
+.game .cm-chessboard .arrow-mistake {
+  --arrow: color-mix(in srgb, var(--coach) 55%, transparent);
+}
+
+/* Under the board: the coach's panel, then the dock. */
 .game-slot {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 12px;
   min-height: 0;
-  padding: 16px 16px 20px;
 }
-.game-looking {
+.game-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+.coach-line {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 16px;
+  gap: 10px;
+  min-height: 24px;
   color: var(--text-muted);
-  font: var(--text-label);
+  font: 400 14px/20px var(--font);
 }
-.game-looking p {
+.coach-line p {
+  flex: 1;
   margin: 0;
 }
-/* A quiet text button: the engine only comes in when the user asks. */
-.game-analyse {
-  min-height: 32px;
-  margin: -8px 0;
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  color: var(--text-strong);
-  font: var(--text-callout);
-  cursor: pointer;
-  touch-action: manipulation;
+.coach-line .xfade {
+  display: grid;
 }
-.game-controls {
-  display: flex;
-  align-items: center;
+
+/* The game's dock: a quiet row (previous key position, analyse) over the main row. */
+.game-slot > .dock {
+  padding-top: 8px;
+}
+.dock-row.is-quiet {
+  justify-content: space-between;
   gap: 8px;
 }
-.game-main {
-  flex: 1;
-  min-width: 0;
+.dock-row.is-quiet .dock-quiet {
+  min-height: 40px;
+  gap: 6px;
+  padding: 0 12px;
+  font: 500 14px/20px var(--font);
 }
-.game-step {
-  flex: none;
+.dock-row.is-quiet .dock-quiet svg {
+  width: 18px;
+  height: 18px;
+}
+.dock-round {
   display: grid;
+  flex: none;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--surface);
-  color: var(--text-strong);
+  background: var(--surface-2);
   box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--text-strong);
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform var(--t-quick) var(--spring);
+  transition:
+    transform var(--d-press) var(--spring),
+    opacity var(--d-quick) ease-out;
 }
-.game-step:active:not(:disabled) {
-  transform: scale(0.96);
+.dock-round:active:not(:disabled) {
+  transform: scale(0.97);
 }
-.game-step:disabled {
+.dock-round:disabled {
   opacity: 0.4;
   cursor: default;
 }
-.game-status {
-  margin: 0;
-  color: var(--text);
-  font: var(--text-callout);
-  text-align: center;
-}
 
-.game-done {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* Under reduced motion nothing travels or swells: the pill and the board simply change. */
+@media (prefers-reduced-motion: reduce) {
+  .game-moves-pill,
+  .game-board .board-host {
+    transition: opacity var(--d-quick) ease-out;
+  }
+  .game-piece.is-popping,
+  .quality-mark {
+    animation: fade-in var(--d-quick) ease-out;
+  }
 }

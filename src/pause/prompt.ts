@@ -2,40 +2,53 @@ import type { Game } from '../content/types';
 import { lessonFor } from '../learn';
 import { COPY, findNote, holdSub, replySub, spotSub } from './copy';
 import type { FlowState } from './flow';
+import { pieceInTrouble } from './hints';
+
+/** How the coach's bubble reads: a question, a hint, an error to try again, a right answer, or neither. */
+export type CoachTone = 'neutral' | 'hint' | 'error' | 'success' | 'quiet';
 
 export interface Prompt {
   title: string;
   sub: string;
-  /** The sub line confirms a right answer. */
-  right: boolean;
+  tone: CoachTone;
 }
 
-const RIGHT = { sub: COPY.right, right: true };
+type Line = Pick<Prompt, 'sub' | 'tone'>;
+
+const RIGHT: Line = { sub: COPY.right, tone: 'success' };
 
 /** What the last answer earned, as the line that replaces the question's sub line. */
-function feedbackSub(game: Game, state: FlowState): Pick<Prompt, 'sub' | 'right'> | null {
+function feedbackLine(game: Game, state: FlowState): Line | null {
   const feedback = state.feedback;
   switch (feedback?.kind) {
     case 'spot':
-      return feedback.correct ? RIGHT : { sub: COPY.lookAgain, right: false };
+      return feedback.correct ? RIGHT : { sub: COPY.lookAgain, tone: 'error' };
     case 'move': {
       const rare = state.phase === 'solve' && state.hint === 0;
-      return { sub: rare ? findNote(game.turns[feedback.turn], game.level) : COPY.right, right: true };
+      return { sub: rare ? findNote(game.turns[feedback.turn], game.level) : COPY.right, tone: 'success' };
     }
     case 'alt':
-      return { sub: COPY.altNote, right: true };
+      return { sub: COPY.altNote, tone: 'success' };
     case 'wrong':
-      return state.hint ? null : { sub: COPY.tryAgain, right: false };
+      // A hint that points at the board stays in view; the bubble only turns to the error tone.
+      return { sub: state.hint >= 2 ? hintText(game, state)!.sub! : COPY.tryAgain, tone: 'error' };
     default:
       return null;
   }
 }
 
-/** What the hint in hand says: the pattern to look for, then which piece, then the move itself. */
-function hintSub(game: Game, state: FlowState): Pick<Prompt, 'sub' | 'right'> | null {
+const isFollowUp = (state: FlowState) => state.phase === 'hold' || state.phase === 'reply';
+
+/**
+ * What the hints in hand say. On the play step: the pattern becomes the title, then the line names the piece in
+ * trouble, then asks for the move drawn on the board. A follow-up move starts at the piece to move.
+ */
+function hintText(game: Game, state: FlowState): Partial<Prompt> | null {
   if (state.hint === 0) return null;
-  const subs = [lessonFor(game, state.turn).hint, COPY.hintPiece, COPY.hintMove];
-  return { sub: subs[state.hint - 1], right: false };
+  if (isFollowUp(state)) return { sub: state.hint >= 3 ? COPY.hintMove : COPY.hintPiece };
+  const trouble = pieceInTrouble(game, state.turn)?.text;
+  const subs = [COPY.solveSub, trouble ?? COPY.hintPiece, trouble ? `${trouble} ${COPY.hintMove}` : COPY.hintMove];
+  return { title: lessonFor(game, state.turn).hint, sub: subs[state.hint - 1] };
 }
 
 function questionFor(game: Game, state: FlowState): Pick<Prompt, 'title' | 'sub'> {
@@ -49,19 +62,20 @@ function questionFor(game: Game, state: FlowState): Pick<Prompt, 'title' | 'sub'
   }
 }
 
-/** Title and sub line of the steps that play on the board. */
+/** Title, line and tone of the steps that play on the board. */
 export function promptFor(game: Game, state: FlowState): Prompt {
-  const question = questionFor(game, state);
-  return { ...question, right: false, ...(feedbackSub(game, state) ?? hintSub(game, state)) };
+  const asked: Prompt = { ...questionFor(game, state), tone: 'neutral' };
+  const hinted = hintText(game, state);
+  const withHint: Prompt = hinted ? { ...asked, ...hinted, tone: 'hint' } : asked;
+  return { ...withHint, ...feedbackLine(game, state) };
 }
 
-/** Sub line of the spot step: what just happened, then how the answer went. */
-export function spotPromptFor(game: Game, turnIndex: number, state: FlowState): Pick<Prompt, 'sub' | 'right'> {
-  return feedbackSub(game, state) ?? { sub: spotSub(game, turnIndex), right: false };
+/** Line of the spot step: what just happened, then how the answer went. */
+export function spotPromptFor(game: Game, turnIndex: number, state: FlowState): Line {
+  return feedbackLine(game, state) ?? { sub: spotSub(game, turnIndex), tone: 'neutral' };
 }
 
-/** The label of the hint button under a question that plays on the board: Hint, Show the piece, Show the move, then none. */
-export function hintLabel(state: FlowState): string | null {
-  if (state.phase !== 'solve' && state.phase !== 'hold') return null;
-  return [COPY.hint, COPY.showPiece, COPY.showMove, null][state.hint];
+/** "Key position · Move 7", over every question of a pause. */
+export function eyebrowFor(game: Game, turnIndex: number): string {
+  return `Key position · Move ${game.turns[turnIndex].moveNo}`;
 }

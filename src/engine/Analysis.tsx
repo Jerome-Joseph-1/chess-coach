@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { BoardController } from '../board/types';
 import type { Side } from '../content/types';
 import { lineSequence } from '../pause/lines';
+import { Dock, DockButton } from '../pause/Dock';
 import { LineStepper, NavButton } from '../pause/LineStepper';
 import '../pause/pause.css';
 import { playLine, samePosition, sanOf, squaresOf, type PlayedMove } from '../pause/position';
@@ -24,6 +25,8 @@ export interface AnalysisProps {
   closeLabel?: string;
   /** Stop touching the board, e.g. while a sheet hands it back. */
   frozen?: boolean;
+  /** Put the ways out in the dock, as buttons; otherwise they are quiet links under the rows. */
+  docked?: boolean;
   /** Called once the board has been sent back to the position it showed before the analysis opened. */
   onClose: () => void;
 }
@@ -71,7 +74,7 @@ function drawArrows(board: BoardController, rows: Row[], lineMove: string | null
  * Free analysis from a position: either side can move, ‹ › step through the moves made, and after every
  * change the engine shows its three best lines with arrows, an evaluation bar and a verdict on the last move.
  */
-export function Analysis({ board, fen, userSide, played, closeLabel = COPY.done, frozen = false, onClose }: AnalysisProps) {
+export function Analysis({ board, fen, userSide, played, closeLabel = COPY.done, frozen = false, docked = false, onClose }: AnalysisProps) {
   const [moves, setMoves] = useState<string[]>([]);
   const [cursor, setCursor] = useState(0);
   const [preview, setPreview] = useState<Row | null>(null);
@@ -190,31 +193,52 @@ export function Analysis({ board, fen, userSide, played, closeLabel = COPY.done,
     [preview, here],
   );
 
+  const busy = !ending && (status === 'loading' || status === 'thinking');
+  const pick = (row: Row) => setPreview(row.line === preview?.line ? null : row);
+
   return (
-    <div class="analysis">
-      {sequence ? (
-        <LineStepper board={board} userSide={userSide} sequence={sequence} frozen={frozen} />
-      ) : (
-        <div class="stepper">
-          <NavButton dir="left" label="Previous move" disabled={cursor === 0} onClick={() => goTo(cursor - 1)} />
-          <p class="stepper-caption" aria-live="polite">
-            {caption()}
-          </p>
-          <NavButton dir="right" label="Next move" disabled={cursor === moves.length} onClick={() => goTo(cursor + 1)} />
-        </div>
-      )}
-      <Rows rows={rows} message={message()} picked={preview} onPick={(row) => setPreview(row.line === preview?.line ? null : row)} />
-      <div class="analysis-links">
-        {preview ? (
-          <TextLink label={COPY.backToPosition} onClick={() => setPreview(null)} />
+    <>
+      <div class={`analysis${docked ? ' is-docked' : ''}`}>
+        {sequence ? (
+          <LineStepper board={board} userSide={userSide} sequence={sequence} frozen={frozen} />
         ) : (
-          <>
-            {moves.length > 0 && <TextLink label={COPY.reset} onClick={reset} />}
-            <TextLink label={closeLabel} onClick={close} />
-          </>
+          <div class="stepper">
+            <NavButton dir="left" label="Previous move" disabled={cursor === 0} onClick={() => goTo(cursor - 1)} />
+            <p class="stepper-caption analysis-caption" aria-live="polite">
+              {caption()}
+            </p>
+            <NavButton dir="right" label="Next move" disabled={cursor === moves.length} onClick={() => goTo(cursor + 1)} />
+          </div>
+        )}
+        <Rows rows={rows} message={message()} busy={busy} picked={preview} onPick={pick} />
+        {!docked && (
+          <div class="analysis-links">
+            {preview ? (
+              <TextLink label={COPY.backToPosition} onClick={() => setPreview(null)} />
+            ) : (
+              <>
+                {moves.length > 0 && <TextLink label={COPY.reset} onClick={reset} />}
+                <TextLink label={closeLabel} onClick={close} />
+              </>
+            )}
+          </div>
         )}
       </div>
-    </div>
+      {docked && (
+        <Dock label="Analysis">
+          <div class="dock-row">
+            {preview ? (
+              <DockButton look="secondary" wide label={COPY.backToPosition} onClick={() => setPreview(null)} />
+            ) : (
+              <>
+                <DockButton look="secondary" icon="undo" label={COPY.reset} disabled={moves.length === 0} onClick={reset} />
+                <DockButton look="primary" wide label={closeLabel} onClick={close} />
+              </>
+            )}
+          </div>
+        </Dock>
+      )}
+    </>
   );
 }
 
@@ -222,33 +246,33 @@ interface RowsProps {
   rows: Row[];
   /** Shown in place of the rows while there are none. */
   message: string;
+  /** The engine is at work: a thin bar runs along the top of the card. */
+  busy: boolean;
   picked: Row | null;
   onPick: (row: Row) => void;
 }
 
-/** Up to three lines; the space for three is kept from the start, so nothing jumps when they arrive. */
-function Rows({ rows, message, picked, onPick }: RowsProps) {
-  if (!rows.length) {
-    return (
-      <div class="analysis-rows">
+/** Up to three lines; the space for three is kept from the start, so nothing jumps when they arrive one after another. */
+function Rows({ rows, message, busy, picked, onPick }: RowsProps) {
+  return (
+    <div class="analysis-rows">
+      {busy && <span class="analysis-progress" role="progressbar" aria-label={message} />}
+      {!rows.length && (
         <p class="analysis-status" aria-live="polite">
           {message}
         </p>
-      </div>
-    );
-  }
-  return (
-    <div class="analysis-rows">
-      {rows.map((row) => (
+      )}
+      {rows.map((row, i) => (
         <button
           type="button"
           key={row.line.pv[0]}
-          class={`analysis-row${row.isRef ? ' is-ref' : ''}${picked?.line === row.line ? ' is-picked' : ''}`}
+          class={`analysis-row rise-in${row.isRef ? ' is-ref' : ''}${picked?.line === row.line ? ' is-picked' : ''}`}
+          style={{ '--i': i }}
           aria-pressed={picked?.line === row.line}
           onClick={() => onPick(row)}
         >
-          <span class="analysis-san">{row.san}</span>
           <span class="analysis-score">{row.score}</span>
+          <span class="analysis-san">{row.san}</span>
           <span class="analysis-detail">{row.detail}</span>
         </button>
       ))}

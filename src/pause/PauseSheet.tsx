@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { BoardController } from '../board/types';
-import { lessonFor } from '../learn';
 import type { Depth, Game, StepOutcome } from '../content/types';
+import { lessonFor } from '../learn';
+import { shake } from '../ui/motion';
 import { celebrate, nudge } from '../ui/rewards';
 import { COPY, continuesWith, holdMissHeadline, resultLine } from './copy';
+import { CrossFade } from './CrossFade';
 import {
   flowReducer,
   flowResult,
@@ -18,18 +20,22 @@ import {
   type FlowEvent,
   type FlowState,
   type Phase,
+  type Verdict,
 } from './flow';
+import { hintButtonLabel, hintLadder, pieceInTrouble } from './hints';
 import { revealSequence } from './lines';
 import { BoardMarks } from './marks';
-import { samePosition, squaresOf } from './position';
-import { hintLabel, promptFor, spotPromptFor } from './prompt';
-import { Sheet } from './Sheet';
+import { patternIcon } from './patterns';
+import { moveBefore, samePosition, squaresOf } from './position';
+import { eyebrowFor, promptFor, spotPromptFor } from './prompt';
+import { leavePanel, Sheet } from './Sheet';
 import { PlayActions, RevealActions } from './steps/Actions';
-import { PromptStep } from './steps/PromptStep';
+import { Question } from './steps/Question';
 import { QuietReveal } from './steps/QuietReveal';
 import { RevealStep } from './steps/RevealStep';
-import { SpotStep } from './steps/SpotStep';
-import { StepHeader } from './steps/StepHeader';
+import { SpotChoices } from './steps/SpotChoices';
+
+export type { Verdict };
 
 export interface PauseResult {
   outcomes: StepOutcome[];
@@ -41,6 +47,14 @@ export interface PauseResult {
   resumePly: number;
 }
 
+/** The result, and how it went for the mark on the pause's move. */
+export interface PauseOutcome extends PauseResult {
+  verdict: Verdict;
+}
+
+/** What the panel shows: a question, the answer, or the engine's look at a move of the answer. */
+export type PauseStage = 'ask' | 'answer' | 'explore';
+
 export interface PauseSheetProps {
   game: Game;
   /** Index into game.turns. */
@@ -49,7 +63,9 @@ export interface PauseSheetProps {
   /** How far this player takes a pause: spot and play at 1 to 3, plus a follow-up move at 4, the whole line at 5. */
   depth: Depth;
   board: BoardController;
-  onDone: (result: PauseResult) => void;
+  onDone: (result: PauseOutcome) => void;
+  /** Told whenever the panel changes stage, so the screen can make room for it. */
+  onStage?: (stage: PauseStage) => void;
 }
 
 const REPLY_MS = 350;
@@ -64,31 +80,43 @@ function showPosition(board: BoardController, fen: string, animate: boolean): Pr
   return samePosition(board.fen(), fen) ? Promise.resolve() : board.setPosition(fen, animate);
 }
 
+function lessonLabel(game: Game, turnIndex: number) {
+  const lesson = lessonFor(game, turnIndex);
+  return { lesson, pattern: { name: lesson.name, icon: patternIcon(lesson.theme) } };
+}
+
 function buildReveal(ctx: FlowContext, state: FlowState) {
   const { game } = ctx;
   const index = revealTurn(ctx, state);
   const missedLate = state.missedUci !== null && index !== ctx.turnIndex;
   const scripted = game.moves[game.turns[state.turn].ply];
-  const lesson = lessonFor(game, ctx.turnIndex);
+  const { lesson, pattern } = lessonLabel(game, ctx.turnIndex);
   return {
     sequence: revealSequence(game, index, state.missedUci),
     text: missedLate && state.missedUci ? holdMissHeadline(game, index, state.missedUci) : lesson.idea,
-    lesson: missedLate ? undefined : { name: lesson.name, remember: lesson.remember },
+    lesson: missedLate ? undefined : { pattern, remember: lesson.remember },
     note: state.alt ? `${COPY.altNote} ${continuesWith(scripted)}` : undefined,
   };
 }
 
-export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: PauseSheetProps) {
+/** The squares of the move that led into the pause: they stay bright while the board dims. */
+function lastMoveSquares(game: Game, turnIndex: number): string[] {
+  const move = moveBefore(game, game.turns[turnIndex].ply);
+  return move ? [move.from, move.to] : [];
+}
+
+export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStage }: PauseSheetProps) {
   const ctx = useMemo<FlowContext>(() => ({ game, turnIndex, type, depth }), [game, turnIndex, type, depth]);
   const [state, setState] = useState(() => initialState(ctx));
-  const [replays, setReplays] = useState(0);
-  const [exploring, setExploring] = useState(false);
+  const [why, setWhy] = useState<number | null>(null);
+  const [lineAt, setLineAt] = useState(0);
+  const [leaving, setLeaving] = useState(false);
   const latest = useRef(state);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const shakeRef = useRef<HTMLDivElement>(null);
-  const flash = useRef(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const choicesRef = useRef<HTMLDivElement>(null);
   const marks = useMemo(() => new BoardMarks(board), [board]);
   const turn = game.turns[turnIndex];
 
@@ -96,6 +124,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
   const shown = useRef<Phase>(state.phase);
   if (state.phase !== 'done') shown.current = state.phase;
   const view = shown.current;
+  const stage: PauseStage = view !== 'reveal' ? 'ask' : why === null ? 'answer' : 'explore';
 
   function send(event: FlowEvent): FlowState {
     const next = flowReducer(ctx, latest.current, event);
@@ -121,36 +150,37 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
     });
   }
 
-  /** Marks what the hint in hand shows on the board: the piece, then the move itself. The first hint is words only. */
+  /** Marks what the hint in hand shows on the board: the piece in trouble, then the move itself. */
   function showHint(at: FlowState) {
     if (at.hint < 2) return;
     const [from, to] = squaresOf(scriptedUci(game, at.turn));
-    if (at.hint === 2) board.highlight([from], 'hint');
-    else board.arrow(from, to, 'best');
+    if (at.hint === 3) return board.arrow(from, to, 'best');
+    const trouble = at.phase === 'solve' ? pieceInTrouble(game, at.turn) : null;
+    board.highlight(trouble?.squares ?? [from], 'hint');
   }
 
   function react(feedback: Feedback) {
-    window.clearTimeout(flash.current);
     switch (feedback.kind) {
       case 'spot':
-        if (feedback.correct) celebrate('step');
-        else nudge(sheetRef.current?.querySelector<HTMLElement>('.pause-choices'));
-        break;
-      case 'move':
+        if (feedback.correct) return celebrate('step');
+        nudge();
+        return shake(choicesRef.current?.querySelector('.is-wrong'));
+      case 'move': {
+        const [, to] = squaresOf(feedback.uci);
         board.disableInput();
         board.clearHighlights();
         board.clearArrows();
-        celebrate('move', board.squareCenter(squaresOf(feedback.uci)[1]));
-        break;
+        board.burst(to);
+        return celebrate('move', board.squareCenter(to));
+      }
       case 'alt':
         board.disableInput();
         board.clearHighlights();
         board.clearArrows();
-        celebrate('alt');
-        break;
+        return celebrate('alt');
       case 'wrong':
-        nudge(shakeRef.current);
-        break;
+        nudge();
+        return shake(bubbleRef.current);
     }
   }
 
@@ -169,6 +199,8 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
     const timers: number[] = [];
     board.disableInput();
     marks.clear();
+    // The board dims around the move that led here while the coach asks whether it matters.
+    board.dim(state.phase === 'spot' ? lastMoveSquares(game, turnIndex) : null);
 
     switch (state.phase) {
       case 'spot':
@@ -187,7 +219,6 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
         );
         break;
       case 'done':
-        board.dim(null);
         void showPosition(board, turn.fen, false).then(() => {
           if (current) doneRef.current(flowResult(ctx, latest.current));
         });
@@ -200,69 +231,49 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
   }, [state.phase, state.turn]);
 
   useEffect(() => showHint(state), [state.hint]);
+  useEffect(() => onStage?.(stage), [stage]);
 
   useEffect(
     () => () => {
-      window.clearTimeout(flash.current);
       board.disableInput();
+      board.dim(null);
       marks.clear();
     },
     [],
   );
 
   const reveal = useMemo(() => (view === 'reveal' ? buildReveal(ctx, state) : null), [view]);
+  const watchable = type === 'pause' && reveal !== null && reveal.sequence.steps.length > 0;
 
-  function content() {
-    const step = stepNumber(ctx, view, state.turn);
-    const header = step && <StepHeader step={step} total={stepTotal(ctx)} />;
-    if (view === 'spot') {
-      const { sub, right } = spotPromptFor(game, turnIndex, state);
-      return (
-        <>
-          {header}
-          <SpotStep
-            sub={sub}
-            right={right}
-            expectYes={type === 'pause'}
-            picked={state.spotUp}
-            settled={state.answered}
-            onAnswer={(yes) => send({ type: 'spot', up: yes })}
-          />
-        </>
-      );
-    }
-    if (view === 'reveal') return revealContent();
-    return (
-      <>
-        {header}
-        <PromptStep {...promptFor(game, state)} innerRef={shakeRef} />
-      </>
-    );
+  function carryOn() {
+    if (leaving) return;
+    setLeaving(true);
+    leavePanel(panelRef.current, () => send({ type: 'continue' }));
   }
 
-  function footer() {
-    if (view === 'reveal') {
-      const watchable = type === 'pause' && reveal !== null && reveal.sequence.steps.length > 0 && !exploring;
-      const replay = watchable ? () => setReplays((n) => n + 1) : undefined;
-      return <RevealActions onContinue={() => send({ type: 'continue' })} onReplay={replay} />;
+  function question() {
+    const step = stepNumber(ctx, view, state.turn);
+    const common = { eyebrow: eyebrowFor(game, turnIndex), step, total: stepTotal(ctx), innerRef: bubbleRef };
+    if (view === 'spot') {
+      return <Question {...common} title={COPY.spotTitle} {...spotPromptFor(game, turnIndex, state)} />;
     }
-    if (view !== 'solve' && view !== 'hold' && view !== 'reply') return null;
-    const waiting = view === 'reply';
+    const prompt = promptFor(game, state);
+    const named = state.hint > 0 && view === 'solve';
     return (
-      <PlayActions
-        hintLabel={waiting ? COPY.hint : hintLabel(state)}
-        disabled={state.answered || waiting}
-        onHint={() => send({ type: 'hint' })}
-        onSolution={() => send({ type: 'solution' })}
+      <Question
+        {...common}
+        {...prompt}
+        pattern={named ? lessonLabel(game, state.turn).pattern : undefined}
+        ladder={hintLadder(state)}
       />
     );
   }
 
-  function revealContent() {
+  function answer() {
     const result = resultLine(type, state.outcomes, state.hinted);
     if (type === 'nothing') {
-      const quiet = lessonFor(game, turnIndex);
-      return <QuietReveal result={result} text={quiet.idea} remember={quiet.remember} />;
+      const { lesson, pattern } = lessonLabel(game, turnIndex);
+      return <QuietReveal result={result} text={lesson.idea} remember={lesson.remember} pattern={pattern} />;
     }
     if (!reveal) return null;
     return (
@@ -275,17 +286,55 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
         lesson={reveal.lesson}
         note={reveal.note}
         frozen={state.phase === 'done'}
-        replays={replays}
-        onExplore={setExploring}
+        why={why}
+        replayable={watchable}
+        onStep={setLineAt}
+        onLine={() => setWhy(null)}
       />
     );
   }
 
+  function actions() {
+    if (view === 'spot') {
+      return (
+        <SpotChoices
+          innerRef={choicesRef}
+          expectYes={type === 'pause'}
+          picked={state.spotUp}
+          settled={state.answered}
+          onAnswer={(yes) => send({ type: 'spot', up: yes })}
+        />
+      );
+    }
+    if (view === 'reveal') {
+      const onWhy = watchable && why === null ? () => setWhy(lineAt) : undefined;
+      return <RevealActions onContinue={carryOn} onWhy={onWhy} whyDisabled={lineAt === 0} />;
+    }
+    const ladder = hintLadder(state);
+    return (
+      <PlayActions
+        hintLabel={hintButtonLabel(ladder)}
+        hintsLeft={ladder.used < ladder.stops.length}
+        disabled={state.answered || view === 'reply'}
+        onHint={() => send({ type: 'hint' })}
+        onSolution={() => send({ type: 'solution' })}
+      />
+    );
+  }
+
+  const dockKind = view === 'reveal' ? `reveal-${stage}` : view === 'spot' ? 'spot' : 'play';
   return (
-    <Sheet innerRef={sheetRef} label="Pause" footer={footer()}>
-      <div class="pause-phase" key={`${view}-${state.turn}`}>
-        {content()}
-      </div>
+    <Sheet
+      innerRef={panelRef}
+      label="Pause"
+      stage={stage}
+      footer={
+        <CrossFade value={dockKind} class="dock-fade">
+          {actions()}
+        </CrossFade>
+      }
+    >
+      {view === 'reveal' ? answer() : question()}
     </Sheet>
   );
 }

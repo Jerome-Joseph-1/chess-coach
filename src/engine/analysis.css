@@ -1,67 +1,141 @@
-/* Analysis: the caption row, up to three engine lines, then the quiet ways out. */
-.analysis-rows {
+/* Analysis: the caption row, up to three engine lines in a card, then the ways out. */
+.analysis {
   display: grid;
   align-content: start;
-  gap: 6px;
+  gap: 12px;
+}
+/* On the game screen it fills the room under the board and scrolls there, over its own dock. */
+.analysis.is-docked {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 16px;
+  animation: coach-rise var(--d-slow) var(--spring) both;
+}
+.analysis .stepper {
+  border-radius: 20px;
+}
+.analysis-caption {
+  padding: 6px 0;
+  color: var(--text);
+  font: var(--text-callout);
+  text-wrap: pretty;
+}
+
+.analysis-rows {
+  position: relative;
+  display: grid;
+  align-content: start;
   /* Room for three rows from the start, so nothing jumps when the engine answers. */
-  min-height: calc(3 * 44px + 2 * 6px);
-  margin-top: 8px;
+  min-height: calc(3 * 44px + 8px);
+  padding: 4px 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hairline);
 }
 .analysis-row {
   display: grid;
-  grid-template-columns: minmax(3.6em, auto) minmax(3.2em, auto) 1fr;
+  grid-template-columns: 52px auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
   min-height: 44px;
   padding: 4px 12px;
   border: 0;
-  border-radius: var(--r-row);
-  background: var(--surface-2);
-  /* The edge matches the row's arrow on the board: green for the move measured against, orange for the others. */
-  box-shadow:
-    inset 3px 0 0 var(--row-edge, #ffa028),
-    inset 0 0 0 1px var(--hairline);
+  background: transparent;
   color: var(--text-strong);
-  font: var(--text-callout);
   text-align: left;
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform 100ms ease-out;
+  transition:
+    transform var(--d-press) var(--spring),
+    background var(--d-quick) ease-out;
 }
-.analysis-row.is-ref {
-  --row-edge: #81b64c;
+.analysis-row + .analysis-row {
+  box-shadow: inset 0 1px 0 var(--hairline);
 }
 .analysis-row.is-picked {
-  background: var(--surface-3);
+  background: var(--surface-2);
 }
 .analysis-row:active {
   transform: scale(0.985);
 }
-.analysis-san {
-  font-weight: 600;
-}
+/* The score chip: the move measured against is the ink one, like its green arrow leads the others. */
 .analysis-score {
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--text-strong);
+  font: 600 13px/16px var(--font-mono);
+  white-space: nowrap;
+}
+.analysis-row.is-ref .analysis-score {
+  background: var(--action);
+  color: var(--on-action);
+}
+.analysis-score:empty {
+  visibility: hidden;
+}
+.analysis-san {
+  font: 600 13px/18px var(--font-mono);
   white-space: nowrap;
 }
 .analysis-detail {
   min-width: 0;
+  overflow: hidden;
   color: var(--text-muted);
   font: var(--text-caption);
+  text-overflow: ellipsis;
 }
 .analysis-status {
   display: grid;
   place-items: center;
-  height: 100%;
+  min-height: calc(3 * 44px);
   margin: 0;
   color: var(--text-muted);
   font: var(--text-callout);
+}
+/* A thin indeterminate bar while the engine thinks. */
+.analysis-progress {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  overflow: hidden;
+}
+.analysis-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: 1px;
+  background: var(--coach);
+  animation: analysis-progress 1.1s ease-in-out infinite;
+}
+@keyframes analysis-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analysis-progress::after {
+    width: 100%;
+    animation: analysis-breathe 1.4s ease-in-out infinite alternate;
+  }
+  @keyframes analysis-breathe {
+    from {
+      opacity: 0.25;
+    }
+  }
 }
 .analysis-links {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: 4px;
 }

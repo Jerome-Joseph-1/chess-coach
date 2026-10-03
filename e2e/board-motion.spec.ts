@@ -10,7 +10,7 @@ async function reachYourMove(page: Page) {
   await page.goto('./#/play/italian/1400');
   await playButton(page).click();
   await expect(page.getByText('Is something important happening?')).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
 }
 
@@ -87,10 +87,10 @@ test('the hint arrow draws itself in, and fades out when the board moves on', as
   await reachYourMove(page);
   const drawIns = await watchArrowDrawIn(page);
   const leaving = await countAdded(page, '.arrow-leaving');
-  await page.getByRole('button', { name: 'Hint' }).click();
-  await page.getByRole('button', { name: 'Show the piece' }).click();
+  await page.getByRole('button', { name: 'Hint · 1 of 3' }).click();
+  await page.getByRole('button', { name: 'Hint · 2 of 3' }).click();
   await expect(page.locator('.cm-chessboard .marker-hint')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Show the move' }).click();
+  await page.getByRole('button', { name: 'Hint · 3 of 3' }).click();
 
   await expect(page.locator('.cm-chessboard .arrow-best')).toHaveCount(1);
   expect(await drawIns()).toEqual([true]);
@@ -105,9 +105,9 @@ test('with reduced motion there are no specks and arrows simply appear', async (
   await reachYourMove(page);
   const specks = await countAdded(page, '.burst-speck');
   const drawIns = await watchArrowDrawIn(page);
-  await page.getByRole('button', { name: 'Hint' }).click();
-  await page.getByRole('button', { name: 'Show the piece' }).click();
-  await page.getByRole('button', { name: 'Show the move' }).click();
+  await page.getByRole('button', { name: 'Hint · 1 of 3' }).click();
+  await page.getByRole('button', { name: 'Hint · 2 of 3' }).click();
+  await page.getByRole('button', { name: 'Hint · 3 of 3' }).click();
   await expect(page.locator('.cm-chessboard .arrow-best')).toHaveCount(1);
   expect(await drawIns()).toEqual([false]);
 
