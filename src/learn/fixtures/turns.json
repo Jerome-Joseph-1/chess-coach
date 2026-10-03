@@ -9377,5 +9377,511 @@
    "trigger": true,
    "inCheck": false
   }
+ },
+ "caro-kann-1100-0076#11": {
+  "side": "b",
+  "turn": {
+   "ply": 23,
+   "moveNo": 13,
+   "fen": "r3k2r/pp1q1ppp/3bpn2/1N1pn3/3N4/4Q3/PPP2PPP/R1B2RK1 b kq - 5 13",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "findShare": 0.141,
+   "bestWin": 72.2,
+   "material": 1,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "d6b8",
+     "f2f4",
+     "e5c6",
+     "d4c6",
+     "b7c6",
+     "b5d4"
+    ],
+    "mistake": [
+     "d6c5",
+     "e3e5",
+     "e8g8",
+     "c2c4",
+     "f6e4"
+    ],
+    "threat": [
+     "b5d6",
+     "d7d6"
+    ]
+   },
+   "mistakeMove": "d6c5"
+  }
+ },
+ "italian-1100-0207#9": {
+  "side": "w",
+  "turn": {
+   "ply": 19,
+   "moveNo": 13,
+   "fen": "r1b2r1k/pppq2pp/2np1N2/4p1B1/2B1P2N/3P4/PPP2KPP/R2Q4 w - - 1 13",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "findShare": 0.431,
+   "bestWin": 93.6,
+   "material": 1,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "d1h5",
+     "f8f6",
+     "g5f6",
+     "d6d5",
+     "h4g6",
+     "h8g8",
+     "c4d5",
+     "d7d5"
+    ],
+    "mistake": [
+     "h4g6",
+     "h7g6",
+     "f2g1",
+     "g7f6",
+     "g5h6",
+     "d7e7"
+    ],
+    "threat": [
+     "d7g4",
+     "d1g4",
+     "c8g4"
+    ]
+   },
+   "mistakeMove": "h4g6"
+  }
+ },
+ "caro-kann-2000-0132#18": {
+  "side": "b",
+  "turn": {
+   "ply": 37,
+   "moveNo": 20,
+   "fen": "3k1r2/pp1n2R1/1r3n1p/1P1pp3/7B/N7/PP3P1P/2R2K2 b - - 4 20",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "findShare": 0.144,
+   "bestWin": 44.0,
+   "material": 0,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "a7a6",
+     "b5a6",
+     "b7a6",
+     "b2b3",
+     "b6b4",
+     "h4g3"
+    ],
+    "mistake": [
+     "d8e8",
+     "c1c8"
+    ],
+    "threat": [
+     "f2f3",
+     "b6e6"
+    ]
+   },
+   "mistakeMove": "d8e8"
+  }
+ },
+ "italian-1100-0240#12": {
+  "side": "w",
+  "turn": {
+   "ply": 25,
+   "moveNo": 16,
+   "fen": "2kr1b1r/pb4pp/5p2/1pp5/3p4/5N2/PP1N1P1P/R1B1RK2 w - - 0 16",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "findShare": 0.4,
+   "bestWin": 42.6,
+   "material": 0,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "d2e4",
+     "d8e8",
+     "e4d2",
+     "e8e1",
+     "f3e1",
+     "f8d6"
+    ],
+    "mistake": [
+     "d2b3",
+     "b7f3",
+     "c1d2",
+     "f3d5",
+     "d2a5",
+     "d5c4"
+    ],
+    "threat": [
+     "c5c4",
+     "a2a3"
+    ]
+   },
+   "mistakeMove": "d2b3"
+  }
+ },
+ "italian-1100-0076#11": {
+  "side": "w",
+  "turn": {
+   "ply": 23,
+   "moveNo": 15,
+   "fen": "r1b4r/p1ppk1p1/2p4p/4P3/1nP5/8/PP3PPP/RNB2RK1 w - - 1 15",
+   "label": "critical",
+   "kinds": [
+    "defend"
+   ],
+   "findShare": 0.135,
+   "bestWin": 67.1,
+   "material": 1,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "b1c3",
+     "d7d5",
+     "e5d6",
+     "c7d6",
+     "b2b3",
+     "c8f5"
+    ],
+    "mistake": [
+     "c1d2",
+     "b4c2",
+     "b1c3",
+     "c2a1",
+     "f1a1",
+     "h8e8"
+    ],
+    "threat": [
+     "b4c2",
+     "b1a3",
+     "c2a1"
+    ]
+   },
+   "mistakeMove": "c1d2"
+  }
+ },
+ "caro-kann-1100-0133#23": {
+  "side": "b",
+  "turn": {
+   "ply": 47,
+   "moveNo": 25,
+   "fen": "1r4k1/rN3p1p/1R2p1p1/2p1n3/8/2n2B2/2P2PPP/4RK2 b - - 5 25",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "findShare": 0.733,
+   "bestWin": 88.4,
+   "material": 1,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "e5f3",
+     "g2f3",
+     "b8b7",
+     "b6b7",
+     "a7b7",
+     "e1e5"
+    ],
+    "mistake": [
+     "e5d7",
+     "b6b3",
+     "c3a2",
+     "b7c5",
+     "b8b3",
+     "c5b3"
+    ],
+    "threat": [
+     "e1e5",
+     "c5c4"
+    ]
+   },
+   "mistakeMove": "e5d7"
+  }
+ },
+ "caro-kann-1400-0182#10": {
+  "side": "b",
+  "turn": {
+   "ply": 21,
+   "moveNo": 12,
+   "fen": "r1bq1rk1/pp2bppp/4p3/3pP2n/8/1BP1B3/PP3PPP/RN1Q1RK1 b - - 0 12",
+   "label": "critical",
+   "kinds": [
+    "defend"
+   ],
+   "findShare": 0.777,
+   "bestWin": 41.2,
+   "material": 0,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "g7g6",
+     "b1d2",
+     "b7b5",
+     "a2a3",
+     "a7a5",
+     "f1e1"
+    ],
+    "mistake": [
+     "f7f6",
+     "d1h5",
+     "f6e5",
+     "h5e5",
+     "f8f5",
+     "e5g3"
+    ],
+    "threat": [
+     "d1h5",
+     "d8c7"
+    ]
+   },
+   "mistakeMove": "f7f6"
+  }
+ },
+ "italian-1100-0248#5": {
+  "side": "w",
+  "turn": {
+   "ply": 11,
+   "moveNo": 9,
+   "fen": "r1b2b1r/pppk2pp/2q2n2/4p1N1/3n4/1B6/PPPP1PPP/RNBQK2R w KQ - 3 9",
+   "label": "critical",
+   "kinds": [
+    "defend"
+   ],
+   "findShare": 0.487,
+   "bestWin": 62.4,
+   "material": 1,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "e1g1",
+     "d7e8",
+     "d2d3",
+     "f8e7",
+     "b1c3",
+     "a7a5"
+    ],
+    "mistake": [
+     "g5f7",
+     "c6g2",
+     "d2d3",
+     "g2h1",
+     "e1d2",
+     "h1h2"
+    ],
+    "threat": [
+     "c6g2",
+     "h1f1",
+     "g2g5"
+    ]
+   },
+   "mistakeMove": "g5f7"
+  }
+ },
+ "caro-kann-1100-0135#9": {
+  "side": "b",
+  "turn": {
+   "ply": 19,
+   "moveNo": 11,
+   "fen": "r3k1nr/pp2bppp/1qn1p3/3pP3/3P1B2/5N1P/PP1Q1PP1/1R2KB1R b Kkq - 0 11",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "findShare": 0.873,
+   "bestWin": 88.0,
+   "material": 0,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "e7b4",
+     "a2a3",
+     "b4d2",
+     "f4d2",
+     "g8e7",
+     "f1d3"
+    ],
+    "mistake": [
+     "f7f6",
+     "d2e3",
+     "b6a5",
+     "e1d1",
+     "g7g5",
+     "f4h2"
+    ],
+    "threat": [
+     "d2d3",
+     "e7b4"
+    ]
+   },
+   "mistakeMove": "f7f6"
+  }
+ },
+ "italian-1700-0024#5": {
+  "side": "w",
+  "turn": {
+   "ply": 11,
+   "moveNo": 9,
+   "fen": "r1bqk2r/ppp2ppp/2nb4/8/2Bp1Bn1/5N2/PPP2PPP/RN1Q1RK1 w kq - 0 9",
+   "label": "critical",
+   "kinds": [
+    "defend"
+   ],
+   "findShare": 0.635,
+   "bestWin": 56.0,
+   "material": -1,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "f1e1",
+     "e8f8",
+     "f4d6",
+     "d8d6",
+     "h2h3",
+     "h7h5"
+    ],
+    "mistake": [
+     "c4f7",
+     "e8f7",
+     "f4d6",
+     "d8d6",
+     "b1a3",
+     "h8d8"
+    ],
+    "threat": [
+     "d6f4",
+     "f1e1"
+    ]
+   },
+   "mistakeMove": "c4f7"
+  }
+ },
+ "caro-kann-2000-0206#21": {
+  "side": "b",
+  "turn": {
+   "ply": 43,
+   "moveNo": 23,
+   "fen": "3r2k1/ppnb1pqp/2p1rpp1/2N5/3P3Q/2PB4/PP3PPP/3RR1K1 b - - 13 23",
+   "label": "critical",
+   "kinds": [
+    "defend"
+   ],
+   "findShare": 0.803,
+   "bestWin": 42.2,
+   "material": 0,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "e6e1",
+     "d1e1",
+     "d7c8",
+     "d3c4",
+     "c7e8",
+     "h4f4"
+    ],
+    "mistake": [
+     "e6d6",
+     "c5b7",
+     "g7f8",
+     "b7d6",
+     "f8d6",
+     "h4g3",
+     "d6g3",
+     "h2g3"
+    ],
+    "threat": [
+     "c5e6",
+     "d7e6"
+    ]
+   },
+   "mistakeMove": "e6d6"
+  }
+ },
+ "caro-kann-1400-0017#22": {
+  "side": "b",
+  "turn": {
+   "ply": 45,
+   "moveNo": 24,
+   "fen": "r5k1/pp3pp1/3b1n2/2pP3b/2B5/7R/PPP2PK1/7R b - - 4 24",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "findShare": 0.673,
+   "bestWin": 80.4,
+   "material": 1,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "g7g6",
+     "h3b3",
+     "a8b8",
+     "b3a3",
+     "a7a6",
+     "a3b3"
+    ],
+    "mistake": [
+     "h5g6",
+     "h3h8"
+    ],
+    "threat": [
+     "h3h5",
+     "f6h5",
+     "h1h5"
+    ]
+   },
+   "mistakeMove": "h5g6"
+  }
+ },
+ "caro-kann-2000-0113#13": {
+  "side": "b",
+  "turn": {
+   "ply": 27,
+   "moveNo": 15,
+   "fen": "r3rnk1/pp3ppp/2pb1p2/8/3P4/2PBRN1q/PPQ2P2/R1B3K1 b - - 1 15",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "findShare": 0.72,
+   "bestWin": 79.0,
+   "material": -1,
+   "inCheck": false,
+   "lines": {
+    "best": [
+     "e8e3",
+     "f2e3",
+     "h3f3",
+     "c2e2",
+     "f3g3",
+     "g1f1"
+    ],
+    "mistake": [
+     "f8g6",
+     "c2e2",
+     "h3g4",
+     "g1f1",
+     "g4h3",
+     "f1e1"
+    ],
+    "threat": [
+     "d3f1",
+     "h3g4"
+    ]
+   },
+   "mistakeMove": "f8g6"
+  }
  }
 }

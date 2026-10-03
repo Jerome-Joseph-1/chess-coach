@@ -146,7 +146,7 @@ function pinIdea(t: Of<'pin'>, { them, lead, move, ref }: Say): string {
     case 'created':
     case 'opened': {
       const why = behind.type === 'k' ? `${them} can't save it` : `if it moves, ${toBehind} is lost`;
-      const pins = t.how === 'opened' ? `opens the line from ${ref(pinner)}, pinning` : 'pins';
+      const pins = t.how === 'opened' ? `moves out of the way of ${ref(pinner)}, pinning` : 'pins';
       return `${lead}${move} ${pins} ${ref(pinned)} to ${toBehind}, and ${why}.`;
     }
     case 'exposed': {
@@ -181,15 +181,16 @@ function discoveredIdea(t: Of<'discovered-attack'>, { them, lead, move, ref }: S
       return `${lead}${move} takes the ${NAME[played.captured!]} with a discovered check from ${slider}, so ${them} must answer the check first.`;
     }
     const moverTakes = t.won && t.moves[t.key].from === played.to;
-    if (!moverTakes) return `${lead}${move} uncovers check from ${slider}, and ${fallout}.`;
-    return `${lead}${move} uncovers check from ${slider}, and while ${them} deals with it you take the ${onSquare(t.won!)}.`;
+    const check = `${lead}${move} moves out of the way so ${slider} gives check`;
+    if (!moverTakes) return `${check}, and ${fallout}.`;
+    return `${check}, and while ${them} deals with it you take the ${onSquare(t.won!)}.`;
   }
   const target = ref(t.target);
   if (t.at === t.key) {
-    return `${lead}${move} takes the ${NAME[played.captured!]} and opens the line from ${slider} to ${target}, so ${them} can't both take back and save the ${NAME[t.target.type]}.`;
+    return `${lead}${move} takes the ${NAME[played.captured!]} and clears the way for ${slider} to attack ${target}, so ${them} can't both take back and save the ${NAME[t.target.type]}.`;
   }
   const check = move.includes('+') ? ' gives check and' : '';
-  const opens = `${lead}${move}${check} opens the line from ${slider} to ${target}`;
+  const opens = `${lead}${move}${check} clears the way for ${slider} to attack ${target}`;
   if (t.won?.square !== t.target.square || !wonInPlace(t)) return `${opens}, and ${fallout}.`;
   return `${opens}, so the ${NAME[t.target.type]} falls.`;
 }
@@ -199,7 +200,7 @@ function trappedIdea(t: Of<'trapped-piece'>, { lead, move, ref }: Say): string {
   const played = t.moves[t.at];
   if (t.attacker.square !== played.to) {
     if (isBetween(t.attacker.square, played.from, t.trapped.square)) {
-      return `${lead}${move} opens the line from ${ref(t.attacker)} to ${piece}, which has no safe square.`;
+      return `${lead}${move} clears the way for ${ref(t.attacker)} to attack ${piece}, which has no safe square.`;
     }
     return `${lead}${move} leaves ${piece} attacked, and every square it could go to is covered.`;
   }
@@ -213,7 +214,7 @@ function removeDefenderIdea(t: Of<'remove-defender'>, { lead, move, ref }: Say):
   const guarded = ref(t.guarded);
   const falls = `then the ${NAME[t.guarded.type]} on ${t.guarded.square} falls`;
   if (t.how === 'capture') {
-    const takes = takenBack(t) ? 'trades off' : 'takes';
+    const takes = takenBack(t) ? `trades your ${NAME[t.moves[t.at].piece]} for` : 'takes';
     return `${lead}${move} ${takes} ${guard}, which guards ${guarded}, and ${falls}.`;
   }
   const takes = takesPiece(t);
@@ -308,8 +309,7 @@ function threatIdea(t: Tactic, user: Color): string {
     case 'skewer':
       return `${threatens}, attacking ${ref(t.front)} with ${ref(t.back)} behind it on the same line.`;
     case 'discovered-attack':
-      if (t.target.type === 'k') return `${threatens}, which uncovers check from ${ref(t.slider)}.`;
-      return `${threatens}, which opens the line from ${ref(t.slider)} to ${ref(t.target)}.`;
+      return `${threatens}: the ${NAME[t.moves[t.at].piece]} moves out of the way, and ${ref(t.slider)} ${t.target.type === 'k' ? 'gives check' : `attacks ${ref(t.target)}`}.`;
     case 'trapped-piece':
       return `${capitalize(ref(t.trapped))} is short of squares: ${opp} threatens ${move}, and it would have nowhere safe to go.`;
     case 'remove-defender': {
@@ -340,11 +340,11 @@ function baitIdea(theme: Theme, user: Color): string {
         : `${move} looks fine, but it allows a forced mate that starts with ${san(t, 0)}.`;
     case 'grab': {
       const grabbed = bait.move.captured === 'p' ? 'a pawn' : `the ${NAME[bait.move.captured!]}`;
-      const opens = bait.opened ? ` it opens the line for ${refer(bait.opened, user)}, and` : '';
+      const opens = bait.opened ? ` it clears the way for ${refer(bait.opened, user)}, and` : '';
       return `${move} grabs ${grabbed}, but${opens} ${reply}.`;
     }
     case 'opens-line': {
-      const opens = `${move} opens the line from ${refer(bait.opened!, user)} to ${refer(t.won!, user)}`;
+      const opens = `${move} clears the way for ${refer(bait.opened!, user)} to attack ${refer(t.won!, user)}`;
       return t.key === 0 ? `${opens}, so ${san(t, 0)} wins it.` : `${opens}, and ${reply}.`;
     }
     case 'walks-into': {
@@ -383,12 +383,12 @@ export function replyText(t: Tactic, user: Color): string {
     case 'skewer':
       return `${move} attacks ${ref(t.front)} and wins ${ref(t.back)} behind it`;
     case 'discovered-attack':
-      if (t.target.type === 'k') return `${move} uncovers check from ${ref(t.slider)}`;
-      return `${move} opens the line from ${ref(t.slider)} to ${ref(t.target)}`;
+      if (t.target.type === 'k') return `${move} moves the ${NAME[t.moves[t.at].piece]} out of the way so ${ref(t.slider)} gives check`;
+      return `${move} clears the way for ${ref(t.slider)} to attack ${ref(t.target)}`;
     case 'trapped-piece':
       return `${move} traps ${ref(t.trapped)}`;
     case 'remove-defender':
-      if (t.how === 'capture') return `${move} ${takenBack(t) ? 'trades off' : 'takes'} ${ref(t.defender)}, which guards ${ref(t.guarded)}`;
+      if (t.how === 'capture') return `${move} takes ${ref(t.defender)}, which guards ${ref(t.guarded)}`;
       if (t.how === 'chase') return `${move} drives away ${ref(t.defender)}, which guards ${ref(t.guarded)}`;
       return `${move} lures ${ref(t.defender)} away from guarding ${ref(t.guarded)}`;
     case 'mate-threat':

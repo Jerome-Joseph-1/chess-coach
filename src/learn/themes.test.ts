@@ -52,7 +52,7 @@ describe('wins', () => {
 
   it('names a trap set by opening a line', () => {
     expect(lesson('italian-1400-0015#25').idea).toBe(
-      'Nd4 opens the line from your queen on d1 to the knight on h5, which has no safe square.',
+      'Nd4 clears the way for your queen on d1 to attack the knight on h5, which has no safe square.',
     );
   });
 
@@ -95,7 +95,7 @@ describe('wins', () => {
   it('names a discovered attack that wins the queen', () => {
     expect(theme('caro-kann-1700-0003#21').id).toBe('discovered-attack');
     expect(lesson('caro-kann-1700-0003#21').idea).toBe(
-      'Nf3+ gives check and opens the line from your queen on d6 to the queen on d2, so the queen falls.',
+      'Nf3+ gives check and clears the way for your queen on d6 to attack the queen on d2, so the queen falls.',
     );
   });
 
@@ -103,13 +103,13 @@ describe('wins', () => {
     const found = lesson('italian-1100-0004#9');
     expect(found.name).toBe('Discovered check');
     expect(found.idea).toBe(
-      'After Rxd5 Qe7, Rd7+ uncovers check from your bishop on c4, and while Black deals with it you take the queen on e7.',
+      'After Rxd5 Qe7, Rd7+ moves out of the way so your bishop on c4 gives check, and while Black deals with it you take the queen on e7.',
     );
   });
 
   it('names a capture that also uncovers an attack', () => {
     expect(lesson('caro-kann-1400-0028#5').idea).toBe(
-      "Nxe5 takes the knight and opens the line from your bishop on d7 to the bishop on b5, so White can't both take back and save the bishop.",
+      "Nxe5 takes the knight and clears the way for your bishop on d7 to attack the bishop on b5, so White can't both take back and save the bishop.",
     );
   });
 
@@ -117,7 +117,7 @@ describe('wins', () => {
     expect(theme('caro-kann-1400-0015#8').id).toBe('remove-defender');
     expect(piece('caro-kann-1400-0015#8', 'defender')).toEqual(['nf3']);
     expect(lesson('caro-kann-1400-0015#8').idea).toBe(
-      'Bxf3 trades off the knight on f3, which guards the pawn on d4, and then the pawn on d4 falls.',
+      'Bxf3 trades your bishop for the knight on f3, which guards the pawn on d4, and then the pawn on d4 falls.',
     );
   });
 
@@ -210,7 +210,7 @@ describe('threats', () => {
 
   it('names a threatened discovered attack', () => {
     expect(lesson('caro-kann-1100-0016#15').idea).toBe(
-      'White threatens c4, which opens the line from the rook on d2 to your queen on b2.',
+      'White threatens c4: the pawn moves out of the way, and the rook on d2 attacks your queen on b2.',
     );
   });
 
@@ -230,14 +230,14 @@ describe('baits', () => {
 
   it('names a move that opens a line onto the queen', () => {
     expect(lesson('italian-1100-0010#12').idea).toBe(
-      'Ng5 opens the line from the queen on e6 to your queen on e2, so Qxe2 wins it.',
+      'Ng5 clears the way for the queen on e6 to attack your queen on e2, so Qxe2 wins it.',
     );
   });
 
   it('names a poisoned pawn', () => {
     const found = lesson('italian-1400-0020#15');
     expect(found.name).toBe('Poisoned pawn');
-    expect(found.idea).toBe('Rxc7 grabs a pawn, but it opens the line for the rook on a8, and Rxa1 wins your queen on a1.');
+    expect(found.idea).toBe('Rxc7 grabs a pawn, but it clears the way for the rook on a8, and Rxa1 wins your queen on a1.');
   });
 
   it('names a move that allows mate', () => {
@@ -274,7 +274,7 @@ describe('filed by the reason the move works', () => {
   it('calls a pin a pin when the move opens the line onto the pinned piece', () => {
     const found = lessonFor(italian1, 7);
     expect(found.theme).toMatchObject({ id: 'pin', tactic: { how: 'opened' } });
-    expect(found.idea).toBe("Nd3 opens the line from your rook on e1, pinning the knight on e6 to the king, and Black can't save it.");
+    expect(found.idea).toBe("Nd3 moves out of the way of your rook on e1, pinning the knight on e6 to the king, and Black can't save it.");
   });
 
   it('does not blame a pin when a pawn takes a bigger piece anyway', () => {

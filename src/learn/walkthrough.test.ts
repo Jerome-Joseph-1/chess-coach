@@ -45,6 +45,12 @@ function holds(fen: string, claim: Claim): boolean {
       return board.attackers(claim.square, colorOf(claim.square)).length === 0;
     case 'hangs':
       return isLoose(fen, claim.square);
+    case 'safe':
+      return Boolean(board.get(claim.square)) && !isLoose(fen, claim.square);
+    case 'mates': {
+      const [move] = playLine(fen, [claim.move]);
+      return move !== undefined && new Chess(move.after).isCheckmate();
+    }
     case 'attackers':
       return sameSet(board.attackers(claim.square, other(colorOf(claim.square))), claim.squares);
     case 'guards':
@@ -147,12 +153,17 @@ describe('walkthrough on every fixture key position', () => {
     }
   });
 
+  it('gives concrete reasons in plain words', () => {
+    const vague = /leaves nothing of yours hanging|^Instead, play |^The best answer is |^\S+ (guards it|moves it (to safety|away)|takes the attacker)\.$|\bhangs\b|uncovers|opens the line|^O-O|the king is behind it/;
+    for (const { id, beats } of all) for (const beat of beats) expect(beat.text, id).not.toMatch(vague);
+  });
+
   it('says only what is true on the board', () => {
     let checked = 0;
     for (const { id, beats } of all) {
       for (const beat of beats) {
         for (const claim of beat.claims ?? []) {
-          expect(holds(beat.fen, claim), `${id}: ${JSON.stringify(claim)}`).toBe(true);
+          expect(holds(claim.fen ?? beat.fen, claim), `${id}: ${JSON.stringify(claim)}`).toBe(true);
           checked++;
         }
       }
@@ -214,13 +225,19 @@ describe('the patterns', () => {
     expect(texts(beatsOf('italian-2000-0026#2')).slice(0, 3)).toEqual([
       'The knight on e4 stands in front of the king, on the e-file.',
       'Re1 puts your rook on that line.',
-      "It can't move: the king is behind it. Black can't save it.",
+      "It can't move: that would leave its own king in check. Black can't save it.",
     ]);
+  });
+
+  it('says why a piece pinned to the king may only move along the line', () => {
+    expect(beatsOf('caro-kann-1100-0135#9')[2].text).toBe(
+      "It can only move along that line: stepping off it would leave its own king in check. White can't save it.",
+    );
   });
 
   it('uses a pin that is already there', () => {
     expect(texts(beatsOf('caro-kann-1400-0022#8')).slice(0, 2)).toEqual([
-      'The knight on g5 is pinned to the queen on f4 by your bishop on h6.',
+      'The knight on g5 is pinned to the queen on f4 by your bishop on h6: if it moves, your bishop can take the queen.',
       "So exf6 takes a pawn and attacks it. It can't run.",
     ]);
     expect(beatsOf('italian-1400-0013#14')[1].text).toBe("So Qxd5 wins the knight: the knight on e7 can't take back.");
@@ -239,7 +256,7 @@ describe('the patterns', () => {
     const beats = beatsOf('caro-kann-1700-0003#21');
     expect(texts(beats).slice(0, 3)).toEqual([
       'Your knight on d4 blocks the line from your queen on d6 to the queen on d2.',
-      'Nf3+ moves it out of the way.',
+      'Nf3+ moves your knight off that line.',
       'Your queen now attacks the queen on d2, and your knight gives check. Two attacks at once.',
     ]);
     expect(beats[2].arrows).toHaveLength(2);
@@ -266,19 +283,36 @@ describe('the patterns', () => {
 
   it('counts a trapped piece once the move is played, and says what the move takes and opens', () => {
     expect(beatsOf('italian-1100-0095#16')[1].text).toBe(
-      'hxg3 takes a pawn, attacks the queen and opens the h-file for your rook on h1, so it has nowhere safe to go.',
+      'hxg3 takes a pawn, attacks the queen and clears the h-file for your rook on h1, so it has nowhere safe to go.',
     );
   });
 
   it('takes away a guard, then shows the piece left hanging after the reply', () => {
     const beats = beatsOf('caro-kann-1400-0015#8');
     expect(texts(beats).slice(0, 3)).toEqual([
-      'Your knight on c6 and your knight on f5 attack the pawn on d4, and two pieces guard it, the knight on f3 among them.',
-      'Bxf3 trades off the knight.',
+      'Your knight on c6 and your knight on f5 attack the pawn on d4, and two pieces guard it. Take the knight on f3, and the pawn falls.',
+      'Bxf3 trades your bishop for the knight, one of the guards of the pawn on d4.',
       'Taking back pulls the queen on d1 away from it too. Now nothing guards it, and Nxd4 wins it.',
     ]);
     expect(beats[1]).toMatchObject({ ask: 'Your move: take the knight.', answer: 'g4f3' });
     expect(beats[2]).toMatchObject({ move: 'd1f3', arrows: [{ from: 'f5', to: 'd4', tone: 'best' }] });
+  });
+
+  it('says what taking the only guard does before the move, and trades like pieces as a trade', () => {
+    expect(texts(beatsOf('caro-kann-2000-0113#13')).slice(0, 3)).toEqual([
+      'Your queen on h3 attacks the knight on f3, and only the rook on e3 guards it. Take that guard, and the knight falls.',
+      'Rxe3 trades rooks, removing the only guard of the knight on f3.',
+      'Now nothing guards it, and Qxf3 wins it.',
+    ]);
+  });
+
+  it('counts the guards left against the attackers once one guard is gone', () => {
+    const beats = beatsOf('caro-kann-1100-0133#23');
+    expect(texts(beats).slice(1, 3)).toEqual([
+      'Nxf3 trades your knight for the bishop, one of the guards of the knight on b7.',
+      'Now it has one guard against your two attackers, and Rbxb7 wins it.',
+    ]);
+    expect(beats[2].claims).toContainEqual({ claim: 'guards', square: 'b7', squares: ['b6'] });
   });
 
   it("boxes the king in and mates it, covering the squares it had left", () => {
@@ -318,14 +352,22 @@ describe('the patterns', () => {
   it('saves a piece in danger', () => {
     expect(texts(beatsOf('caro-kann-1100-0014#5')).slice(0, 2)).toEqual([
       'Your bishop on g4 is attacked by the bishop on e2, and nothing guards it.',
-      'Bxe2 takes the attacker.',
+      'Bxe2 takes the bishop on e2, the piece attacking your bishop.',
     ]);
     const outnumbered = beatsOf('italian-1700-0027#7');
     expect(texts(outnumbered).slice(0, 2)).toEqual([
       'The bishop on c5 and the knight on g4 attack your pawn on f2, and only your king guards it.',
-      'Re2 guards it.',
+      'Re2 brings your rook to guard your pawn on f2.',
     ]);
     expect(outnumbered[0].arrows).toHaveLength(2);
+  });
+
+  it('names the piece and the square a defence uses', () => {
+    const guard = beatsOf('caro-kann-1400-0182#10')[1];
+    expect(guard.text).toBe('g6 brings a pawn to guard your knight on h5.');
+    expect(guard.claims).toContainEqual({ claim: 'guards', square: 'h5', squares: ['g6'], fen: expect.any(String) });
+    expect(beatsOf('caro-kann-2000-0206#21')[1].text).toBe('Rxe1+ trades your rook for the rook on e1.');
+    expect(beatsOf('italian-1700-0024#5')[1].text).toBe('Re1+ gives check first: after Kf8, Bxd6+ takes the bishop on d6.');
   });
 
   it('names the attackers and the guard of a piece in danger, the king among them', () => {
@@ -347,6 +389,13 @@ describe('the patterns', () => {
     expect(beats[1].marks).toContainEqual({ square: 'b2', tone: 'focus' });
   });
 
+  it('calls castling castling, and names the square a move clears for a trapped piece', () => {
+    expect(beatsOf('italian-1100-0248#5')[1].text).toBe('Castling brings your king to guard g2, where Qxg2 would land.');
+    const room = beatsOf('italian-1100-0076#11')[1];
+    expect(room.text).toBe('Nc3 clears b1 for your rook on a1.');
+    expect(room.claims).toEqual([{ claim: 'attacks', square: 'a1', squares: ['b1'], fen: expect.any(String) }]);
+  });
+
   it("stops the opponent's threat", () => {
     const beats = beatsOf('caro-kann-1400-0028#11');
     expect(texts(beats)).toEqual([
@@ -365,10 +414,29 @@ describe('the patterns', () => {
     expect(beats[2]).toMatchObject({ fen: beats[0].fen, answer: 'f8b4' });
     expect(texts(beatsOf('italian-1400-0020#15')).slice(0, 3)).toEqual([
       'Rxc7 is tempting: it takes a pawn, and it looks free.',
-      'But it opens the line from the rook on a8 to your queen on a1, and Rxa1 wins it.',
+      'But your rook no longer stands on a7, between the rook on a8 and your queen on a1, and Rxa1 wins it.',
       'Instead, Rxa8 takes the rook and attacks the queen on e8.',
     ]);
     expect(beatsOf('caro-kann-2000-0001#3')[1].text).toBe('But Qxf7 is checkmate.');
+  });
+
+  it('says what the better move keeps that the trap gives away', () => {
+    expect(beatsOf('caro-kann-1100-0076#11')[2].text).toBe('Instead, Bb8 keeps your knight on e5 guarded.');
+    expect(texts(beatsOf('caro-kann-2000-0132#18')).slice(1, 3)).toEqual([
+      'But your king no longer guards c8, and Rc8 is checkmate.',
+      'Instead, a6 keeps your king guarding c8.',
+    ]);
+    expect(texts(beatsOf('caro-kann-1400-0017#22')).slice(1, 3)).toEqual([
+      'But your bishop no longer stands on h5, between the rook on h3 and h8, and Rh8 is checkmate.',
+      'Instead, g6 keeps your bishop on h5 between the rook on h3 and h8.',
+    ]);
+  });
+
+  it('finds a reason for a quiet better move on the board: a mate it threatens, a line it blocks', () => {
+    const mate = beatsOf('italian-1100-0207#9')[2];
+    expect(mate.text).toBe('Instead, Qh5 threatens Qxh7 mate.');
+    expect(mate.claims).toEqual([{ claim: 'mates', move: 'h5h7', fen: expect.any(String) }]);
+    expect(beatsOf('italian-1100-0240#12')[2].text).toBe('Instead, Ne4 blocks the line from the bishop on b7 to your knight on f3.');
   });
 
   it('falls back to the pieces and the idea when no pattern fits', () => {

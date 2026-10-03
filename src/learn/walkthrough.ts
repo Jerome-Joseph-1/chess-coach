@@ -23,15 +23,19 @@ import {
   type PieceAt,
 } from './board';
 import { ideaOf, replyText } from './ideas';
-import { appeal, lineThrough, looksFree, purpose, stopText, takenText } from './purpose';
+import { appeal, lineThrough, looksFree, moveFacts, moveName, moveSubject, purpose, stopText, takenText, type Reason } from './purpose';
 import type { Tactic, TacticId } from './tactics';
 import { isWin, themeFor, type Theme, type ThemePiece } from './themes';
 import { tradeOf } from './trade';
 import { capitalize, colorName, listOf, netText, refer, sequence, tradeText } from './words';
 
-/** A fact a beat's text states about its position, so a test or a report can check it on the board. */
-export type Claim =
+/** A fact a beat's text states about a position, so a test or a report can check it on the board. */
+type Fact =
   | { claim: 'undefended' | 'hangs'; square: Square }
+  /** The piece on `square` can't be won where it stands. */
+  | { claim: 'safe'; square: Square }
+  /** Playing `move`, in uci, gives checkmate. */
+  | { claim: 'mates'; move: string }
   /** Exactly these pieces of the other side attack the piece on `square`. */
   | { claim: 'attackers'; square: Square; squares: Square[] }
   /** Exactly these pieces of its own side guard the piece on `square`. */
@@ -49,6 +53,9 @@ export type Claim =
   /** The piece on `square` stands right behind the one on `front`, on its line to `target`. */
   | { claim: 'backs'; square: Square; front: Square; target: Square }
   | { claim: 'pin'; square: Square; pinner: Square; behind: Square };
+
+/** A claim is about its beat's position unless it names its own `fen`, such as the board after the move the beat asks for. */
+export type Claim = Fact & { fen?: string };
 
 type Mark = { square: Square; tone: Tone };
 type Arrow = { from: Square; to: Square; tone: ArrowTone };
@@ -348,7 +355,7 @@ function hangingOwn(c: Context, t: Tactic): Beat[] | null {
   const save = saveText(c, hit, attacker, best);
   return [
     danger,
-    { fen: c.fen, text: save.text, marks: [mark(mine.square, 'focus')], arrows: [moveArrow(best, 'best')], ...asking(save.ask, best) },
+    { fen: c.fen, text: save.text, marks: [mark(mine.square, 'focus')], arrows: [moveArrow(best, 'best')], claims: save.claims, ...asking(save.ask, best) },
   ];
 }
 
@@ -375,45 +382,70 @@ function dangerText(c: Context, t: Tactic, board: Chess, take: Move): string {
   return `${capitalize(piece)} is attacked by ${by}, and it is not guarded well enough.`;
 }
 
-/** "moves your queen to safety", "trades it for the knight", "moves it away, taking a pawn". */
-function movesAway(best: Move, piece: string): string {
+/** "moves your queen to d1, where nothing attacks it", "trades your rook for the rook on e1". */
+function movesAway(best: Move, piece: string): Reason {
   const safe = !isLoose(best.after, best.to);
-  if (!best.captured) return `moves ${piece} ${safe ? 'to safety' : 'away'}`;
-  if (!safe && VALUE[best.captured] >= VALUE[best.piece]) return `trades ${piece} for the ${NAME[best.captured]}`;
-  return `moves ${piece} ${safe ? 'to safety' : 'away'}, taking ${takenText(best.captured)}`;
+  if (!safe && best.captured && VALUE[best.captured] >= VALUE[best.piece]) {
+    return { text: `trades ${piece} for the ${NAME[best.captured]} on ${best.to}`, claims: [{ claim: 'hangs', square: best.to, fen: best.after }] };
+  }
+  const moves = `moves ${piece} to ${best.to}${best.captured ? `, taking ${takenText(best.captured)}` : ''}`;
+  if (!safe) return { text: moves, claims: [] };
+  const attackers = new Chess(best.after).attackers(best.to, otherColor(best.color));
+  if (attackers.length) return { text: `${moves}, where it is safe`, claims: [{ claim: 'safe', square: best.to, fen: best.after }] };
+  return { text: `${moves}, where nothing attacks it`, claims: [{ claim: 'attackers', square: best.to, squares: [], fen: best.after }] };
 }
 
 /** What the best move does for the pieces in danger (`hit`, the one the line wins first), and how. */
-function saveText(c: Context, hit: PieceAt[], attacker: PieceAt, best: Move): { text: string; ask: string } {
+function saveText(c: Context, hit: PieceAt[], attacker: PieceAt, best: Move): { text: string; ask: string; claims?: Claim[] } {
   const [mine] = hit;
   const name = NAME[mine.type];
-  const it = hit.length > 1 ? `your ${name}` : 'it';
-  if (best.to === attacker.square && best.captured) return { text: `${best.san} takes the attacker.`, ask: 'Your move: take the attacker.' };
+  const said = moveSubject(best);
+  if (best.to === attacker.square && best.captured) {
+    return { text: `${said} takes ${c.ref(attacker)}, the piece attacking your ${name}.`, ask: 'Your move: take the attacker.' };
+  }
   const moved = hit.find((p) => p.square === best.from);
   if (moved) {
-    const away = movesAway(best, hit.length > 1 ? `your ${NAME[moved.type]}` : 'it');
+    const away = movesAway(best, `your ${NAME[moved.type]}`);
     const rest = hit.filter((p) => p !== moved);
     const safe = rest.length && rest.every((p) => !isLoose(best.after, p.square));
     const kept = safe ? `, and ${listOf(rest.map(c.ref))} ${rest.length > 1 ? 'stay' : 'stays'} guarded` : '';
-    const ask = away.startsWith('trades') ? 'Your move: trade it off.' : `Your move: save your ${NAME[moved.type]}.`;
-    return { text: `${best.san} ${away}${kept}.`, ask };
+    const ask = away.text.startsWith('trades') ? 'Your move: trade it off.' : `Your move: save your ${NAME[moved.type]}.`;
+    return { text: `${said} ${away.text}${kept}.`, ask, claims: away.claims };
   }
-  if (isBetween(attacker.square, best.to, mine.square)) return { text: `${best.san} blocks the line from ${c.ref(attacker)}.`, ask: 'Your move: block it.' };
-  if (best.san.includes('+')) return { text: `${best.san} comes first: it gives check.`, ask: 'Your move: give check.' };
-  const guards = (fen: string) => new Chess(fen).attackers(mine.square, mine.color).length;
-  if (guards(best.after) > guards(best.before) && !isLoose(best.after, mine.square)) {
-    return { text: `${best.san} guards ${it}.`, ask: `Your move: guard your ${name}.` };
+  if (isBetween(attacker.square, best.to, mine.square)) {
+    const claim: Claim = { claim: 'blocks', square: best.to, from: attacker.square, to: mine.square, fen: best.after };
+    return { text: `${said} blocks the line from ${c.ref(attacker)} to ${c.ref(mine)}.`, ask: 'Your move: block it.', claims: [claim] };
+  }
+  if (best.san.includes('+')) return { text: checkFirst(c, best, attacker), ask: 'Your move: give check.' };
+  const guards = (fen: string) => new Chess(fen).attackers(mine.square, mine.color);
+  if (guards(best.after).length > guards(best.before).length && !isLoose(best.after, mine.square)) {
+    const mover = best.piece === 'p' ? 'a pawn' : `your ${NAME[best.piece]}`;
+    const how = guards(best.after).includes(best.to) ? `brings ${mover} to guard` : 'guards';
+    const claims: Claim[] = [
+      { claim: 'guards', square: mine.square, squares: guards(best.after), fen: best.after },
+      { claim: 'safe', square: mine.square, fen: best.after },
+    ];
+    return { text: `${said} ${how} ${c.ref(mine)}.`, ask: `Your move: guard your ${name}.`, claims };
   }
   const behind = pinnedBehind(best, attacker.square);
   if (behind) {
     const back = behind.type === 'k' ? 'the king' : c.ref(behind);
-    return { text: `${best.san} pins ${c.ref(attacker)} to ${back}, so it can't take safely.`, ask: 'Your move: pin the attacker.' };
+    return { text: `${said} pins ${c.ref(attacker)} to ${back}, so it can't take safely.`, ask: 'Your move: pin the attacker.' };
   }
   if (new Chess(best.after).attackers(attacker.square, c.user).includes(best.to)) {
-    return { text: `${best.san} hits back at ${c.ref(attacker)}, which threatens your ${name}.`, ask: 'Your move: attack the attacker.' };
+    return { text: `${said} hits back at ${c.ref(attacker)}, which threatens your ${name}.`, ask: 'Your move: attack the attacker.' };
   }
   const does = purpose(best, c.user);
-  return { text: does.length ? `${best.san} ${listOf(does)}.` : `The best answer is ${best.san}.`, ask: 'Your move: play it.' };
+  const text = does.length ? `${said} ${listOf(does.map((d) => d.text))}.` : `The best answer is ${moveName(best)}.`;
+  return { text, ask: 'Your move: play it.', claims: does.flatMap((d) => d.claims) };
+}
+
+/** "Re1+ gives check first: after Kf8, Bxd6+ takes the bishop on d6." when the line then deals with the attacker. */
+function checkFirst(c: Context, best: Move, attacker: PieceAt): string {
+  const [, reply, next] = c.shown;
+  const takes = next?.color === c.user && next.to === attacker.square && next.captured === attacker.type;
+  if (!reply || !takes) return `${best.san} comes first: it gives check.`;
+  return `${best.san} gives check first: after ${reply.san}, ${next.san} takes ${c.ref(attacker)}.`;
 }
 
 /** The bigger piece the moved slider pins the piece on `square` to, if the move makes such a pin. */
@@ -444,6 +476,7 @@ function threatOther(c: Context, t: Tactic): Beat[] {
       text: `${answer.text}.`,
       marks: [...hit, ...against],
       arrows: [moveArrow(best, 'best')],
+      claims: answer.claims,
       ...asking('Your move: stop the threat.', best),
     },
   ];
@@ -452,48 +485,130 @@ function threatOther(c: Context, t: Tactic): Beat[] {
 function bait(c: Context, t: Tactic): Beat[] | null {
   const lure = c.theme.bait?.move;
   if (!lure) return null;
-  const reasons = appeal(lure, c.user);
+  const name = moveSubject(lure);
+  // "Castling" already says it castles.
+  const reasons = appeal(lure, c.user).filter((r) => r !== 'castles your king');
   const free = looksFree(lure) ? ', and it looks free' : '';
-  const looks = reasons.length ? `${lure.san} is tempting: it ${listOf(reasons)}${free}.` : `${lure.san} looks quiet and safe.`;
+  const looks = reasons.length ? `${name} is tempting: it ${listOf(reasons)}${free}.` : `${name} looks quiet and safe.`;
   const reply = t.moves[0];
   const hit = standing(lure.after, c.theme.pieces.filter((p) => p.color === c.user && p.role !== 'mover'));
+  const fall = t.id === 'checkmate' && t.key === 0 ? mateAllowed(c, t, lure) : punished(c, t, lure);
   const beats: Beat[] = [
     { fen: c.fen, text: looks, marks: [], arrows: [moveArrow(lure, 'mistake')] },
     {
       fen: lure.after,
       move: uciOf(lure),
-      text: t.id === 'checkmate' && t.key === 0 ? mateAllowed(c, lure, reply) : punished(c, t),
+      text: fall.text,
       marks: marks(hit.map((p) => p.square), 'bad'),
       arrows: [moveArrow(reply, 'threat')],
+      claims: fall.claims,
     },
   ];
   const best = bestMove(c);
   if (!best || best.san === lure.san) return beats;
-  const does = purpose(best, c.user);
-  const instead = does.length ? `Instead, ${best.san} ${listOf(does)}.` : `Instead, play ${best.san}.`;
-  return [...beats, { fen: c.fen, text: instead, marks: [], arrows: [moveArrow(best, 'best')], ...asking('Your move: play it.', best) }];
+  const kept = keptSafe(c, t, lure, best);
+  const does = kept ? [...moveFacts(best, c.user), kept] : purpose(best, c.user);
+  const instead = does.length ? `Instead, ${moveName(best)} ${listOf(does.map((d) => d.text))}.` : `Instead, play ${moveName(best)}.`;
+  const claims = does.flatMap((d) => d.claims);
+  return [...beats, { fen: c.fen, text: instead, marks: [], arrows: [moveArrow(best, 'best')], claims, ...asking('Your move: play it.', best) }];
 }
 
-/** "But it opens the line from the rook on a8 to your queen on a1, and Rxa1 wins it." */
-function punished(c: Context, t: Tactic): string {
-  const opened = c.theme.bait?.opened;
-  if (!opened || !t.won || t.key !== 0) return `But ${replyText(t, c.user)}.`;
-  return `But it opens the line from ${c.ref(opened)} to ${c.ref(t.won)}, and ${t.moves[0].san} wins it.`;
+/** A sentence and the facts on the board it rests on. */
+interface Said {
+  text: string;
+  claims?: Claim[];
 }
 
-/** "But it opens the line from the queen on d3 to h7, and Qxh7 is checkmate." */
-function mateAllowed(c: Context, lure: Move, mate: Move): string {
-  const before = new Chess(lure.before);
-  const mater = pieceOn(before, mate.from);
-  const target = mate.to;
+/** The enemy line the tempting move stepped out of: the slider, and the piece or square it now reaches. */
+function openedBy(c: Context, t: Tactic, lure: Move): { slider: PieceAt; to: Square } | null {
+  if (t.id !== 'checkmate' || t.key !== 0) {
+    const opened = c.theme.bait?.opened;
+    return opened && t.won && t.key === 0 ? { slider: opened, to: t.won.square } : null;
+  }
+  const mate = t.moves[0];
+  const slider = pieceOn(new Chess(lure.before), mate.from);
   const king = kingOf(new Chess(mate.after), c.user).square;
-  const opened = mater && [target, king].some((s) => isBetween(mate.from, lure.from, s) && slidesAlong(mater.type, directionTo(mate.from, s)!));
-  if (opened) return `But it opens the line from ${c.ref(mater)} to ${target}, and ${bare(mate.san)} is checkmate.`;
+  const to = [mate.to, king].find((s) => slider && isBetween(mate.from, lure.from, s) && slidesAlong(slider.type, directionTo(mate.from, s)!));
+  return slider && to ? { slider, to } : null;
+}
+
+/** "But your rook no longer stands on a7, between the rook on a8 and your queen on a1, and Rxa1 wins it." */
+function punished(c: Context, t: Tactic, lure: Move): Said {
+  const line = openedBy(c, t, lure);
+  if (!line) return { text: `But ${replyText(t, c.user)}.` };
+  const claim: Claim = { claim: 'blocks', square: lure.from, from: line.slider.square, to: line.to, fen: c.fen };
+  const between = `${c.ref(line.slider)} and ${c.ref(t.won!)}`;
+  return { text: `But your ${NAME[lure.piece]} no longer stands on ${lure.from}, between ${between}, and ${t.moves[0].san} wins it.`, claims: [claim] };
+}
+
+/** "But your bishop no longer stands on e4, between the queen on d3 and h7, and Qxh7 is checkmate." */
+function mateAllowed(c: Context, t: Tactic, lure: Move): Said {
+  const mate = t.moves[0];
+  const target = mate.to;
+  const mates = `${bare(mate.san)} is checkmate`;
+  const line = openedBy(c, t, lure);
+  if (line) {
+    const end = line.to === target ? target : 'your king';
+    const claim: Claim = { claim: 'blocks', square: lure.from, from: line.slider.square, to: line.to, fen: c.fen };
+    const between = `${c.ref(line.slider)} and ${end}`;
+    return { text: `But your ${NAME[lure.piece]} no longer stands on ${lure.from}, between ${between}, and ${mates}.`, claims: [claim] };
+  }
   const guarded = (fen: string, from: Square) => new Chess(fen).attackers(target, c.user).includes(from);
   if (guarded(lure.before, lure.from) && !guarded(lure.after, lure.to)) {
-    return `But your ${NAME[lure.piece]} no longer guards ${target}, and ${bare(mate.san)} is checkmate.`;
+    const claim: Claim = { claim: 'attacks', square: lure.from, squares: [target], fen: c.fen };
+    return { text: `But your ${NAME[lure.piece]} no longer guards ${target}, and ${mates}.`, claims: [claim] };
   }
-  return `But ${bare(mate.san)} is checkmate.`;
+  return { text: `But ${mates}.` };
+}
+
+/**
+ * What the better move keeps that the tempting move gave away: the piece the trap would win, taken to safety;
+ * the piece that stood in the enemy's way; or a guard on the square the trap's reply needs.
+ */
+function keptSafe(c: Context, t: Tactic, lure: Move, best: Move): Reason | null {
+  const won = t.won?.color === c.user && t.won.square !== lure.to ? t.won : null;
+  if (won && best.from === won.square) {
+    if (isLoose(best.after, best.to)) return null;
+    return { text: `takes ${c.ref(won)} out of danger`, claims: [{ claim: 'safe', square: best.to, fen: best.after }] };
+  }
+  const after = new Chess(best.after);
+  const line = openedBy(c, t, lure);
+  const blocker = pieceOn(after, lure.from);
+  const slider = line && pieceOn(after, line.slider.square);
+  if (line && blocker?.color === c.user && slider?.type === line.slider.type && slider.color === line.slider.color) {
+    const claim: Claim = { claim: 'blocks', square: lure.from, from: line.slider.square, to: line.to, fen: best.after };
+    const end = pieceOn(after, line.to);
+    return { text: `keeps ${c.ref(blocker)} between ${c.ref(slider)} and ${end ? c.ref(end) : line.to}`, claims: [claim] };
+  }
+  return guardKept(c, t.moves[0], lure, best);
+}
+
+/** A guard on the square the trap's reply needs, when that reply could still be played after the better move. */
+function guardKept(c: Context, reply: Move, lure: Move, best: Move): Reason | null {
+  const square = reply.to;
+  // A piece that walked into the reply is kept safe just by staying away.
+  if (square === lure.to) return null;
+  const after = new Chess(best.after);
+  const stillThere = after.moves({ square: reply.from, verbose: true }).some((m) => m.to === square);
+  if (!stillThere) return null;
+  const lured = new Chess(lure.after).attackers(square, c.user);
+  const guard = after.attackers(square, c.user).find((s) => !lured.includes(s));
+  if (!guard) return null;
+  const there = pieceOn(after, square);
+  if (there?.color === c.user) {
+    if (isLoose(best.after, square)) return null;
+    const claims: Claim[] = [
+      { claim: 'guards', square, squares: after.attackers(square, c.user), fen: best.after },
+      { claim: 'safe', square, fen: best.after },
+    ];
+    return { text: `keeps ${c.ref(there)} guarded`, claims };
+  }
+  const claim: Claim = { claim: 'attacks', square: guard, squares: [square], fen: best.after };
+  if (guard === best.to) return { text: `guards ${square}, where ${bare(reply.san)} would land`, claims: [claim] };
+  const piece = pieceOn(after, guard)!;
+  const before = new Chess(c.fen);
+  const kept = before.get(guard)?.type === piece.type && before.attackers(square, c.user).includes(guard);
+  return { text: `${kept ? 'keeps' : 'brings'} ${c.ref(piece)} ${kept ? 'guarding' : 'to guard'} ${square}`, claims: [claim] };
 }
 
 function fork(c: Context, t: Of<'fork'>): Beat[] {
@@ -551,8 +666,8 @@ function pinCreated(c: Context, t: Of<'pin'>): Beat[] | null {
   const back = behind.type === 'k' ? 'the king' : c.ref(behind);
   const lost = t.won?.square === pinned.square ? ` ${c.them} can't save it.` : '';
   const slides = new Chess(move.after).moves({ square: pinned.square }).length > 0;
-  const stuck =
-    behind.type !== 'k' ? `If it moves, ${back} falls.` : `It ${slides ? 'can only move along that line' : "can't move"}: the king is behind it.${lost}`;
+  const king = slides ? 'It can only move along that line: stepping off it would leave its own king in check.' : "It can't move: that would leave its own king in check.";
+  const stuck = behind.type === 'k' ? `${king}${lost}` : `${capitalize(pinWhy(t.pin))}.`;
   return [
     {
       fen: c.fen,
@@ -588,7 +703,7 @@ function pinExploited(c: Context, t: Of<'pin'>): Beat[] | null {
   return [
     {
       fen: c.fen,
-      text: `${capitalize(c.ref(pinned))} is pinned to ${back} by ${c.ref(pinner)}.`,
+      text: `${capitalize(c.ref(pinned))} is pinned to ${back} by ${c.ref(pinner)}: ${pinWhy(t.pin)}.`,
       marks: [mark(pinner.square, 'good'), mark(pinned.square, 'focus'), mark(behind.square, 'focus')],
       arrows: [arrow(pinner.square, behind.square, 'threat')],
       claims: [{ claim: 'pin', square: pinned.square, pinner: pinner.square, behind: behind.square }],
@@ -603,6 +718,12 @@ function pinExploited(c: Context, t: Of<'pin'>): Beat[] | null {
   ];
 }
 
+/** Why a pinned piece is stuck, in plain words. */
+function pinWhy({ pinner, behind }: { pinner: PieceAt; behind: PieceAt }): string {
+  if (behind.type === 'k') return 'moving it would leave its own king in check';
+  return `if it moves, your ${NAME[pinner.type]} can take the ${NAME[behind.type]}`;
+}
+
 /** A pin the move itself makes by stepping off the line between the pinner and the pinned piece. */
 function pinOpened(c: Context, t: Of<'pin'>, back: string): Beat[] | null {
   const move = t.moves[0];
@@ -612,15 +733,16 @@ function pinOpened(c: Context, t: Of<'pin'>, back: string): Beat[] | null {
   return [
     {
       fen: c.fen,
-      text: `${move.san} ${takes}opens the line from ${c.ref(pinner)} to ${c.ref(pinned)}.`,
+      text: `${move.san} ${takes}moves out of the way, so ${c.ref(pinner)} now attacks ${c.ref(pinned)}.`,
       marks: [mark(pinner.square, 'good'), mark(pinned.square, 'focus'), mark(behind.square, 'focus')],
       arrows: [moveArrow(move, 'best')],
+      claims: [{ claim: 'attacks', square: pinner.square, squares: [pinned.square], fen: move.after }],
       ...asking(`Your move: play ${move.san}.`, move),
     },
     {
       fen: move.after,
       move: uciOf(move),
-      text: `Now ${c.ref(pinned)} is pinned to ${back}.${pinnedNow(c, t, back)}`,
+      text: pinnedNow(c, t, back),
       marks: [mark(pinned.square, 'bad'), mark(behind.square, 'focus')],
       arrows: [arrow(pinner.square, behind.square, 'threat')],
       claims: [{ claim: 'pin', square: pinned.square, pinner: pinner.square, behind: behind.square }],
@@ -628,13 +750,16 @@ function pinOpened(c: Context, t: Of<'pin'>, back: string): Beat[] | null {
   ];
 }
 
-/** What the pin just opened stops: taking back, or moving at all. */
+/** The pin the move just made, and what it stops: taking back, or moving at all. */
 function pinnedNow(c: Context, t: Of<'pin'>, back: string): string {
+  const now = `Now ${c.ref(t.pin.pinned)} is pinned to ${back}`;
   const king = t.pin.behind.type === 'k';
-  const square = t.moves[0].to;
-  if (t.how === 'defender') return king ? ` It can't take back on ${square}.` : ` It can't take back on ${square} without losing ${back}.`;
-  if (t.how === 'opened') return king ? ` ${c.them} can't save it.` : ` If it moves, ${back} falls.`;
-  return '';
+  if (t.how === 'defender') {
+    const why = king ? 'that would leave its own king in check' : `your ${NAME[t.pin.pinner.type]} would take the ${NAME[t.pin.behind.type]}`;
+    return `${now}, so it can't take back on ${t.moves[0].to}: ${why}.`;
+  }
+  const lost = t.how === 'opened' && king ? ` ${c.them} can't save it.` : '';
+  return `${now}: ${pinWhy(t.pin)}.${lost}`;
 }
 
 function pinUse(c: Context, t: Of<'pin'>, back: string): string {
@@ -702,7 +827,7 @@ function discovered(c: Context, t: Of<'discovered-attack'>): Beat[] {
   const before = [mark(move.from, 'focus'), mark(slider.square, 'good'), mark(target.square, 'bad')];
   const hit = moverThreat(c, move, target);
   const hits = hit ? [hit] : [];
-  const moves = `${move.san} ${move.captured ? `takes ${takenText(move.captured)} and ` : ''}moves it out of the way.`;
+  const moves = `${move.san} ${move.captured ? `takes ${takenText(move.captured)} and ` : ''}moves your ${NAME[mover.type]} off that line.`;
   return [
     {
       fen: c.fen,
@@ -816,7 +941,7 @@ function trapText(c: Context, t: Of<'trapped-piece'>): string {
   const does = [
     move.captured ? `takes ${takenText(move.captured)}` : '',
     after.attackers(square, c.user).includes(move.to) ? `attacks ${name}` : '',
-    opener ? `opens ${lineThrough(opener.square, move.from)} for ${c.ref(opener)}` : '',
+    opener ? `clears ${lineThrough(opener.square, move.from)} for ${c.ref(opener)}` : '',
   ].filter(Boolean);
   if (!does.length) return `After ${move.san}, ${name} can be won, and ${end}.`;
   return `${move.san} ${listOf(does)}, so ${end}.`;
@@ -841,10 +966,11 @@ function removeDefender(c: Context, t: Of<'remove-defender'>): Beat[] {
   const guards = board.attackers(guarded.square, guarded.color);
   const side = lineUp(board, guarded.square, c.user);
   const who = `${capitalize(lineUpText(c, board, side))} ${side.squares.length === 1 ? 'attacks' : 'attack'} ${c.ref(guarded)}`;
-  const only =
-    guards.length === 1
-      ? `${who}, and only ${c.ref(defender)} guards it.`
-      : `${who}, and ${count(guards.length)} pieces guard it, ${c.ref(defender)} among them.`;
+  const falls = `and the ${NAME[guarded.type]} falls`;
+  const alone = guards.length === 1;
+  const only = alone
+    ? `${who}, and only ${c.ref(defender)} guards it. ${REMOVE_THAT_GUARD[t.how]}, ${falls}.`
+    : `${who}, and ${count(guards.length)} pieces guard it. ${REMOVE_ONE[t.how]} ${c.ref(defender)}, ${falls}.`;
   const beats: Beat[] = [
     {
       fen: c.fen,
@@ -855,7 +981,7 @@ function removeDefender(c: Context, t: Of<'remove-defender'>): Beat[] {
     },
     {
       fen: c.fen,
-      text: `${move.san} ${removeVerb(t)}.`,
+      text: `${move.san} ${removeVerb(t)} ${alone ? 'the only guard' : 'one of the guards'} of ${c.ref(guarded)}.`,
       marks: [mark(defender.square, 'focus')],
       arrows: [moveArrow(move, 'best'), arrow(defender.square, guarded.square, 'mistake')],
       ...asking(`Your move: ${REMOVE_ASKS[t.how]} the ${NAME[defender.type]}${t.how === 'capture' ? '' : ' away'}.`, move),
@@ -866,17 +992,20 @@ function removeDefender(c: Context, t: Of<'remove-defender'>): Beat[] {
 }
 
 const REMOVE_ASKS = { capture: 'take', chase: 'chase', deflect: 'lure' };
+const REMOVE_THAT_GUARD = { capture: 'Take that guard', chase: 'Chase that guard away', deflect: 'Lure that guard away' };
+const REMOVE_ONE = { capture: 'Take', chase: 'Chase away', deflect: 'Lure away' };
 
-/** "trades off the knight", "takes a pawn and chases the knight away". */
+/** "trades your knight for the bishop,", "trades rooks, removing", "takes a pawn and chases away the knight,". */
 function removeVerb(t: Of<'remove-defender'>): string {
   const move = t.moves[0];
   const guard = `the ${NAME[t.defender.type]}`;
   // A guard lured into taking back on the same square is a trade of like pieces.
   const trade = t.how === 'deflect' && move.captured === move.piece;
   const takes = move.captured ? `${trade ? `trades ${NAME[move.piece]}s` : `takes ${takenText(move.captured)}`} and ` : '';
-  if (t.how === 'chase') return `${takes}chases ${guard} away`;
-  if (t.how === 'deflect') return `${takes}lures ${guard} away`;
-  return t.moves[1]?.to === move.to ? `trades off ${guard}` : `takes ${guard}`;
+  if (t.how === 'chase') return `${takes}chases away ${guard},`;
+  if (t.how === 'deflect') return `${takes}lures away ${guard},`;
+  if (t.moves[1]?.to !== move.to) return `takes ${guard},`;
+  return move.piece === t.defender.type ? `trades ${NAME[move.piece]}s, removing` : `trades your ${NAME[move.piece]} for ${guard},`;
 }
 
 /** The position after the reply, when the guarded piece can be taken next move. */
@@ -891,14 +1020,27 @@ function hangsAfterReply(c: Context, t: Of<'remove-defender'>): Beat | null {
   const guarding = (fen: string, from: Square) => new Chess(fen).attackers(square, t.guarded.color).includes(from);
   const pulled = reply.from !== t.defender.square && guarding(reply.before, reply.from) && !guarding(reply.after, reply.to);
   const lead = pulled ? `Taking back pulls ${c.ref(pieceOn(new Chess(reply.before), reply.from)!)} away from it too. ` : '';
+  const why = free ? { text: 'nothing guards it', claims: [{ claim: 'undefended', square } as Claim] } : shortOfGuards(reply.after, square, c.user);
   return {
     fen: reply.after,
     move: uciOf(reply),
-    text: `${lead}${free ? `Now nothing guards it, and ${take.san} wins it.` : `Now it hangs, and ${take.san} wins it.`}`,
+    text: `${lead}Now ${why.text}, and ${take.san} wins it.`,
     marks: [mark(square, 'bad')],
     arrows: [moveArrow(take, 'best')],
-    claims: [{ claim: free ? 'undefended' : 'hangs', square }],
+    claims: why.claims,
   };
+}
+
+/** Why a guarded piece can still be won: "it has one guard against your two attackers". */
+function shortOfGuards(fen: string, square: Square, user: Color): Reason {
+  const board = new Chess(fen);
+  const attackers = board.attackers(square, user);
+  const guards = board.attackers(square, otherColor(user));
+  const loose: Claim = { claim: 'hangs', square };
+  if (attackers.length <= guards.length) return { text: 'it is not guarded well enough', claims: [loose] };
+  const claims: Claim[] = [loose, { claim: 'attackers', square, squares: attackers }, { claim: 'guards', square, squares: guards }];
+  const has = `it has ${count(guards.length)} ${guards.length === 1 ? 'guard' : 'guards'}`;
+  return { text: `${has} against your ${count(attackers.length)} attackers`, claims };
 }
 
 interface Box {
