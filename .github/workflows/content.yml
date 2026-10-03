@@ -57,6 +57,10 @@ jobs:
       - run: |
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install maia2 chess zstandard safetensors
+      - name: Test
+        run: |
+          pip install -r pipeline/requirements-dev.txt
+          pytest pipeline
       - uses: actions/download-artifact@v4
         with:
           name: index
