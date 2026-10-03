@@ -109,7 +109,14 @@ function fakeNotes(game: Game, { notes = {}, plans = {}, seen = {}, everyNote = 
 }
 
 function startSession(
-  options: { games?: Game[]; review?: { gameId: string; ply: number }; played?: string[]; depth?: Depth; noSet?: boolean } & NoteOptions = {},
+  options: {
+    games?: Game[];
+    review?: { gameId: string; ply: number };
+    played?: string[];
+    depth?: Depth;
+    noSet?: boolean;
+    firstGame?: boolean;
+  } & NoteOptions = {},
 ) {
   const games = options.games ?? [fixtureGame(GAME_1), fixtureGame(GAME_2)];
   const board = new FakeBoard();
@@ -128,6 +135,7 @@ function startSession(
     wait: vi.fn<SessionDeps['wait']>(async () => {}),
     random: vi.fn(() => 0.5),
     now: vi.fn(() => 1234),
+    isFirstGame: vi.fn(() => options.firstGame ?? false),
     ...fakeNotes(games[0], options),
   };
   const session = new GameSession(games[0].opening, games[0].level, options.review, deps);
@@ -977,6 +985,27 @@ describe('opening notes', () => {
     await waitForPhase(started, 'pause');
     expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
     expect(started.session.getView().note).toBeNull();
+  });
+});
+
+describe('the first game', () => {
+  it('says how a game works until it starts, in place of the opening note, which is not counted', async () => {
+    const started = await startReady({ firstGame: true, notes: { 0: 'start' } });
+    expect(started.session.getView()).toMatchObject({ intro: true, note: null });
+    expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
+
+    await stepForward(started);
+    expect(started.session.getView().intro).toBe(false);
+    await stepBack(started);
+    expect(started.session.getView()).toMatchObject({ intro: false, note: { text: noteText('start') } });
+  });
+
+  it('is never a review', async () => {
+    const started = startSession({ firstGame: true, review: { gameId: GAME_1, ply: 3 } });
+    const intros: boolean[] = [];
+    started.session.subscribe((view) => intros.push(view.intro));
+    await waitForPhase(started, 'pause');
+    expect(intros).not.toContain(true);
   });
 });
 

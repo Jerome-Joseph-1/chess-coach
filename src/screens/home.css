@@ -32,6 +32,11 @@
   color: var(--text-muted);
   font: var(--text-caption);
 }
+.up-next-how {
+  margin: 0;
+  color: var(--text);
+  font: var(--text-body);
+}
 .up-next--waiting {
   min-height: 208px;
   visibility: hidden;

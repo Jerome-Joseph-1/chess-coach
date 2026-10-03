@@ -1,10 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SPOT_QUESTION, playButton, tapSquare, tapSquares, winButton } from './board';
-import { readAllNotes } from './notes';
+import { returningPlayer } from './notes';
 
 test.use({ serviceWorkers: 'block' });
 // These tests are about key positions: opening notes would stop autoplay on the way there.
-test.beforeEach(({ page }) => readAllNotes(page));
+test.beforeEach(({ page }) => returningPlayer(page));
 test.beforeEach(({}, testInfo) => test.skip(testInfo.project.name !== 'iphone-14', 'Motion is checked on the iPhone 14 profile'));
 
 /** Stage 3, then Play: the fixture game runs to its first key position and the user says something is on. */

@@ -15,11 +15,11 @@ import {
   tapSquares,
   winButton,
 } from './board';
-import { readAllNotes } from './notes';
+import { returningPlayer } from './notes';
 
 test.use({ serviceWorkers: 'block' });
 // These tests are about key positions: opening notes would stop autoplay on the way there.
-test.beforeEach(({ page }) => readAllNotes(page));
+test.beforeEach(({ page }) => returningPlayer(page));
 
 const ANSWERS = ['Win material', 'Attack the king', 'Defend', 'Avoid a trap', 'Improve a piece'];
 const RIGHT_PICK = "Yes: there's material to win. Find the move.";

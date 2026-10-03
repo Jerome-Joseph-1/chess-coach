@@ -14,7 +14,17 @@ import { Dock, DockButton } from '../pause/Dock';
 import { boardSize } from '../pause/fit';
 import { PauseSheet, type PauseOutcome, type PauseStage, type Verdict } from '../pause/PauseSheet';
 import { Icon } from '../pause/steps/icons';
-import { dropReview, getDepth, getSettings, markNoteSeen, noteSeenCount, playedGameIds, recordGame, recordMoment } from '../progress/store';
+import {
+  dropReview,
+  getDepth,
+  getSettings,
+  hasPlayed,
+  markNoteSeen,
+  noteSeenCount,
+  playedGameIds,
+  recordGame,
+  recordMoment,
+} from '../progress/store';
 import { navigate } from '../router';
 import { celebrate, toast } from '../ui/rewards';
 import { Controls, CoachLine } from './game/Controls';
@@ -58,6 +68,7 @@ function sessionDeps(board: BoardController): SessionDeps {
     noteSeenCount,
     markNoteSeen,
     stopsAtEveryNote: () => getSettings().everyNote,
+    isFirstGame: () => !hasPlayed(),
   };
 }
 

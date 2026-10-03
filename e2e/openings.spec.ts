@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { coachLine, moveList, playButton } from './board';
+import { PLAYED_BEFORE } from './notes';
 
 const PLAY_URL = './#/play/italian/1400';
 const START_NOTE = 'italian:e4 e5 Nf3 Nc6 Bc4';
@@ -10,9 +11,15 @@ test.use({ serviceWorkers: 'block' });
 
 const noteName = (page: Page) => page.locator('.coach-line-name');
 
+/** Progress of a user who has finished a game before, with how often they have seen each note. */
 async function seedNotesSeen(page: Page, notesSeen: Record<string, number>) {
-  await page.addInitScript((seen) => localStorage.setItem('cc.progress.v1', JSON.stringify({ v: 1, notesSeen: seen })), notesSeen);
+  await page.addInitScript(
+    ({ seen, games }) => localStorage.setItem('cc.progress.v1', JSON.stringify({ v: 1, notesSeen: seen, games })),
+    { seen: notesSeen, games: PLAYED_BEFORE },
+  );
 }
+
+test.beforeEach(({ page }) => seedNotesSeen(page, {}));
 
 const seenCount = (page: Page, id: string) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem('cc.progress.v1') ?? '{}').notesSeen?.[key] ?? 0, id);
@@ -70,6 +77,17 @@ test('with every note chosen in Settings, autoplay also stops for notes on moves
   await expect(coachLine(page)).toHaveText(/^4\.\.\.Nxe4 grabs a pawn/, { timeout: RUN_MS });
   await expect(page.locator('.game-main')).toHaveText('Continue');
   expect(await seenCount(page, 'two-knights-d4:Nxe4')).toBe(1);
+});
+
+test('the first game says how a game works in place of the opening note', async ({ page }) => {
+  await page.addInitScript(() => localStorage.removeItem('cc.progress.v1'));
+  await page.goto(PLAY_URL);
+  await expect(noteName(page)).toHaveText('How it works');
+  await expect(coachLine(page)).toHaveText("I play both sides and stop when it's your turn to find a move. Press Play to start.");
+  await expect(page.locator('.game-player.is-you')).toBeInViewport({ ratio: 0 });
+  expect(await seenCount(page, START_NOTE)).toBe(0);
+  await playButton(page).click();
+  await expect(noteName(page)).not.toHaveText('How it works');
 });
 
 test('a note read once is shown in full a second time', async ({ page }) => {

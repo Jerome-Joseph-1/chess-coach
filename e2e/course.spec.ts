@@ -94,9 +94,9 @@ test.describe('Today with the course', () => {
     await expect(page).toHaveURL(/#\/lesson\/italian\/free-piece$/);
   });
 
-  test('"Play a game instead" starts a game', async ({ page }) => {
+  test('"Start a game instead" starts a game', async ({ page }) => {
     await page.goto('./');
-    await page.getByRole('link', { name: 'Play a game instead' }).click();
+    await page.getByRole('link', { name: 'Start a game instead' }).click();
     await expect(page).toHaveURL(/#\/play\/italian\/1400$/);
   });
 
@@ -111,8 +111,8 @@ test.describe('Today with the course', () => {
       await page.evaluate(([key, value]) => localStorage.setItem(key, JSON.stringify(value)), [KEY, progress({ 'free-piece': done(lessonAt) }, [...games])] as const);
       await page.reload();
       if (expected === 'game') {
-        await expect(page.getByRole('region', { name: 'Italian Game' }).getByRole('button', { name: 'Play', exact: true })).toBeVisible();
-        await expect(page.getByRole('link', { name: 'Play a game instead' })).toHaveCount(0);
+        await expect(page.getByRole('region', { name: 'Italian Game' }).getByRole('button', { name: 'Start game' })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'Start a game instead' })).toHaveCount(0);
       } else {
         await expect(page.getByRole('region', { name: 'Pins' }).getByRole('button', { name: 'Start lesson' })).toBeVisible();
       }
@@ -124,6 +124,6 @@ test.describe('Today with the course', () => {
     await page.getByRole('group', { name: 'Opening' }).getByRole('button', { name: 'Caro-Kann' }).click();
     const card = page.getByRole('region', { name: 'Caro-Kann Defense' });
     await expect(card.getByRole('button', { name: 'Coming soon' })).toBeDisabled();
-    await expect(page.getByRole('link', { name: 'Play a game instead' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Start a game instead' })).toHaveCount(0);
   });
 });

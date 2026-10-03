@@ -7,6 +7,7 @@ import './coach-line.css';
 const WATCHING = "Watching the game. I'll stop at the next key position.";
 const WAITING = "Press Play and I'll stop at the next key position.";
 const NONE_LEFT = 'No key positions left. Play on to the end.';
+const HOW_IT_WORKS = "I play both sides and stop when it's your turn to find a move. Press Play to start.";
 
 function lookingBack({ shown, history }: SessionView): string | null {
   return shown < history.length ? `Move ${shown} of ${history.length} · you are looking back` : null;
@@ -31,6 +32,7 @@ interface CoachSays {
 
 /** A note on the opening position shown, under the name of its variation; once known, the name over today's line. */
 function coachSays(view: SessionView): CoachSays {
+  if (view.intro && view.phase.kind === 'ready') return { name: 'How it works', text: HOW_IT_WORKS, note: true };
   const live = view.phase.kind === 'ready' || view.phase.kind === 'playing';
   const note = live ? view.note : null;
   return { name: note?.name ?? null, text: note?.text ?? coachLine(view), note: Boolean(note?.text) };

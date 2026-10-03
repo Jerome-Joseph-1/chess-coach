@@ -61,7 +61,7 @@ async function afterFirstLesson(page: Page) {
 }
 
 test.describe('Today', () => {
-  test('shows the next game with one Play button', async ({ page }) => {
+  test('shows the next game, how a game works, and one button to start it', async ({ page }) => {
     await afterFirstLesson(page);
     await page.goto('./');
     await expect(page.getByRole('heading', { name: 'Today', level: 1 })).toBeVisible();
@@ -70,7 +70,8 @@ test.describe('Today', () => {
     await expect(card.getByText('You play White · opponents 1400')).toBeVisible();
     await expect(card.getByText('Stage 1 of 3 · Spot it, then play it')).toBeVisible();
     await expect(card.getByText('0 of 15 right')).toBeVisible();
-    await expect(card.getByRole('button', { name: 'Play', exact: true })).toBeEnabled();
+    await expect(card.getByText("The coach plays both sides and stops when it's your turn to find a move.")).toBeVisible();
+    await expect(card.getByRole('button', { name: 'Start game' })).toBeEnabled();
     await expect(page.locator('main .btn-primary')).toHaveCount(1);
     await expect(page.getByText('Download for offline')).toHaveCount(0);
     await expect(page.getByRole('group', { name: /level/ })).toHaveCount(0);
@@ -88,13 +89,13 @@ test.describe('Today', () => {
     await expect(card.getByRole('button', { name: 'Coming soon' })).toBeDisabled();
 
     await switcher.getByRole('button', { name: 'Italian' }).click();
-    await expect(page.getByRole('region', { name: 'Italian Game' }).getByRole('button', { name: 'Play', exact: true })).toBeEnabled();
+    await expect(page.getByRole('region', { name: 'Italian Game' }).getByRole('button', { name: 'Start game' })).toBeEnabled();
   });
 
   test('starts a game from the card', async ({ page }) => {
     await afterFirstLesson(page);
     await page.goto('./');
-    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await page.getByRole('button', { name: 'Start game' }).click();
     await expect(page).toHaveURL(/#\/play\/italian\/1400$/);
   });
 

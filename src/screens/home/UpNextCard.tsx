@@ -53,7 +53,7 @@ function LessonCard({ opening, level, status, unit, number }: UpNextCardProps & 
       </Button>
       {status === 'ready' && (
         <a class="up-next-instead" href={`#${playPath(opening, level)}`}>
-          Play a game instead
+          Start a game instead
         </a>
       )}
     </section>
@@ -78,11 +78,12 @@ function GameCard({ opening, level, status }: UpNextCardProps) {
           </p>
         </div>
       </div>
+      <p class="up-next-how">The coach plays both sides and stops when it's your turn to find a move.</p>
       <StageProgress depth={getDepth(opening, level)} progress={getStageProgress(opening, level)} />
       {status === 'error' && <p class="up-next-line">Can't reach the games right now. Check your connection.</p>}
       <Button size="lg" class="btn-with-icon" {...disabledIf(status !== 'ready')} onClick={() => navigate(playPath(opening, level))}>
         {status !== 'soon' && <Icon name="play" />}
-        {status === 'soon' ? 'Coming soon' : 'Play'}
+        {status === 'soon' ? 'Coming soon' : 'Start game'}
       </Button>
     </section>
   );

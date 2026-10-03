@@ -50,6 +50,8 @@ export interface SessionDeps {
   markNoteSeen(id: string): void;
   /** The user asked autoplay to stop on every new note, not only on a new plan. */
   stopsAtEveryNote(): boolean;
+  /** No game has been played to the end yet. */
+  isFirstGame(): boolean;
 }
 
 export type PausedType = 'pause' | 'nothing';
@@ -97,6 +99,8 @@ export interface SessionView {
   note: { name: string | null; text: string | null } | null;
   /** Autoplay stopped on a new note so the user can read it; Continue plays on. */
   held: boolean;
+  /** The user's first game has not started: the coach says how a game works instead of a note. */
+  intro: boolean;
 }
 
 class Stopped extends Error {}
@@ -143,6 +147,7 @@ export class GameSession {
   private practiced = false;
   private disposed = false;
   private finished = false;
+  private readonly firstGame: boolean;
 
   constructor(
     private opening: OpeningId,
@@ -163,7 +168,9 @@ export class GameSession {
       status: '',
       note: null,
       held: false,
+      intro: false,
     };
+    this.firstGame = !review && deps.isFirstGame();
   }
 
   private get board(): BoardController {
@@ -297,7 +304,7 @@ export class GameSession {
   }
 
   /** What follows from the moves played and the one being looked at. */
-  private derived(): Pick<SessionView, 'history' | 'shown' | 'fen' | 'dots' | 'controls' | 'returning' | 'note'> {
+  private derived(): Pick<SessionView, 'history' | 'shown' | 'fen' | 'dots' | 'controls' | 'returning' | 'note' | 'intro'> {
     const { start, moves } = this.game;
     return {
       history: [...start, ...moves.slice(0, this.ply)],
@@ -307,12 +314,17 @@ export class GameSession {
       controls: this.currentControls(),
       returning: this.viewPly < this.ply || this.practiced,
       note: this.shownNote(),
+      intro: this.introducing(),
     };
+  }
+
+  private introducing(): boolean {
+    return this.firstGame && this.ply === 0;
   }
 
   /** The note on the position shown: in full while it is new to the user, else only the variation's name. */
   private shownNote(): SessionView['note'] {
-    const note = this.noteAt(this.viewPly);
+    const note = this.noteShown();
     if (!note) return null;
     const full = this.readNotes.has(note.id) || this.isNew(note);
     return { name: note.name, text: full ? note.text : null };
@@ -326,13 +338,17 @@ export class GameSession {
     return this.deps.noteFor(this.positionAt(ply), lastSan);
   }
 
+  private noteShown(): OpeningNote | null {
+    return this.introducing() ? null : this.noteAt(this.viewPly);
+  }
+
   private isNew(note: OpeningNote): boolean {
     return !this.readNotes.has(note.id) && this.deps.noteSeenCount(note.id) < FULL_READS;
   }
 
   /** Counts the note shown as read: the board rests on it, so the user had time to read it. A note autoplay passes is not counted. */
   private readShownNote(): void {
-    const note = this.noteAt(this.viewPly);
+    const note = this.noteShown();
     if (!note || !this.isNew(note)) return;
     this.readNotes.add(note.id);
     this.deps.markNoteSeen(note.id);
