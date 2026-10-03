@@ -1,4 +1,5 @@
 import type { Side } from '../content/types';
+import { formatSigned } from '../ui/RollingNumber';
 
 const VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
 
@@ -12,4 +13,9 @@ export function material(fen: string, side: Side): number {
     balance += isWhite === (side === 'w') ? value : -value;
   }
   return balance;
+}
+
+/** The chip beside the caption: a bare "Material level", or the lead as "+1" / "−2". */
+export function materialLabel(balance: number): string {
+  return balance === 0 ? 'Material level' : formatSigned(balance);
 }

@@ -40,6 +40,8 @@ export interface FlowState {
   next: Phase | null;
   /** The user's spot answer: true for "Something's up". */
   spotUp: boolean | null;
+  /** The square of the piece the user rightly picked at the find step. */
+  picked: string | null;
   /** This attempt's results. */
   outcomes: StepOutcome[];
   /** The first attempt's results, kept when the user tries again. */
@@ -50,6 +52,8 @@ export interface FlowState {
   alt: boolean;
   /** The losing move that sent the user to the reveal. */
   missedUci: string | null;
+  /** The user gave up on the current question and asked for the answer. */
+  skipped: boolean;
   feedback: Feedback | null;
 }
 
@@ -57,6 +61,7 @@ export type FlowEvent =
   | { type: 'spot'; up: boolean }
   | { type: 'tap'; square: string }
   | { type: 'move'; uci: string }
+  | { type: 'skip' }
   | { type: 'advance' }
   | { type: 'replied' }
   | { type: 'retry' }
@@ -70,12 +75,14 @@ export function initialState(ctx: FlowContext): FlowState {
     answered: false,
     next: null,
     spotUp: null,
+    picked: null,
     outcomes: [],
     recorded: null,
     attempt: 0,
     scriptedDone: false,
     alt: false,
     missedUci: null,
+    skipped: false,
     feedback: null,
   };
 }
@@ -117,9 +124,30 @@ export function stars(outcomes: StepOutcome[]): number {
   return outcomes.filter((o) => o.correct).length;
 }
 
-/** Turn whose lines the reveal shows: where the user went wrong, else the pause itself. */
+/** Steps the sheet counts in its header: Notice, Point, Play. The play-out belongs to the last one. */
+export function stepTotal(ctx: FlowContext): number {
+  return ctx.type === 'nothing' ? 1 : Math.min(ctx.depth, 3);
+}
+
+/** Which counted step a phase belongs to; the reveal and the guided move are not steps. */
+export function stepNumber(phase: Phase): number | null {
+  switch (phase) {
+    case 'spot':
+      return 1;
+    case 'find':
+      return 2;
+    case 'solve':
+    case 'hold':
+    case 'reply':
+      return 3;
+    default:
+      return null;
+  }
+}
+
+/** Turn whose lines the reveal shows: where the user went wrong or gave up, else the pause itself. */
 export function revealTurn(ctx: FlowContext, state: FlowState): number {
-  return state.missedUci ? state.turn : ctx.turnIndex;
+  return state.missedUci || state.skipped ? state.turn : ctx.turnIndex;
 }
 
 /** Index in game.moves of the next move to play once everything the sheet showed is on the board. */
@@ -145,6 +173,8 @@ export function flowReducer(ctx: FlowContext, state: FlowState, event: FlowEvent
       return state.phase === 'find' && !state.answered ? tapSquare(ctx, state, event.square) : state;
     case 'move':
       return playMove(ctx, state, event.uci);
+    case 'skip':
+      return skipQuestion(ctx, state);
     case 'advance':
       return advance(state);
     case 'replied':
@@ -188,7 +218,7 @@ function tapSquare(ctx: FlowContext, state: FlowState, square: string): FlowStat
   const after = ctx.depth >= 3 ? 'solve' : 'reveal';
   if (ctx.game.turns[state.turn].keySquares.includes(square)) {
     const outcomes: StepOutcome[] = [...state.outcomes, { step: 'find', correct: true }];
-    return settle(state, outcomes, after, { kind: 'find', correct: true, square });
+    return settle(state, outcomes, after, { kind: 'find', correct: true, square }, { picked: square });
   }
   if (state.tries + 1 < MAX_TRIES) {
     return { ...state, tries: state.tries + 1, feedback: { kind: 'find', correct: false, square } };
@@ -220,6 +250,15 @@ function playMove(ctx: FlowContext, state: FlowState, uci: string): FlowState {
   }
   const missed = failRest(ctx, [...state.outcomes, { step, correct: false }]);
   return settle(state, missed, 'reveal', { kind: 'wrong', uci }, { missedUci: uci });
+}
+
+/** "I'm not sure" and "Show me the answer": a miss, and the reveal comes at once. */
+function skipQuestion(ctx: FlowContext, state: FlowState): FlowState {
+  const { phase } = state;
+  if (state.answered || (phase !== 'find' && phase !== 'solve' && phase !== 'hold')) return state;
+  const outcomes = failRest(ctx, [...state.outcomes, { step: phase, correct: false }]);
+  const done = { ...state, outcomes, skipped: true, tries: 0, feedback: null };
+  return { ...done, phase: 'reveal', recorded: state.recorded ?? outcomes };
 }
 
 function playGuided(ctx: FlowContext, state: FlowState, uci: string): FlowState {

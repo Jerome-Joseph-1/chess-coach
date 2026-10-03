@@ -1,5 +1,4 @@
-import type { Game, Kind, Level, Turn } from '../content/types';
-import { HOLD_MAX } from './flow';
+import type { Depth, Game, Kind, Level, StepOutcome, Turn } from '../content/types';
 import { material } from './material';
 import { flipTurn, moveBefore, playLine, sanOf, type OpponentMove, type PlayedMove } from './position';
 
@@ -7,25 +6,28 @@ export const COPY = {
   spotTitle: 'Is something important happening?',
   spotYes: "Yes, something's going on",
   spotNo: 'No, nothing special',
-  spotFooter: 'No clock. Take your time.',
   findTitle: 'Which piece matters most?',
-  findSub: 'Tap it on the board.',
-  findRight: "That's the one.",
+  findSub: 'Tap it on the board. You get two tries.',
   findRetry: 'Not quite. Try again.',
   findHint: "It's marked on the board.",
+  notSure: "I'm not sure",
   solveTitle: "What's your move?",
   solveSub: 'Play it on the board.',
+  showAnswer: 'Show me the answer',
+  right: 'Right.',
   notQuite: 'Not quite.',
   oneMore: 'Not quite. One more try.',
+  altNote: 'That works too.',
   holdTitle: 'Keep going',
-  altToast: 'That works too.',
-  goodFind: 'Good find.',
   tryAgain: 'Try again',
   next: 'Continue',
   practice: 'Practice round. Your first try counts.',
-  missTitle: 'You missed something',
   backToPosition: 'Back to the position',
 } as const;
+
+export function stepLabel(step: number, total: number): string {
+  return `Step ${step} of ${total}`;
+}
 
 const PIECES: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
 
@@ -52,14 +54,9 @@ export function opponentName(game: Game): string {
   return game.side === 'w' ? 'Black' : 'White';
 }
 
-/** Share of what players at this level choose that holds the position. */
-export function holdShare(turn: Turn): number {
-  return turn.human.reduce((sum, h) => ((turn.grades[h.uci] ?? Infinity) <= HOLD_MAX ? sum + h.share : sum), 0);
-}
-
-export function findToast(turn: Turn, level: Level): string {
-  const share = holdShare(turn);
-  return share < 0.5 ? `Only ${percent(share)}% of players rated ${level} find this.` : COPY.goodFind;
+/** Praise for the right move, or how few players find it when most miss it. */
+export function findNote(turn: Turn, level: Level): string {
+  return turn.findShare < 0.5 ? `Only ${percent(turn.findShare)}% of players rated ${level} find this.` : COPY.right;
 }
 
 export function guidedTitle(san: string): string {
@@ -78,11 +75,30 @@ export function replySub(game: Game): string {
   return `${opponentName(game)} is answering.`;
 }
 
-/** Step 1 reveal for a quiet position. */
-export function quietReveal(saidYes: boolean): string {
-  return saidYes
-    ? 'Actually, nothing special here. Any normal move is fine.'
-    : 'Right. Nothing special here — any normal move is fine.';
+export type ResultKind = 'success' | 'danger' | 'quiet';
+
+export interface ResultLine {
+  kind: ResultKind;
+  text: string;
+}
+
+export const MISSED: ResultLine = { kind: 'danger', text: 'Missed it' };
+
+const FOUND: Record<Depth, string> = {
+  1: 'You spotted it',
+  2: 'You spotted it and found the piece',
+  3: 'You spotted it and found the move',
+  4: 'You spotted it and found the move',
+  5: 'You spotted it and found the move',
+};
+
+/** The line that opens the reveal: how this attempt went. A quiet position is neither a win nor a miss. */
+export function resultLine(type: 'pause' | 'nothing', depth: Depth, outcomes: StepOutcome[]): ResultLine {
+  if (type === 'nothing') {
+    return { kind: 'quiet', text: outcomes[0]?.correct ? 'You saw it was quiet' : 'This one was quiet' };
+  }
+  const allRight = outcomes.length > 0 && outcomes.every((o) => o.correct);
+  return allRight ? { kind: 'success', text: FOUND[depth] } : MISSED;
 }
 
 /** What the opponent just did, as the sub line of step 1. */

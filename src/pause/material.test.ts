@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { material } from './material';
+import { material, materialLabel } from './material';
 import { italian1, italian2 } from './testGames';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -22,5 +22,11 @@ describe('material', () => {
     for (const game of [italian1, italian2]) {
       for (const turn of game.turns) expect(material(turn.fen, game.side)).toBe(turn.material);
     }
+  });
+});
+
+describe('materialLabel', () => {
+  it('says level when nothing separates the sides, else the signed lead', () => {
+    expect([0, 1, -2].map(materialLabel)).toEqual(['Material level', '+1', '−2']);
   });
 });

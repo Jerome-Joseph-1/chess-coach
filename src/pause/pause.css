@@ -1,32 +1,27 @@
-/* The pause sheet: a floating layer, so it may cast a shadow. Everything inside is flat. */
+/* The pause sheet sits in the slot under the board, in the flow, so it can never cover the board. */
 .pause-sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-  max-width: 560px;
-  margin: 0 auto;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  /* Fills the slot edge to edge: cancels the slot's 16px sides and 20px bottom padding. */
+  margin: 0 -16px calc(-20px - var(--safe-bottom));
   background: var(--surface);
   border-radius: var(--r-sheet) var(--r-sheet) 0 0;
-  box-shadow:
-    0 -1px 0 var(--hairline),
-    0 -12px 40px color-mix(in srgb, var(--text-strong) 10%, transparent);
-  animation: pause-rise var(--t-move) var(--spring) both;
+  box-shadow: inset 0 1px 0 var(--hairline);
 }
-@keyframes pause-rise {
-  from {
-    transform: translateY(24px);
-    opacity: 0;
-  }
-}
+/* What does not fit under the board scrolls here; Sheet.tsx caps the height. */
 .pause-sheet-scroll {
-  max-height: 56vh;
-  max-height: 56dvh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-radius: inherit;
-  padding: 20px 16px calc(16px + var(--safe-bottom));
+  padding: 20px 16px 16px;
+}
+.pause-sheet-foot {
+  padding: 8px 16px calc(16px + var(--safe-bottom));
+}
+.pause-sheet-scroll:last-child {
+  padding-bottom: calc(16px + var(--safe-bottom));
 }
 .pause-phase {
   animation: pause-phase var(--t-move) var(--spring) both;
@@ -38,25 +33,45 @@
   }
 }
 
+/* "Step 1 of 3" and one dot per step. */
+.pause-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  color: var(--text-muted);
+  font: var(--text-label);
+}
+.pause-dots {
+  display: flex;
+  gap: 6px;
+}
+.pause-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--surface-3);
+}
+.pause-dots i.is-on {
+  background: var(--text-strong);
+}
+
 .pause-title {
   font: var(--text-title);
-}
-.pause-headline {
-  font: var(--text-headline);
 }
 .pause-sub {
   margin: 4px 0 0;
   color: var(--text-muted);
   font: var(--text-body);
 }
-.pause-foot {
-  margin: 12px 0 0;
-  color: var(--text-muted);
-  font: var(--text-caption);
-  text-align: center;
+.pause-sub.is-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--success);
 }
 
-/* Stage 1: two rows with a leading circle that becomes a check or a cross. */
+/* Step 1: two rows with a leading circle that becomes a check or a cross. */
 .pause-choices {
   display: grid;
   gap: 8px;
@@ -80,7 +95,7 @@
   touch-action: manipulation;
   transition:
     transform var(--t-quick) var(--spring),
-    opacity var(--t-quick);
+    opacity var(--t-quick) var(--spring);
 }
 .pause-choice:active:not([aria-disabled='true']) {
   transform: scale(0.985);
@@ -100,63 +115,69 @@
   opacity: 0.7;
 }
 
-/* Quiet reveal */
-.pause-quiet-head {
+/* Reveal: the verdict, what the position asked for, the lines, then the two ways on. */
+.pause-result {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font: var(--text-callout);
 }
-.pause-quiet-head .mark {
-  margin-top: 3px;
+.pause-result.is-success {
+  color: var(--success);
 }
-.pause-quiet .btn {
-  margin-top: 16px;
+.pause-result.is-danger {
+  color: var(--danger);
 }
-
-/* Reveal */
+.pause-result.is-quiet {
+  color: var(--text-muted);
+}
 .pause-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-top: 16px;
+}
+.pause-actions.is-single {
+  grid-template-columns: 1fr;
 }
 
 /* Line stepper */
 .stepper {
-  margin-top: 12px;
+  margin-top: 16px;
   touch-action: pan-y;
 }
-.stepper-tabs,
+.seg,
 .stepper-chips {
   display: flex;
-  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
 }
-.stepper-tabs {
-  margin: 0 -16px;
-  padding: 0 16px;
+.seg {
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-2);
 }
-.stepper-chips {
-  position: relative;
-  margin-top: 8px;
-  touch-action: pan-x;
-}
-.stepper-tab {
-  flex: none;
-  min-height: 40px;
-  padding: 0 14px;
+.seg-tab {
+  flex: 1 0 auto;
+  min-height: 36px;
+  padding: 0 10px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--text-muted);
   font: var(--text-callout);
+  white-space: nowrap;
   cursor: pointer;
 }
-.stepper-tab.is-active {
-  background: var(--surface-2);
-  box-shadow: inset 0 0 0 1px var(--hairline);
+.seg-tab.is-active {
+  background: var(--surface-3);
   color: var(--text-strong);
+}
+.stepper-chips {
+  gap: 4px;
+  margin-top: 12px;
+  touch-action: pan-x;
 }
 .stepper-chip {
   flex: none;
@@ -164,7 +185,7 @@
   padding: 0 10px;
   border: 0;
   border-radius: var(--r-sm);
-  background: var(--surface-2);
+  background: transparent;
   color: var(--text-muted);
   font: var(--text-code);
   cursor: pointer;
@@ -174,36 +195,33 @@
   font: inherit;
   opacity: 0.65;
 }
-.stepper-chip.is-mine {
+.stepper-chip.is-current {
+  background: var(--surface-3);
   color: var(--text-strong);
 }
-.stepper-chip.is-current {
-  background: var(--action);
-  color: var(--on-action);
-}
+/* Room for two lines of caption, so the controls below do not jump from move to move. */
 .stepper-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 24px;
-  margin-top: 10px;
+  min-height: 44px;
+  margin-top: 8px;
 }
 .stepper-caption {
   flex: 1;
-  min-height: 18px;
   margin: 0;
-  color: var(--text-muted);
-  font: var(--text-caption);
+  color: var(--text);
+  font: var(--text-body);
 }
 .stepper-material {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
   color: var(--text-muted);
   font: var(--text-caption);
   white-space: nowrap;
-}
-.stepper-material .roll {
-  color: var(--text-strong);
-  font-weight: 600;
 }
 
 /* Back to the position on the left, previous / counter / next on the right. */
@@ -212,24 +230,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
-.stepper-back,
-.stepper-nav {
-  border: 0;
-  background: var(--surface-2);
-  color: var(--text-strong);
-  cursor: pointer;
-  touch-action: manipulation;
-}
-.stepper-back {
+.stepper .stepper-back {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
   min-height: 40px;
   padding: 0 16px 0 12px;
-  border-radius: 999px;
   font: var(--text-callout);
   white-space: nowrap;
 }
@@ -244,7 +253,13 @@
   width: 40px;
   height: 40px;
   padding: 0;
+  border: 0;
   border-radius: 50%;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--text-strong);
+  cursor: pointer;
+  touch-action: manipulation;
 }
 .stepper-count {
   min-width: 3.4em;
@@ -252,13 +267,12 @@
   font: var(--text-callout);
   text-align: center;
 }
-.stepper-back:disabled,
 .stepper-nav:disabled {
   opacity: 0.4;
   cursor: default;
 }
 @media (max-width: 359px) {
-  .stepper-back {
+  .stepper .stepper-back {
     width: 40px;
     padding: 0;
     justify-content: center;
@@ -266,12 +280,4 @@
   .stepper-back-label {
     display: none;
   }
-}
-
-/* Missed silent check */
-.pause-lead {
-  margin: 8px 0 0;
-}
-.pause-actions-single {
-  grid-template-columns: 1fr;
 }

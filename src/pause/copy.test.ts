@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import type { Game } from '../content/types';
+import type { Game, StepOutcome } from '../content/types';
 import {
-  findToast,
+  MISSED,
+  findNote,
   gainPhrase,
   guidedTitle,
   headline,
   holdMissHeadline,
-  holdShare,
   holdSub,
   opponentName,
-  quietReveal,
+  resultLine,
   spotSub,
+  stepLabel,
 } from './copy';
 import { italian1, italian2 } from './testGames';
 
@@ -78,10 +79,34 @@ describe('spotSub', () => {
   });
 });
 
-describe('quietReveal', () => {
-  it('confirms a right answer and gently corrects a wrong one', () => {
-    expect(quietReveal(false)).toBe('Right. Nothing special here — any normal move is fine.');
-    expect(quietReveal(true)).toBe('Actually, nothing special here. Any normal move is fine.');
+describe('resultLine', () => {
+  const right = (...steps: StepOutcome['step'][]): StepOutcome[] => steps.map((step) => ({ step, correct: true }));
+
+  it('says what the user found, by how far this depth goes', () => {
+    expect(resultLine('pause', 1, right('spot'))).toEqual({ kind: 'success', text: 'You spotted it' });
+    expect(resultLine('pause', 2, right('spot', 'find')).text).toBe('You spotted it and found the piece');
+    expect(resultLine('pause', 3, right('spot', 'find', 'solve'))).toEqual({
+      kind: 'success',
+      text: 'You spotted it and found the move',
+    });
+  });
+
+  it('says missed it as soon as one step was missed', () => {
+    const outcomes: StepOutcome[] = [...right('spot', 'find'), { step: 'solve', correct: false }];
+    expect(resultLine('pause', 3, outcomes)).toBe(MISSED);
+    expect(MISSED.text).toBe('Missed it');
+    expect(resultLine('pause', 1, [{ step: 'spot', correct: false }])).toBe(MISSED);
+  });
+
+  it('keeps a quiet position neutral whatever the answer was', () => {
+    expect(resultLine('nothing', 3, right('spot'))).toEqual({ kind: 'quiet', text: 'You saw it was quiet' });
+    expect(resultLine('nothing', 3, [{ step: 'spot', correct: false }])).toEqual({ kind: 'quiet', text: 'This one was quiet' });
+  });
+});
+
+describe('stepLabel', () => {
+  it('counts the step in hand out of the steps this depth asks', () => {
+    expect(stepLabel(1, 3)).toBe('Step 1 of 3');
   });
 });
 
@@ -102,18 +127,15 @@ describe('gainPhrase', () => {
   });
 });
 
-describe('findToast', () => {
-  it('shares how few players find a move that most miss', () => {
-    expect(findToast(italian1.turns[1], 1400)).toBe('Only 44% of players rated 1400 find this.');
-    expect(findToast(italian1.turns[7], 1400)).toBe('Only 12% of players rated 1400 find this.');
+describe('findNote', () => {
+  it('shares how few players find a move that most miss, from the turn\'s own find share', () => {
+    expect(italian1.turns[1].findShare).toBe(0.455);
+    expect(findNote(italian1.turns[1], 1400)).toBe('Only 46% of players rated 1400 find this.');
+    expect(findNote(italian1.turns[7], 1400)).toBe('Only 14% of players rated 1400 find this.');
   });
 
-  it('praises a move that most players find', () => {
-    expect(findToast(italian1.turns[3], 1400)).toBe('Good find.');
-  });
-
-  it('only counts human moves that hold', () => {
-    expect(holdShare(italian1.turns[1])).toBeCloseTo(0.436);
+  it('just says right when most players find the move', () => {
+    expect(findNote(italian1.turns[3], 1400)).toBe('Right.');
   });
 });
 

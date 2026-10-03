@@ -17,6 +17,25 @@ export function isOffHome(shownFen: string, homeFen: string): boolean {
   return placement(shownFen) !== placement(homeFen);
 }
 
+export interface ControlState {
+  /** "5 of 6". */
+  count: string;
+  /** The board already shows the position the user came from. */
+  backDisabled: boolean;
+  prevDisabled: boolean;
+  nextDisabled: boolean;
+}
+
+/** What the control row under a line can do when the stepper stands at step `at`. */
+export function controlState(data: LineData, at: number, homeFen: string): ControlState {
+  return {
+    count: `${at} of ${data.played.length}`,
+    backDisabled: !isOffHome(data.fens[at], homeFen),
+    prevDisabled: at === 0,
+    nextDisabled: at === data.played.length,
+  };
+}
+
 /** "5." before White's move, "5…" before a Black move that opens a line. */
 export function moveNumbers(fen: string, played: PlayedMove[]): string[] {
   let number = Number(fen.split(' ')[5]) || 1;

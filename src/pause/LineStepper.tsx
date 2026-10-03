@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { captionFor } from '../board/captions';
 import type { BoardController } from '../board/types';
 import type { Side } from '../content/types';
-import { RollingNumber, formatSigned } from '../ui/RollingNumber';
+import '../ui/button.css';
+import { RollingNumber } from '../ui/RollingNumber';
 import { COPY } from './copy';
-import { isOffHome, lineData, LineMotion, moveNumbers } from './lineMotion';
-import { material } from './material';
+import { controlState, lineData, LineMotion, moveNumbers, type LineData } from './lineMotion';
+import { material, materialLabel } from './material';
 import { ChevronIcon, ReturnIcon } from './steps/icons';
 
 export interface LineOption {
@@ -43,6 +44,91 @@ function useChipInView(row: { current: HTMLElement | null }, index: number) {
     const left = chip.offsetLeft - (el.clientWidth - chip.offsetWidth) / 2;
     el.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
   }, [index]);
+}
+
+interface SegmentsProps {
+  lines: LineOption[];
+  active: LineOption['id'];
+  onSelect: (id: LineOption['id']) => void;
+}
+
+/** One pill track, the line in view on a raised segment. A single line needs no choice. */
+function Segments({ lines, active, onSelect }: SegmentsProps) {
+  if (lines.length < 2) return null;
+  return (
+    <div class="seg" role="tablist">
+      {lines.map((line) => (
+        <button
+          key={line.id}
+          type="button"
+          role="tab"
+          aria-selected={line.id === active}
+          class={`seg-tab${line.id === active ? ' is-active' : ''}`}
+          onClick={() => onSelect(line.id)}
+        >
+          {line.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+interface ChipsProps {
+  data: LineData;
+  numbers: string[];
+  at: number;
+  rowRef: { current: HTMLDivElement | null };
+  onPick: (step: number) => void;
+}
+
+function Chips({ data, numbers, at, rowRef, onPick }: ChipsProps) {
+  return (
+    <div class="stepper-chips" ref={rowRef}>
+      {data.played.map((move, i) => (
+        <button key={i} type="button" class={`stepper-chip${i === at - 1 ? ' is-current' : ''}`} onClick={() => onPick(i + 1)}>
+          {numbers[i] && <small>{numbers[i]}</small>}
+          {move.san}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+interface ControlRowProps {
+  data: LineData;
+  at: number;
+  homeFen: string;
+  motion: LineMotion;
+}
+
+/** Back to the position on the left, previous / counter / next on the right. */
+function ControlRow({ data, at, homeFen, motion }: ControlRowProps) {
+  const state = controlState(data, at, homeFen);
+  return (
+    <div class="stepper-controls">
+      <button
+        type="button"
+        class="btn btn-secondary stepper-back"
+        aria-label={COPY.backToPosition}
+        disabled={state.backDisabled}
+        onClick={() => motion.backToPosition()}
+      >
+        <ReturnIcon />
+        <span class="stepper-back-label">{COPY.backToPosition}</span>
+      </button>
+      <div class="stepper-group">
+        <button type="button" class="stepper-nav" aria-label="Previous move" disabled={state.prevDisabled} onClick={() => motion.goTo(motion.heading - 1)}>
+          <ChevronIcon dir="left" />
+        </button>
+        <span class="stepper-count" aria-live="polite">
+          {state.count}
+        </span>
+        <button type="button" class="stepper-nav" aria-label="Next move" disabled={state.nextDisabled} onClick={() => motion.goTo(motion.heading + 1)}>
+          <ChevronIcon dir="right" />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function Stepper({ board, homeFen, userSide, lines, initial, frozen }: LineStepperProps) {
@@ -83,7 +169,6 @@ function Stepper({ board, homeFen, userSide, lines, initial, frozen }: LineStepp
 
   const caption = at > 0 ? captionFor(data.fens[at - 1], data.played[at - 1].uci, userSide) : '';
   const balance = material(data.fens[at], userSide);
-  const atHome = !isOffHome(data.fens[at], homeFen);
 
   return (
     <div
@@ -92,64 +177,17 @@ function Stepper({ board, homeFen, userSide, lines, initial, frozen }: LineStepp
       onPointerUp={onPointerUp}
       onPointerCancel={() => (swipeFrom.current = null)}
     >
-      <div class="stepper-tabs" role="tablist">
-        {lines.map((l) => (
-          <button
-            key={l.id}
-            type="button"
-            role="tab"
-            aria-selected={l.id === line.id}
-            class={`stepper-tab${l.id === line.id ? ' is-active' : ''}`}
-            onClick={() => selectLine(l.id)}
-          >
-            {l.label}
-          </button>
-        ))}
-      </div>
-      <div class="stepper-chips" ref={chipsRef}>
-        {data.played.map((move, i) => (
-          <button
-            key={i}
-            type="button"
-            class={`stepper-chip${move.side === userSide ? ' is-mine' : ''}${i === at - 1 ? ' is-current' : ''}`}
-            onClick={() => m.goTo(i + 1)}
-          >
-            {numbers[i] && <small>{numbers[i]}</small>}
-            {move.san}
-          </button>
-        ))}
-      </div>
+      <Segments lines={lines} active={line.id} onSelect={selectLine} />
+      <Chips data={data} numbers={numbers} at={at} rowRef={chipsRef} onPick={(n) => m.goTo(n)} />
       <div class="stepper-foot">
         <p class="stepper-caption" aria-live="polite">
           {caption}
         </p>
         <span class="stepper-material">
-          Material <RollingNumber value={balance} format={formatSigned} />
+          <RollingNumber value={balance} format={materialLabel} />
         </span>
       </div>
-      <div class="stepper-controls">
-        <button type="button" class="stepper-back" disabled={atHome} aria-label={COPY.backToPosition} onClick={() => m.backToPosition()}>
-          <ReturnIcon />
-          <span class="stepper-back-label">{COPY.backToPosition}</span>
-        </button>
-        <div class="stepper-group">
-          <button type="button" class="stepper-nav" aria-label="Previous move" disabled={at === 0} onClick={() => m.goTo(m.heading - 1)}>
-            <ChevronIcon dir="left" />
-          </button>
-          <span class="stepper-count" aria-live="polite">
-            {at} of {data.played.length}
-          </span>
-          <button
-            type="button"
-            class="stepper-nav"
-            aria-label="Next move"
-            disabled={at === data.played.length}
-            onClick={() => m.goTo(m.heading + 1)}
-          >
-            <ChevronIcon dir="right" />
-          </button>
-        </div>
-      </div>
+      <ControlRow data={data} at={at} homeFen={homeFen} motion={m} />
     </div>
   );
 }

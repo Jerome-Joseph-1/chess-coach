@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
+import { Board } from '../board/Board';
 import type { BoardController } from '../board/types';
 import type { Depth, Game } from '../content/types';
 import { loadGame } from '../content/loader';
-import { LabBoard } from '../pause/lab/LabBoard';
 import { PauseSheet, type PauseResult } from '../pause/PauseSheet';
 import { Button } from '../ui/Button';
 import '../pause/lab/lab.css';
@@ -41,18 +41,29 @@ function pickFromHash(games: Game[]): { pick: LabPick; stage: Depth } | null {
   return { pick: { game, turn }, stage };
 }
 
-function StageSelector({ stage, onChange }: { stage: Depth; onChange: (stage: Depth) => void }) {
+interface StageProps {
+  stage: Depth;
+  onChange: (stage: Depth) => void;
+}
+
+function StageButtons({ stage, onChange }: StageProps) {
+  return (
+    <div class="lab-stages" role="group" aria-label="Stage">
+      {STAGES.map((s) => (
+        <button key={s} type="button" class="lab-stage" aria-pressed={s === stage} onClick={() => onChange(s)}>
+          {s}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function StageSelector(props: StageProps) {
   return (
     <div>
-      <div class="lab-stages" role="group" aria-label="Stage">
-        {STAGES.map((s) => (
-          <button key={s} type="button" class="lab-stage" aria-pressed={s === stage} onClick={() => onChange(s)}>
-            {s}
-          </button>
-        ))}
-      </div>
+      <StageButtons {...props} />
       <p class="lab-muted">
-        Stage {stage}: {STAGE_NAMES[stage - 1]}
+        Stage {props.stage}: {STAGE_NAMES[props.stage - 1]}
       </p>
     </div>
   );
@@ -111,25 +122,29 @@ interface RunProps {
   onExit: () => void;
 }
 
-/** One attempt: a fresh board and sheet each time `run` changes. */
+/** One attempt: a fresh board and sheet each time `run` changes. The board and the slot match the game screen. */
 function Attempt({ game, pick, stage, onAgain }: Pick<RunProps, 'game' | 'pick' | 'stage' | 'onAgain'>) {
   const [board, setBoard] = useState<BoardController | null>(null);
   const [result, setResult] = useState<PauseResult | null>(null);
   const turn = game.turns[pick.turn];
   return (
     <>
-      <LabBoard fen={turn.fen} orientation={game.side} onReady={setBoard} />
-      {result && <Result result={result} onAgain={onAgain} />}
-      {board && !result && (
-        <PauseSheet
-          game={game}
-          turnIndex={pick.turn}
-          type={turn.label === 'nothing' ? 'nothing' : 'pause'}
-          depth={stage}
-          board={board}
-          onDone={setResult}
-        />
-      )}
+      <div class="lab-board">
+        <Board fen={turn.fen} orientation={game.side} onReady={setBoard} />
+      </div>
+      <section class="lab-slot">
+        {result && <Result result={result} onAgain={onAgain} />}
+        {board && !result && (
+          <PauseSheet
+            game={game}
+            turnIndex={pick.turn}
+            type={turn.label === 'nothing' ? 'nothing' : 'pause'}
+            depth={stage}
+            board={board}
+            onDone={setResult}
+          />
+        )}
+      </section>
     </>
   );
 }
@@ -137,17 +152,17 @@ function Attempt({ game, pick, stage, onAgain }: Pick<RunProps, 'game' | 'pick' 
 function Run({ game, pick, stage, run, onStage, onAgain, onExit }: RunProps) {
   const turn = game.turns[pick.turn];
   return (
-    <main class="lab">
-      <div class="lab-bar">
+    <main class="lab-run">
+      <header class="lab-bar">
         <button type="button" class="lab-back" onClick={onExit}>
           Lab
         </button>
         <span class="lab-label">
           Move {turn.moveNo} · {turn.label === 'nothing' ? 'quiet' : turn.kinds.join(' + ')}
         </span>
-      </div>
+        <StageButtons stage={stage} onChange={onStage} />
+      </header>
       <Attempt key={run} game={game} pick={pick} stage={stage} onAgain={onAgain} />
-      <StageSelector stage={stage} onChange={onStage} />
     </main>
   );
 }

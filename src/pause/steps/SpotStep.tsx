@@ -1,9 +1,11 @@
 import { CheckPop } from '../../ui/CheckPop';
 import { COPY } from '../copy';
+import { SubLine } from './SubLine';
 
 export interface SpotStepProps {
-  /** What the opponent just did, in plain words. */
+  /** What the opponent just did, then how the answer went. */
   sub: string;
+  right: boolean;
   /** The right answer is "Yes". */
   expectYes: boolean;
   /** The user's answer, once given. */
@@ -37,17 +39,16 @@ function Choice({ isYes, ...props }: SpotStepProps & { isYes: boolean }) {
   );
 }
 
-/** Stage 1: is something important happening? Two rows, then the flow moves on by itself. */
+/** Step 1: is something important happening? Two rows, then the flow moves on by itself. */
 export function SpotStep(props: SpotStepProps) {
   return (
     <div class="pause-spot">
       <h2 class="pause-title">{COPY.spotTitle}</h2>
-      <p class="pause-sub">{props.sub}</p>
+      <SubLine text={props.sub} right={props.right} />
       <div class="pause-choices" role="group" aria-label={COPY.spotTitle}>
         <Choice isYes={true} {...props} />
         <Choice isYes={false} {...props} />
       </div>
-      <p class="pause-foot">{COPY.spotFooter}</p>
     </div>
   );
 }

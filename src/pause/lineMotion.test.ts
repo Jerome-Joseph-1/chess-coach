@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BoardController } from '../board/types';
-import { isOffHome, lineData, LineMotion, moveNumbers } from './lineMotion';
+import { controlState, isOffHome, lineData, LineMotion, moveNumbers } from './lineMotion';
 import { revealLines } from './lines';
 import { fenAfter, samePosition } from './position';
 import { italian1 } from './testGames';
@@ -185,5 +185,25 @@ describe('moveNumbers', () => {
   it('numbers White moves and marks a Black opening move', () => {
     expect(moveNumbers(best.fens[0], best.played)).toEqual(['11.', '', '12.', '', '13.', '']);
     expect(moveNumbers(threat.fens[0], threat.played)).toEqual(['11…', '12.']);
+  });
+});
+
+describe('controlState', () => {
+  const total = best.played.length;
+
+  it('disables Back to the position while the board already shows the pause position', () => {
+    expect(controlState(best, 0, turn.fen).backDisabled).toBe(true);
+    expect(controlState(threat, 0, turn.fen).backDisabled).toBe(true);
+  });
+
+  it('keeps Back to the position enabled, in place, once the line has moved the pieces', () => {
+    expect(controlState(best, 2, turn.fen).backDisabled).toBe(false);
+    expect(controlState(threat, 1, turn.fen).backDisabled).toBe(false);
+  });
+
+  it('counts "n of total" and stops the arrows at either end', () => {
+    expect(controlState(best, 2, turn.fen)).toMatchObject({ count: `2 of ${total}`, prevDisabled: false, nextDisabled: false });
+    expect(controlState(best, 0, turn.fen)).toMatchObject({ count: `0 of ${total}`, prevDisabled: true });
+    expect(controlState(best, total, turn.fen)).toMatchObject({ count: `${total} of ${total}`, nextDisabled: true });
   });
 });

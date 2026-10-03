@@ -1,12 +1,14 @@
 import { useMemo, useRef, useState } from 'preact/hooks';
 import type { BoardController } from '../board/types';
 import type { Game } from '../content/types';
-import { Button } from '../ui/Button';
-import { COPY, headline } from './copy';
+import { MISSED, headline } from './copy';
 import { LineStepper } from './LineStepper';
 import { openingLine, revealLines } from './lines';
 import { samePosition, sanOf } from './position';
 import { Sheet } from './Sheet';
+import { RevealActions } from './steps/Actions';
+import { ResultRow } from './steps/ResultRow';
+import { SubLine } from './steps/SubLine';
 
 export interface MissCardProps {
   game: Game;
@@ -32,11 +34,11 @@ export function MissCard({ game, turnIndex, playedUci, board, onContinue }: Miss
   }
 
   return (
-    <Sheet innerRef={sheetRef} label={COPY.missTitle}>
+    <Sheet innerRef={sheetRef} label={MISSED.text} footer={<RevealActions onContinue={leave} />}>
       <div class="pause-reveal">
-        <h2 class="pause-title">{COPY.missTitle}</h2>
-        <p class="pause-headline pause-lead">{headline(game, turnIndex)}</p>
-        <p class="pause-sub">You played {sanOf(turn.fen, playedUci)}.</p>
+        <ResultRow result={MISSED} />
+        <h2 class="pause-title">{headline(game, turnIndex)}</h2>
+        <SubLine text={`You played ${sanOf(turn.fen, playedUci)}.`} />
         <LineStepper
           board={board}
           homeFen={turn.fen}
@@ -45,11 +47,6 @@ export function MissCard({ game, turnIndex, playedUci, board, onContinue }: Miss
           initial={openingLine(turn)}
           frozen={leaving}
         />
-        <div class="pause-actions pause-actions-single">
-          <Button variant="primary" size="lg" onClick={leave}>
-            {COPY.next}
-          </Button>
-        </div>
       </div>
     </Sheet>
   );

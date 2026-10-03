@@ -1,19 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { BoardController } from '../board/types';
 import type { Depth, Game, StepOutcome } from '../content/types';
-import { confirm, nudge, toast } from '../ui/rewards';
-import {
-  COPY,
-  continuesWith,
-  findToast,
-  guidedTitle,
-  headline,
-  holdMissHeadline,
-  holdSub,
-  quietReveal,
-  replySub,
-  spotSub,
-} from './copy';
+import { celebrate, nudge } from '../ui/rewards';
+import { COPY, continuesWith, headline, holdMissHeadline, resultLine } from './copy';
 import {
   finalFen,
   flowReducer,
@@ -22,6 +11,8 @@ import {
   replyUci,
   revealTurn,
   scriptedUci,
+  stepNumber,
+  stepTotal,
   type Feedback,
   type FlowContext,
   type FlowEvent,
@@ -30,11 +21,14 @@ import {
 } from './flow';
 import { openingLine, revealLines } from './lines';
 import { samePosition, squaresOf } from './position';
+import { promptFor, skipLabel, spotPromptFor } from './prompt';
 import { Sheet } from './Sheet';
+import { RevealActions, SkipAction } from './steps/Actions';
 import { PromptStep } from './steps/PromptStep';
 import { QuietReveal } from './steps/QuietReveal';
 import { RevealStep } from './steps/RevealStep';
 import { SpotStep } from './steps/SpotStep';
+import { StepHeader } from './steps/StepHeader';
 
 export interface PauseResult {
   outcomes: StepOutcome[];
@@ -68,39 +62,11 @@ function settleMs(state: FlowState): number {
     case 'alt':
       return 1500;
     case 'move':
-      return state.next === 'reply' ? 550 : 1000;
+      return state.next === 'reply' ? 550 : 1400;
     case 'wrong':
       return 900;
     default:
       return 700;
-  }
-}
-
-function findSub(state: FlowState): string {
-  if (state.feedback?.kind === 'hint') return COPY.findHint;
-  if (state.answered) return COPY.findRight;
-  return state.tries > 0 ? COPY.findRetry : COPY.findSub;
-}
-
-function moveSub(ask: string, state: FlowState): string {
-  if (state.answered) return state.feedback?.kind === 'wrong' ? COPY.notQuite : ask;
-  return state.tries > 0 ? COPY.oneMore : ask;
-}
-
-/** Title and one line for the stages that play on the board. */
-function promptFor(game: Game, state: FlowState): { title: string; sub: string } {
-  const scripted = game.moves[game.turns[state.turn].ply];
-  switch (state.phase) {
-    case 'find':
-      return { title: COPY.findTitle, sub: findSub(state) };
-    case 'solve':
-      return { title: COPY.solveTitle, sub: moveSub(COPY.solveSub, state) };
-    case 'hold':
-      return { title: COPY.holdTitle, sub: moveSub(holdSub(game), state) };
-    case 'reply':
-      return { title: COPY.holdTitle, sub: replySub(game) };
-    default:
-      return { title: guidedTitle(scripted), sub: COPY.solveSub };
   }
 }
 
@@ -115,7 +81,7 @@ function buildReveal(ctx: FlowContext, state: FlowState) {
     lines: revealLines(game, index, state.missedUci, missedLate ? 'refutation' : 'yours'),
     initial: missedLate ? ('refutation' as const) : openingLine(turn),
     text: missedLate && state.missedUci ? holdMissHeadline(game, index, state.missedUci) : headline(game, index),
-    note: state.alt ? `${COPY.altToast} ${continuesWith(scripted)}` : undefined,
+    note: state.alt ? `${COPY.altNote} ${continuesWith(scripted)}` : undefined,
   };
 }
 
@@ -154,14 +120,14 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
     window.clearTimeout(flash.current);
     switch (feedback.kind) {
       case 'spot':
-        if (feedback.correct) confirm('step');
+        if (feedback.correct) celebrate('step');
         else nudge(sheetRef.current?.querySelector<HTMLElement>('.pause-choices'));
         break;
       case 'find':
         board.clearHighlights();
         board.highlight([feedback.square], feedback.correct ? 'good' : 'bad');
         if (feedback.correct) {
-          confirm('step', board.squareCenter(feedback.square));
+          celebrate('step');
         } else {
           nudge(shakeRef.current);
           flash.current = window.setTimeout(() => board.clearHighlights(), WRONG_FLASH_MS);
@@ -174,17 +140,17 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
         break;
       case 'move':
         board.disableInput();
-        confirm('move', board.squareCenter(squaresOf(feedback.uci)[1]));
-        if (latest.current.phase === 'solve') toast(findToast(game.turns[feedback.turn], game.level));
+        board.clearHighlights();
+        celebrate('move', board.squareCenter(squaresOf(feedback.uci)[1]));
         break;
       case 'alt':
         board.disableInput();
-        confirm('step', board.squareCenter(squaresOf(feedback.uci)[1]));
-        toast(COPY.altToast);
+        board.clearHighlights();
+        celebrate('alt');
         break;
       case 'guided':
         board.disableInput();
-        confirm('step', board.squareCenter(squaresOf(feedback.uci)[1]));
+        celebrate('step');
         break;
       case 'wrong':
         if (latest.current.answered) board.disableInput();
@@ -222,6 +188,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
         break;
       case 'solve':
       case 'hold':
+        if (state.phase === 'solve' && state.picked) board.highlight([state.picked], 'focus');
         board.enableMoves(game.side, tryMove);
         break;
       case 'reply':
@@ -260,42 +227,63 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
     [],
   );
 
-  const sub = useMemo(() => spotSub(game, turnIndex), [game, turnIndex]);
   const reveal = useMemo(() => (view === 'reveal' ? buildReveal(ctx, state) : null), [view, state.attempt]);
 
   function content() {
+    const step = stepNumber(view);
+    const header = step && <StepHeader step={step} total={stepTotal(ctx)} />;
     if (view === 'spot') {
-      return <SpotStep sub={sub} expectYes={type === 'pause'} picked={state.spotUp} onAnswer={(yes) => send({ type: 'spot', up: yes })} />;
-    }
-    if (view === 'reveal' && type === 'nothing') {
+      const { sub, right } = spotPromptFor(game, turnIndex, state);
       return (
-        <QuietReveal text={quietReveal(state.spotUp === true)} right={state.spotUp === false} onContinue={() => send({ type: 'continue' })} />
+        <>
+          {header}
+          <SpotStep sub={sub} right={right} expectYes={type === 'pause'} picked={state.spotUp} onAnswer={(yes) => send({ type: 'spot', up: yes })} />
+        </>
       );
     }
-    if (view === 'reveal' && reveal) {
-      return (
-        <RevealStep
-          key={state.attempt}
-          board={board}
-          userSide={game.side}
-          homeFen={reveal.fen}
-          lines={reveal.lines}
-          initialLine={reveal.initial}
-          headline={reveal.text}
-          note={reveal.note}
-          practice={state.attempt > 0}
-          frozen={state.phase === 'done'}
-          onRetry={() => send({ type: 'retry' })}
-          onContinue={() => send({ type: 'continue' })}
-        />
-      );
+    if (view === 'reveal') return revealContent();
+    return (
+      <>
+        {header}
+        <PromptStep {...promptFor(game, state)} innerRef={shakeRef} />
+      </>
+    );
+  }
+
+  function footer() {
+    if (view === 'reveal') {
+      const retry = type === 'pause' ? () => send({ type: 'retry' }) : undefined;
+      return <RevealActions onRetry={retry} onContinue={() => send({ type: 'continue' })} />;
     }
-    const { title, sub: line } = promptFor(game, state);
-    return <PromptStep title={title} sub={line} innerRef={shakeRef} />;
+    const label = skipLabel(view);
+    return label && <SkipAction label={label} disabled={state.answered} onSkip={() => send({ type: 'skip' })} />;
+  }
+
+  function revealContent() {
+    const result = resultLine(type, depth, state.outcomes);
+    if (type === 'nothing') {
+      return <QuietReveal result={result} text={headline(game, turnIndex)} />;
+    }
+    if (!reveal) return null;
+    return (
+      <RevealStep
+        key={state.attempt}
+        board={board}
+        userSide={game.side}
+        homeFen={reveal.fen}
+        lines={reveal.lines}
+        initialLine={reveal.initial}
+        result={result}
+        headline={reveal.text}
+        note={reveal.note}
+        practice={state.attempt > 0}
+        frozen={state.phase === 'done'}
+      />
+    );
   }
 
   return (
-    <Sheet innerRef={sheetRef} label="Pause">
+    <Sheet innerRef={sheetRef} label="Pause" footer={footer()}>
       <div class="pause-phase" key={`${view}-${state.turn}-${state.attempt}`}>
         {content()}
       </div>
