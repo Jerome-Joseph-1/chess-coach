@@ -97,6 +97,9 @@ describe('the real payoff of a line (R3)', () => {
   });
 
   it('plays a line that stops mid-exchange to its end', () => {
+    expect(told('caro-kann-2000-0206#25', 'g7g6').early.text).toBe(
+      'Qg6 looks natural, but after Qxg6+ hxg6, Nxf6+ takes your pawn on f6, checks your king and attacks your rook on e8 at once, and after Kf8, Nxe8 takes the rook, and you lose the exchange and a pawn.',
+    );
     expect(told('italian-1400-0068#25', 'a1a6').named.text).toBe(
       "That doesn't stop Black's threat: Rxf2+ checks your king and attacks your queen on e2 at once, and after Qxf2, Rxf2+ takes your queen on f2, and you get only a rook for your queen and a pawn.",
     );

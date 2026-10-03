@@ -3628,5 +3628,117 @@
    "trigger": true,
    "inCheck": false
   }
+ },
+ "caro-kann-2000-0206#25": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "Nc3",
+   "dxe4",
+   "Nxe4",
+   "Nf6",
+   "Nxf6+",
+   "exf6",
+   "Nf3",
+   "Bd6",
+   "Be3",
+   "O-O",
+   "Be2",
+   "Bf5",
+   "Qd2",
+   "Re8",
+   "O-O",
+   "Nd7",
+   "c3",
+   "Nf8",
+   "Rfe1",
+   "Rc8",
+   "Bf4",
+   "Qc7",
+   "Bxd6",
+   "Qxd6",
+   "Nh4",
+   "Bd7",
+   "Rad1",
+   "g6",
+   "Nf3",
+   "Rcd8",
+   "Bd3",
+   "Ne6",
+   "Qh6",
+   "Qf8",
+   "Qh4",
+   "Qg7",
+   "Nd2",
+   "Nc7",
+   "Ne4",
+   "Re6",
+   "Nc5",
+   "Rxe1+",
+   "Rxe1",
+   "Bc8",
+   "Ne4",
+   "g5",
+   "Qh5",
+   "Re8",
+   "Re3",
+   "Re6"
+  ],
+  "turn": {
+   "ply": 51,
+   "moveNo": 27,
+   "fen": "2b1r1k1/ppn2pqp/2p2p2/6pQ/3PN3/2PBR3/PP3PPP/6K1 b - - 3 27",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "g7g6": 27.8
+   },
+   "refutations": {
+    "g7g6": [
+     "h5g6",
+     "h7g6",
+     "e4f6",
+     "g8f8",
+     "f6e8"
+    ]
+   },
+   "bestWin": 39.1,
+   "material": 0,
+   "lines": {
+    "best": [
+     "e8e6",
+     "c3c4",
+     "b7b5",
+     "b2b3",
+     "h7h6",
+     "h5f3",
+     "b5c4",
+     "b3c4"
+    ],
+    "mistake": [
+     "g7g6",
+     "h5g6",
+     "h7g6",
+     "e4f6",
+     "g8f8",
+     "f6e8"
+    ],
+    "threat": [
+     "e4d6",
+     "e8e3",
+     "f2e3"
+    ]
+   },
+   "mistakeMove": "g7g6",
+   "trigger": false,
+   "inCheck": false
+  }
  }
 }
