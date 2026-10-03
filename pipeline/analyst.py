@@ -1,6 +1,5 @@
 import json
 import os
-import shutil
 from pathlib import Path
 
 import chess
@@ -10,15 +9,11 @@ from maia2.model import MAIA2Model
 from maia2.train import load_model_state_dict
 from maia2.utils import create_elo_dict, get_all_possible_moves, parse_args
 
-from chessutil import to_win
+from chessutil import stockfish_path, to_win
 from openings import STRONGER, band
 
 MIN_GAMES = 30
 DATA = Path(__file__).parent / "data"
-
-
-def stockfish_path():
-    return os.environ.get("STOCKFISH") or shutil.which("stockfish") or "/usr/games/stockfish"
 
 
 def load_maia():

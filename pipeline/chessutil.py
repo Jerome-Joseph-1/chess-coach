@@ -1,10 +1,16 @@
 import math
+import os
+import shutil
 
 import chess
 
 VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
 # Win% cut-offs between verdicts: winning, clearly better, a bit better, equal, a bit worse, clearly worse, losing.
 BUCKETS = [85, 70, 57, 43, 30, 15]
+
+
+def stockfish_path():
+    return os.environ.get("STOCKFISH") or shutil.which("stockfish") or "/usr/games/stockfish"
 
 
 def win(cp):
