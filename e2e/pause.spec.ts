@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { tapSquare, tapSquares } from './board';
+import { continueAfterPause, moveList, playButton, tapSquare, tapSquares } from './board';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -9,12 +9,11 @@ async function atStage(page: Page, stage: number) {
   }, stage);
 }
 
-/** Plays 4.d4, after which the fixture game stops on its first key position. */
+/** Taps Play, after which the fixture game moves itself up to its first key position. */
 async function reachFirstPause(page: Page) {
   await page.goto('./#/play/italian/1400');
-  await expect(page.getByText('Your move', { exact: true })).toBeVisible();
-  await tapSquares(page, 'd2', 'd4');
-  await expect(page.getByText('Is something important happening?')).toBeVisible();
+  await playButton(page).click();
+  await expect(page.getByText('Is something important happening?')).toBeVisible({ timeout: 15_000 });
 }
 
 async function expectBoardUncovered(page: Page) {
@@ -42,9 +41,8 @@ test('stage 1: spot it, step through the line and come back to the position', as
   await back.click();
   await expect(back).toBeDisabled();
 
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await tapSquares(page, 'd4', 'e5');
-  await expect(page.locator('.game-moves li').last()).toHaveText('d6');
+  await continueAfterPause(page);
+  await expect(moveList(page).filter({ hasText: /^d6$/ })).toBeVisible();
 });
 
 test('stage 3: point to the piece, then play the move', async ({ page }) => {

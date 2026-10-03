@@ -4,11 +4,9 @@ import { Board } from '../board/Board';
 import type { BoardController } from '../board/types';
 import { openingById } from '../content/catalog';
 import { loadGame, loadSet } from '../content/loader';
-import type { Game as GameData, Level, OpeningId, Side } from '../content/types';
+import type { Level, OpeningId, Side } from '../content/types';
 import { lostPieces, materialLead } from '../game/material';
 import { GameSession, type SessionDeps, type SessionView } from '../game/session';
-import { LineStepper, type LineOption } from '../pause/LineStepper';
-import { MissCard } from '../pause/MissCard';
 import { PauseSheet } from '../pause/PauseSheet';
 import { getDepth, getSettings, playedGameIds, recordGame, recordMoment } from '../progress/store';
 import { navigate } from '../router';
@@ -25,9 +23,6 @@ export interface GameProps {
 
 const TITLES: Record<OpeningId, string> = { italian: 'Italian Game', 'caro-kann': 'Caro-Kann Defence' };
 const GLYPHS: Record<PieceSymbol, string> = { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' };
-
-/** Phases that hand the slot under the board to a sheet. */
-const PAUSED_PHASES = new Set<SessionView['phase']['kind']>(['pause', 'miss', 'lines']);
 
 const sideName = (side: Side) => (side === 'w' ? 'White' : 'Black');
 const otherSide = (side: Side): Side => (side === 'w' ? 'b' : 'w');
@@ -59,11 +54,6 @@ function keyPositionLabel(view: SessionView | null, review: boolean): string {
   return `Key position ${Math.min(done + 1, total)} of ${total}`;
 }
 
-function refutationLine(game: GameData, turnIndex: number, uci: string): LineOption {
-  const turn = game.turns[turnIndex];
-  return { id: 'refutation', label: 'Why it loses', fen: turn.fen, moves: [uci, ...turn.refutations[uci]] };
-}
-
 export function Game({ opening, level, review }: GameProps) {
   const [board, setBoard] = useState<BoardController | null>(null);
   const [view, setView] = useState<SessionView | null>(null);
@@ -80,7 +70,7 @@ export function Game({ opening, level, review }: GameProps) {
 
   useEffect(() => () => session.current?.dispose(), []);
 
-  const paused = view ? PAUSED_PHASES.has(view.phase.kind) : false;
+  const paused = view?.phase.kind === 'pause';
 
   return (
     <main class={paused ? 'game is-paused' : 'game'}>
@@ -183,7 +173,7 @@ function Slot({ view, board, session }: SlotProps) {
       </>
     );
   }
-  if (!game) return <Status text="Loading…" />;
+  if (!game || phase.kind === 'loading') return <Status text="Loading…" />;
   if (phase.kind === 'pause') {
     return (
       <PauseSheet
@@ -197,35 +187,19 @@ function Slot({ view, board, session }: SlotProps) {
       />
     );
   }
-  if (phase.kind === 'miss') {
-    return (
-      <MissCard
-        key={`${game.id}:${phase.turnIndex}`}
-        game={game}
-        turnIndex={phase.turnIndex}
-        playedUci={phase.playedUci}
-        board={board}
-        onContinue={() => session.missContinue()}
-      />
-    );
+  if (phase.kind === 'ready' || phase.kind === 'playing') {
+    return <PlayButton playing={phase.kind === 'playing'} session={session} />;
   }
-  if (phase.kind === 'lines') {
-    return (
-      <>
-        <LineStepper
-          board={board}
-          homeFen={game.turns[phase.turnIndex].fen}
-          userSide={game.side}
-          lines={[refutationLine(game, phase.turnIndex, phase.uci)]}
-        />
-        <Button onClick={() => void session.closeLines()}>Back to my move</Button>
-      </>
-    );
-  }
+  return <Status text={view.status} />;
+}
+
+function PlayButton({ playing, session }: { playing: boolean; session: GameSession }) {
   return (
-    <>
-      <Status text={view.status} />
-      {view.showMe && <Button onClick={() => session.showLines()}>Show me</Button>}
-    </>
+    <Button variant="primary" size="lg" class="game-play" onClick={() => (playing ? session.pausePlayback() : session.play())}>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+        {playing ? <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" /> : <path d="M8 5.5v13l11-6.5z" />}
+      </svg>
+      {playing ? 'Pause' : 'Play to the next key position'}
+    </Button>
   );
 }

@@ -3,6 +3,8 @@ import type { Depth, MomentType, Turn } from '../content/types';
 export interface MomentOptions {
   quick?: boolean;
   seed?: number;
+  /** Let about a quarter of the critical turns be unprompted checks. Off: they are pauses like the rest. */
+  silent?: boolean;
 }
 
 const SILENT_SHARE = 0.25;
@@ -114,11 +116,11 @@ function addNothings(turns: Turn[], moments: Map<number, MomentType>, rand: () =
 
 /** Decide which user turns become pauses, "nothing" pauses, silent checks and play-out moves. Keys are indexes into turns. */
 export function chooseMoments(turns: Turn[], depth: Depth, opts: MomentOptions = {}): Map<number, MomentType> {
-  const { quick = false, seed = 1 } = opts;
+  const { quick = false, seed = 1, silent: allowSilent = true } = opts;
   const rand = mulberry32(seed);
   const moments = new Map<number, MomentType>();
   const starts = criticalStarts(turns);
-  const silent = quick ? new Set<number>() : pickSilent(starts, rand);
+  const silent = quick || !allowSilent ? new Set<number>() : pickSilent(starts, rand);
   markCritical(turns, new Set(starts), playoutSpan(depth), silent, quick ? QUICK_MAX_PAUSES : Infinity, moments);
   addNothings(turns, moments, rand, quick);
   return moments;

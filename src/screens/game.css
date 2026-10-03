@@ -3,8 +3,8 @@
   --top-bar: 56px;
   --player-bar: 36px;
   --move-strip: 42px;
-  /* What the slot under the board needs: the status line while playing, a sheet while paused. */
-  --room: 64px;
+  /* What the slot under the board needs: the 52px play pill plus its padding, a sheet while paused. */
+  --room: 88px;
   --chrome: calc(var(--top-bar) + 2 * var(--player-bar) + var(--move-strip));
   --board: max(200px, min(100vw - 32px, 488px, var(--screen) - var(--chrome) - var(--room)));
   display: flex;
@@ -149,6 +149,12 @@
   gap: 12px;
   min-height: 0;
   padding: 16px 16px 20px;
+}
+.game-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 .game-status {
   margin: 0;

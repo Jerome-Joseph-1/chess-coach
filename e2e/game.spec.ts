@@ -1,7 +1,9 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { boardSquares, tapSquares } from './board';
+import { continueAfterPause, moveList, pauseButton, playButton } from './board';
 
 const PLAY_URL = './#/play/italian/1400';
+const FIRST_KEY_POSITION = 'Is something important happening?';
+const RUN_MS = 15_000;
 
 test.use({ serviceWorkers: 'block' });
 
@@ -24,94 +26,92 @@ async function playQuietGame(page: Page, plies = Infinity) {
   await page.goto(PLAY_URL);
 }
 
-const moves = (page: Page) => page.locator('.game-moves li');
-const yourMove = (page: Page) => page.getByText('Your move', { exact: true });
-
-test('shows the game screen at phone width', async ({ page }) => {
+test('shows the game screen at phone width, waiting for play', async ({ page }) => {
   await page.goto(PLAY_URL);
-  await expect(yourMove(page)).toBeVisible();
+  await expect(playButton(page)).toBeVisible();
 
   await expect(page.getByRole('heading', { name: 'Italian Game' })).toBeVisible();
   await expect(page.locator('.game-pill')).toHaveText(/^Key position 1 of \d+$/);
   await expect(page.getByText('Rated 1400')).toBeVisible();
   await expect(page.getByText('Black', { exact: true })).toBeVisible();
   await expect(page.getByText('You', { exact: true })).toBeVisible();
-  await expect(moves(page).last()).toHaveText('Nf6');
+  await expect(moveList(page).last()).toHaveText(/Bc4$/);
   await expect(page.locator('.cm-chessboard .piece')).toHaveCount(32);
 
   const width = page.viewportSize()!.width;
   expect((await page.locator('.board-host').boundingBox())!.width).toBeCloseTo(width - 32, 0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
   const back = (await page.getByRole('button', { name: 'Back' }).boundingBox())!;
   expect([back.width, back.height]).toEqual([40, 40]);
 });
 
-test('a tap shows the legal moves and a scripted move is kept', async ({ page }) => {
+test('nothing moves until Play is tapped', async ({ page }) => {
   await page.goto(PLAY_URL);
-  await expect(yourMove(page)).toBeVisible();
-  const at = await boardSquares(page);
+  await expect(playButton(page)).toBeVisible();
+  const played = await moveList(page).count();
 
-  await page.touchscreen.tap(at('d2').x, at('d2').y);
-  await expect(page.locator('.cm-chessboard .marker-dot')).toHaveCount(2);
-  await page.touchscreen.tap(at('d4').x, at('d4').y);
-
-  await expect(page.getByText('Black is thinking…')).toBeVisible();
-  await expect(moves(page).last()).toHaveText('Nxe4');
-  await expect(moves(page).nth(-2)).toHaveText(/d4$/);
-  await expect(page.locator('.cm-chessboard .marker-last-move')).toHaveCount(2);
+  await page.waitForTimeout(1200);
+  await expect(moveList(page)).toHaveCount(played);
 });
 
-test('a drag moves a piece too', async ({ page }) => {
+test('the pill keeps its place when it turns into Pause', async ({ page }) => {
   await page.goto(PLAY_URL);
-  await expect(yourMove(page)).toBeVisible();
-  const at = await boardSquares(page);
+  const board = (await page.locator('.board-host').boundingBox())!;
+  const before = (await playButton(page).boundingBox())!;
+  expect(before.y).toBeGreaterThanOrEqual(board.y + board.height);
+  expect(before.width).toBeCloseTo(page.viewportSize()!.width - 32, 0);
 
-  await page.mouse.move(at('d2').x, at('d2').y);
-  await page.mouse.down();
-  await page.mouse.move(at('d4').x, at('d4').y, { steps: 6 });
-  await page.mouse.up();
-
-  await expect(moves(page).last()).toHaveText('Nxe4');
+  await playButton(page).click();
+  await expect(pauseButton(page)).toBeVisible();
+  expect(await pauseButton(page).boundingBox()).toEqual(before);
+  expect(await page.locator('.board-host').boundingBox()).toEqual(board);
 });
 
-test('another move goes back and a losing move can be shown', async ({ page }) => {
-  await playQuietGame(page);
-  await expect(yourMove(page)).toBeVisible();
+test('Play moves both sides up to the first key position without a tap on the board', async ({ page }) => {
+  await page.goto(PLAY_URL);
+  await playButton(page).click();
 
-  await tapSquares(page, 'd2', 'd3');
-  await expect(yourMove(page)).toBeVisible();
-  await expect(moves(page).last()).toHaveText('Nf6');
-  await expect(page.getByRole('button', { name: 'Show me' })).toHaveCount(0);
+  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
+  await expect(moveList(page).last()).toHaveText('Nxe4');
+  await expect(moveList(page).nth(-2)).toHaveText(/d4$/);
+  await expect(playButton(page)).toHaveCount(0);
+  await expect(pauseButton(page)).toHaveCount(0);
+});
 
-  await tapSquares(page, 'd2', 'd4');
-  await expect(moves(page).last()).toHaveText('Nxe4');
-  await expect(yourMove(page)).toBeVisible();
-  await tapSquares(page, 'd4', 'e5');
-  await expect(moves(page).last()).toHaveText('d6');
-  await expect(yourMove(page)).toBeVisible();
+test('Pause stops the moves and Play carries on from there', async ({ page }) => {
+  await page.goto(PLAY_URL);
+  await playButton(page).click();
+  await pauseButton(page).click();
+  await expect(playButton(page)).toBeVisible();
 
-  await tapSquares(page, 'f3', 'g5');
-  await expect(moves(page).last()).toHaveText('d6');
-  const showMe = page.getByRole('button', { name: 'Show me' });
-  await showMe.click();
-  await expect(showMe).toHaveCount(0);
+  const played = await moveList(page).count();
+  await page.waitForTimeout(1500);
+  await expect(moveList(page)).toHaveCount(played);
+  await expect(page.getByText(FIRST_KEY_POSITION)).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Back to my move' }).click();
-  await expect(yourMove(page)).toBeVisible();
-  await expect(showMe).toBeVisible();
-  await expect(page.locator('.cm-chessboard .piece')).toHaveCount(30);
-  await expect(page.locator('.cm-chessboard .marker-last-move')).toHaveCount(2);
+  await playButton(page).click();
+  await expect(pauseButton(page)).toBeVisible();
+  await expect.poll(() => moveList(page).count()).toBeGreaterThan(played);
+  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
+});
+
+test('after a key position the game plays on by itself to the next one', async ({ page }) => {
+  await page.goto(PLAY_URL);
+  await playButton(page).click();
+  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
+  await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  const played = await moveList(page).count();
+
+  await continueAfterPause(page);
+  await expect.poll(() => moveList(page).count()).toBeGreaterThanOrEqual(played + 2);
+  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
+  await expect(page.locator('.game-pill')).toHaveText(/^Key position 2 of \d+$/);
 });
 
 test('a short quiet game runs to the recap', async ({ page }) => {
   await playQuietGame(page, 6);
-  await expect(yourMove(page)).toBeVisible();
+  await playButton(page).click();
 
-  await tapSquares(page, 'd2', 'd4');
-  await expect(yourMove(page)).toBeVisible();
-  await tapSquares(page, 'd4', 'e5');
-  await expect(yourMove(page)).toBeVisible();
-  await tapSquares(page, 'e1', 'g1');
-
-  await expect(page).toHaveURL(/#\/recap$/);
+  await expect(page).toHaveURL(/#\/recap$/, { timeout: RUN_MS });
 });

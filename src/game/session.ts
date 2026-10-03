@@ -9,19 +9,16 @@ import type {
   MomentType,
   OpeningId,
   SetIndex,
-  Side,
   StepOutcome,
   Turn,
 } from '../content/types';
 import type { PauseResult } from '../pause/PauseSheet';
 import type { Celebration, Point } from '../ui/rewards';
-import { findSibling } from './branching';
-import { gradeMove, isHolding } from './grading';
 import { chooseMoments, hashSeed } from './pauses';
-import { parseUci, placement, playSan, sanToUci, uciToSan } from './position';
+import { placement, playSan } from './position';
 
-const THINK_MIN_MS = 400;
-const THINK_SPREAD_MS = 300;
+/** One scripted move every 600 ms while the game plays by itself. */
+export const AUTOPLAY_MS = 600;
 const REPLAY_PLIES = 4;
 const REPLAY_MS = 250;
 
@@ -45,12 +42,13 @@ export interface SessionDeps {
 export type Phase =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
-  /** The board is moving by itself: the opponent replies or an earlier moment is replayed. */
+  /** The board moves by itself and cannot be stopped: a review replays the moves before its moment. */
   | { kind: 'busy' }
-  | { kind: 'yourMove' }
+  /** The game waits for the user to press play. */
+  | { kind: 'ready' }
+  /** Both sides' scripted moves are being played. */
+  | { kind: 'playing' }
   | { kind: 'pause'; turnIndex: number; type: 'pause' | 'nothing' }
-  | { kind: 'miss'; turnIndex: number; playedUci: string }
-  | { kind: 'lines'; turnIndex: number; uci: string }
   | { kind: 'done' };
 
 /** One dot per pause the user will be asked about. */
@@ -66,15 +64,9 @@ export interface SessionView {
   fen: string;
   dots: DotState[];
   status: string;
-  /** A wrong move the user can ask to see refuted. */
-  showMe: { turnIndex: number; uci: string } | null;
 }
 
-type NormalOutcome = { san: string; siblingId?: string };
-
 class Stopped extends Error {}
-
-const sideName = (side: Side) => (side === 'w' ? 'White' : 'Black');
 
 function isPrompted(type: MomentType | undefined): type is 'pause' | 'nothing' {
   return type === 'pause' || type === 'nothing';
@@ -83,7 +75,6 @@ function isPrompted(type: MomentType | undefined): type is 'pause' | 'nothing' {
 export class GameSession {
   private view: SessionView;
   private listeners = new Set<(view: SessionView) => void>();
-  private set!: SetIndex;
   private game!: Game;
   private chess = new Chess();
   private ply = 0;
@@ -93,8 +84,8 @@ export class GameSession {
   private handledPlies = new Set<number>();
   private lastUci: string | null = null;
   private pauseResolver: ((result: PauseResult) => void) | null = null;
-  private missResolver: (() => void) | null = null;
-  private reenableInput: (() => void) | null = null;
+  private running = false;
+  private stopRequested = false;
   private disposed = false;
   private finished = false;
 
@@ -112,7 +103,6 @@ export class GameSession {
       fen: this.chess.fen(),
       dots: [],
       status: '',
-      showMe: null,
     };
   }
 
@@ -130,44 +120,45 @@ export class GameSession {
   }
 
   async start(): Promise<void> {
-    try {
+    await this.guarded(async () => {
       await this.setup();
-      await this.play();
-    } catch (error) {
-      if (error instanceof Stopped) return;
-      console.error(error);
-      this.update({ phase: { kind: 'error', message: 'This game could not be loaded.' }, status: '' });
-    }
+      if (this.review) await this.autoplay();
+      else this.update({ phase: { kind: 'ready' }, status: '' });
+    });
+  }
+
+  /** Plays on from here until the next key position. */
+  play(): void {
+    if (this.view.phase.kind !== 'ready') return;
+    this.stopRequested = false;
+    this.update({ phase: { kind: 'playing' } });
+    // A loop still finishing its last move carries on by itself.
+    if (!this.running) void this.guarded(() => this.autoplay());
+  }
+
+  /** Stops after the move being played. */
+  pausePlayback(): void {
+    if (this.view.phase.kind !== 'playing') return;
+    this.stopRequested = true;
+    this.update({ phase: { kind: 'ready' } });
   }
 
   dispose(): void {
     this.disposed = true;
-    this.board.disableInput();
   }
 
   pauseDone(result: PauseResult): void {
     this.pauseResolver?.(result);
   }
 
-  missContinue(): void {
-    this.missResolver?.();
-  }
-
-  showLines(): void {
-    const { showMe } = this.view;
-    if (!showMe) return;
-    this.board.disableInput();
-    this.update({ phase: { kind: 'lines', ...showMe }, status: '' });
-  }
-
-  async closeLines(): Promise<void> {
-    if (this.view.phase.kind !== 'lines') return;
-    this.board.clearHighlights();
-    this.board.dim(null);
-    await this.board.setPosition(this.chess.fen(), true);
-    this.board.setLastMove(this.lastUci);
-    this.update({ phase: { kind: 'yourMove' }, status: 'Your move' });
-    this.reenableInput?.();
+  private async guarded(task: () => Promise<void>): Promise<void> {
+    try {
+      await task();
+    } catch (error) {
+      if (error instanceof Stopped) return;
+      console.error(error);
+      this.update({ phase: { kind: 'error', message: 'This game could not be loaded.' }, status: '' });
+    }
   }
 
   private update(patch: Partial<SessionView>): void {
@@ -202,7 +193,6 @@ export class GameSession {
     const { opening, level, deps } = this;
     const set = await this.until(deps.loadSet(opening, level));
     if (!set) throw new Error(`No games for ${opening} ${level}`);
-    this.set = set;
     const game = await this.until(deps.loadGame(opening, level, this.review?.gameId ?? this.pickGameId(set)));
     this.startGame(game);
     await this.until(this.board.setPosition(this.chess.fen(), false));
@@ -222,7 +212,7 @@ export class GameSession {
     for (const san of game.start) this.chess.move(san);
     this.ply = 0;
     this.moments = this.chooseMomentsFor(game);
-    this.update({ game, history: [...game.start], fen: this.chess.fen(), phase: { kind: 'busy' } });
+    this.update({ game, history: [...game.start], fen: this.chess.fen() });
   }
 
   private chooseMomentsFor(game: Game): Map<number, MomentType> {
@@ -232,7 +222,7 @@ export class GameSession {
       if (index < 0) throw new Error(`Ply ${review.ply} is not a turn of ${game.id}`);
       return new Map([[index, game.turns[index].label === 'nothing' ? 'nothing' : 'pause']]);
     }
-    return chooseMoments(game.turns, this.view.depth, { quick: this.deps.isQuick(), seed: hashSeed(game.id) });
+    return chooseMoments(game.turns, this.view.depth, { quick: this.deps.isQuick(), seed: hashSeed(game.id), silent: false });
   }
 
   private async replayBeforeReview(reviewPly: number): Promise<void> {
@@ -240,20 +230,34 @@ export class GameSession {
     while (this.ply < replayFrom) this.takeMove(this.game.moves[this.ply]);
     await this.until(this.board.setPosition(this.chess.fen(), false));
     this.board.setLastMove(this.lastUci);
-    this.update({ status: 'Replaying the last moves…' });
+    this.update({ phase: { kind: 'busy' }, status: 'Replaying the last moves…' });
     while (this.ply < reviewPly) {
       await this.until(this.deps.wait(REPLAY_MS));
       await this.playScripted();
     }
   }
 
-  private async play(): Promise<void> {
-    while (!this.finished && this.ply < this.game.moves.length) {
-      const turnIndex = this.game.turns.findIndex((t) => t.ply === this.ply);
-      if (turnIndex < 0) await this.opponentMove();
-      else await this.userTurn(turnIndex);
+  /** Plays the scripted moves of both sides until a prompted moment, a stop request or the end of the game. */
+  private async autoplay(): Promise<void> {
+    this.running = true;
+    try {
+      while (!this.stopRequested && !this.finished && this.ply < this.game.moves.length) {
+        this.assertAlive();
+        const moment = this.nextMoment();
+        if (moment) await this.runPause(moment.turnIndex, moment.type);
+        else await this.playPaced();
+      }
+    } finally {
+      this.running = false;
     }
-    if (!this.finished) this.finish();
+    if (!this.finished && this.ply >= this.game.moves.length) this.finish();
+  }
+
+  private nextMoment(): { turnIndex: number; type: 'pause' | 'nothing' } | null {
+    const turnIndex = this.game.turns.findIndex((t) => t.ply === this.ply);
+    const type = this.moments.get(turnIndex);
+    if (!isPrompted(type) || this.handledPlies.has(this.ply)) return null;
+    return { turnIndex, type };
   }
 
   /** Plays the next scripted move on the model, not on the board. */
@@ -264,137 +268,37 @@ export class GameSession {
   }
 
   private async playScripted(): Promise<void> {
-    const san = this.game.moves[this.ply];
-    this.takeMove(san);
+    this.takeMove(this.game.moves[this.ply]);
     await this.until(this.board.playMove(this.lastUci!));
   }
 
-  private async opponentMove(): Promise<void> {
-    const side = this.chess.turn();
-    this.update({ phase: { kind: 'busy' }, status: `${sideName(side)} is thinking…`, showMe: null });
-    const think = THINK_MIN_MS + Math.floor(this.deps.random() * THINK_SPREAD_MS);
-    await this.until(this.deps.wait(think));
-    await this.playScripted();
-  }
-
-  private async userTurn(turnIndex: number): Promise<void> {
-    const type = this.moments.get(turnIndex);
-    if (isPrompted(type)) return this.runPause(turnIndex, type);
-    if (type === 'silent') return this.runSilent(turnIndex);
-    return this.runNormal(turnIndex);
-  }
-
-  /** Lets the user move; `decide` sees each legal move and says whether the board keeps it. */
-  private async waitForMove<T>(decide: (uci: string, resolve: (value: T) => void) => boolean): Promise<T> {
-    const value = await new Promise<T>((resolve) => {
-      this.reenableInput = () => this.board.enableMoves(this.game.side, (uci) => decide(uci, resolve));
-      this.reenableInput();
-    });
-    this.reenableInput = null;
-    this.board.disableInput();
-    this.assertAlive();
-    return value;
-  }
-
-  private async runNormal(turnIndex: number): Promise<void> {
-    this.update({ phase: { kind: 'yourMove' }, status: 'Your move', showMe: null });
-    const outcome = await this.waitForMove<NormalOutcome>((uci, resolve) => {
-      const result = this.judgeNormalMove(turnIndex, uci);
-      if (result) resolve(result);
-      return result !== null;
-    });
-    this.takeMove(outcome.san);
-    if (outcome.siblingId) await this.switchGame(outcome.siblingId);
-  }
-
-  /** The move continues this game or a sibling of it; otherwise the user is told why it is not played. */
-  private judgeNormalMove(turnIndex: number, uci: string): NormalOutcome | null {
-    const san = uciToSan(this.chess.fen(), uci);
-    const moves = [...this.game.moves.slice(0, this.ply), san];
-    const sibling = findSibling(this.set, moves, this.game.id);
-    if (sibling === this.game.id) return { san };
-    if (sibling) return { san, siblingId: sibling };
-    this.explainOtherMove(turnIndex, uci);
-    return null;
-  }
-
-  private explainOtherMove(turnIndex: number, uci: string): void {
-    const turn = this.game.turns[turnIndex];
-    const next = this.game.moves[this.ply];
-    const { verdict } = gradeMove(turn, uci);
-    if (verdict === 'mistake') {
-      const canShow = Boolean(turn.refutations[uci]);
-      this.deps.toast(canShow ? 'That loses material. Tap Show me to see why.' : 'That loses material.');
-      if (canShow) this.update({ showMe: { turnIndex, uci } });
-    } else if (verdict === 'unknown') {
-      this.deps.toast(`This game continues with ${next}.`);
-    } else {
-      this.deps.toast(`That works too. This game continues with ${next} — play it to go on.`);
-    }
-  }
-
-  private async switchGame(id: string): Promise<void> {
-    const next = await this.until(this.deps.loadGame(this.opening, this.level, id));
-    this.game = next;
-    this.moments = this.chooseMomentsFor(next);
-    this.update({ game: next });
-  }
-
-  private async runSilent(turnIndex: number): Promise<void> {
-    const turn = this.game.turns[turnIndex];
-    const san = this.game.moves[this.ply];
-    const scriptedUci = sanToUci(this.chess.fen(), san);
-    this.update({ phase: { kind: 'yourMove' }, status: 'Your move', showMe: null });
-    const played = await this.waitForMove<string>((uci, resolve) => {
-      resolve(uci);
-      return uci === scriptedUci;
-    });
-
-    const holds = isHolding(turn, played);
-    this.record(turn, 'silent', [{ step: 'solve', correct: holds }]);
-    if (holds) this.deps.celebrate('silent', this.board.squareCenter(parseUci(played).to));
-    if (played === scriptedUci) {
-      this.takeMove(san);
-      return;
-    }
-    if (!holds) await this.showMiss(turnIndex, played);
-    await this.playScripted();
-    if (holds) this.deps.toast(`This game continues with ${san}.`);
-  }
-
-  private async showMiss(turnIndex: number, playedUci: string): Promise<void> {
-    this.update({ phase: { kind: 'miss', turnIndex, playedUci }, status: '' });
-    await new Promise<void>((resolve) => {
-      this.missResolver = resolve;
-    });
-    this.missResolver = null;
-    this.assertAlive();
-    this.update({ phase: { kind: 'busy' } });
+  /** One move per beat, however long the animation takes. */
+  private async playPaced(): Promise<void> {
+    await this.until(Promise.all([this.playScripted(), this.deps.wait(AUTOPLAY_MS)]));
   }
 
   private async runPause(turnIndex: number, type: 'pause' | 'nothing'): Promise<void> {
-    this.update({ phase: { kind: 'pause', turnIndex, type }, status: '', showMe: null });
+    this.update({ phase: { kind: 'pause', turnIndex, type }, status: '' });
     const result = await new Promise<PauseResult>((resolve) => {
       this.pauseResolver = resolve;
     });
     this.pauseResolver = null;
     this.assertAlive();
-    this.update({ phase: { kind: 'busy' } });
 
     this.record(this.game.turns[turnIndex], type, result.outcomes);
     if (this.review) {
       this.finish();
       return;
     }
-    // The pause sheet already moved the board; bring the model to the same point, always by at least one move.
-    const resumePly = Math.max(result.resumePly, this.ply + 1);
-    while (this.ply < resumePly && this.ply < this.game.moves.length) this.takeMove(this.game.moves[this.ply]);
-    await this.syncBoard();
+    this.update({ phase: { kind: 'playing' } });
+    await this.resume(result.resumePly);
   }
 
-  private async syncBoard(): Promise<void> {
+  /** The sheet leaves the board at the pause position; a sheet that played on is caught up without animation. */
+  private async resume(resumePly: number): Promise<void> {
+    while (this.ply < resumePly && this.ply < this.game.moves.length) this.takeMove(this.game.moves[this.ply]);
     if (placement(this.board.fen()) === placement(this.chess.fen())) return;
-    await this.until(this.board.setPosition(this.chess.fen(), true));
+    await this.until(this.board.setPosition(this.chess.fen(), false));
     this.board.setLastMove(this.lastUci);
   }
 
@@ -416,8 +320,7 @@ export class GameSession {
     const { depthChanged } = this.deps.recordMoment(result);
     this.results.push(result);
     this.handledPlies.add(turn.ply);
-    // Silent checks get no dot, so the count never gives them away.
-    if (type !== 'silent') this.doneDots.push(outcomes.length > 0 && outcomes.every((o) => o.correct) ? 'good' : 'bad');
+    this.doneDots.push(outcomes.length > 0 && outcomes.every((o) => o.correct) ? 'good' : 'bad');
     this.update({ depth: depthChanged ?? this.view.depth });
     if (depthChanged) {
       this.deps.celebrate('levelup');

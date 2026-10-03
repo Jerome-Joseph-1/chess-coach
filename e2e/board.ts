@@ -23,3 +23,16 @@ export async function tapSquares(page: Page, from: string, to: string) {
   }).toPass();
   await page.touchscreen.tap(at(to).x, at(to).y);
 }
+
+export const playButton = (page: Page) => page.getByRole('button', { name: 'Play to the next key position' });
+export const pauseButton = (page: Page) => page.getByRole('button', { name: 'Pause', exact: true });
+export const moveList = (page: Page) => page.locator('.game-moves li');
+
+/** Taps Continue on a key position's sheet; a sheet that still asks for the scripted move first gets it played. */
+export async function continueAfterPause(page: Page) {
+  const played = await moveList(page).count();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  const guided = page.getByText(/^Play it: /);
+  await expect(guided.or(moveList(page).nth(played))).toBeVisible();
+  if (await guided.isVisible()) await tapSquares(page, 'd4', 'e5');
+}

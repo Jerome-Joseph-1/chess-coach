@@ -75,6 +75,24 @@ describe('chooseMoments rules', () => {
     }
   });
 
+  it('makes every critical turn a pause when silent checks are off', () => {
+    const turns = Array.from({ length: 8 }, (_, i) => turnAt(i, i % 2 === 0 ? 'critical' : 'gray'));
+    expect(countOf(chooseMoments(turns, 1, { seed: 5 }), 'silent')).toBe(1);
+
+    const moments = chooseMoments(turns, 1, { seed: 5, silent: false });
+    expect(countOf(moments, 'silent')).toBe(0);
+    expect(countOf(moments, 'pause')).toBe(4);
+  });
+
+  it('never picks a silent check on the fixture games when they are off', () => {
+    for (const game of fixtureGames) {
+      for (const depth of DEPTHS) {
+        const moments = chooseMoments(game.turns, depth, { seed: hashSeed(game.id), silent: false });
+        expect(countOf(moments, 'silent')).toBe(0);
+      }
+    }
+  });
+
   it('plays out the next five user turns after a pause at depth 5', () => {
     const turns = ['critical', 'gray', 'gray', 'gray', 'gray', 'gray', 'gray', 'gray', 'critical'].map((label, i) =>
       turnAt(i, label as Label),
