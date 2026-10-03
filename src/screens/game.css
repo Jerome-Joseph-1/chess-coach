@@ -14,11 +14,11 @@
   margin: 0 auto;
 }
 .game.is-paused {
-  --room: 300px;
+  --room: 304px;
   --chrome: calc(var(--top-bar) + var(--player-bar));
 }
 .game:has(.pause-reveal) {
-  --room: 340px;
+  --room: 366px;
   --chrome: var(--top-bar);
 }
 .game.is-paused .game-player.is-you,

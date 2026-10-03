@@ -15,13 +15,16 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 20px 16px 16px;
+  padding: 16px 16px 8px;
 }
 .pause-sheet-foot {
-  padding: 8px 16px calc(16px + var(--safe-bottom));
+  padding: 8px 16px calc(12px + var(--safe-bottom));
+}
+.pause-sheet-foot .btn-lg {
+  min-height: 48px;
 }
 .pause-sheet-scroll:last-child {
-  padding-bottom: calc(16px + var(--safe-bottom));
+  padding-bottom: calc(12px + var(--safe-bottom));
 }
 .pause-phase {
   animation: pause-phase var(--t-move) var(--spring) both;
@@ -38,7 +41,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   color: var(--text-muted);
   font: var(--text-label);
 }
@@ -75,7 +78,7 @@
 .pause-choices {
   display: grid;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 .pause-choice {
   display: flex;
@@ -120,8 +123,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 12px;
+  margin: 0 0 6px;
   font: var(--text-callout);
+}
+.pause-reveal .pause-title {
+  font: var(--text-headline);
+  font-weight: 600;
+  color: var(--text-strong);
 }
 .pause-result.is-success {
   color: var(--success);
@@ -143,7 +151,7 @@
 
 /* Line stepper */
 .stepper {
-  margin-top: 16px;
+  margin-top: 12px;
   touch-action: pan-y;
 }
 .seg,
@@ -154,13 +162,13 @@
 }
 .seg {
   gap: 2px;
-  padding: 4px;
+  padding: 3px;
   border-radius: 999px;
   background: var(--surface-2);
 }
 .seg-tab {
   flex: 1 0 auto;
-  min-height: 36px;
+  min-height: 32px;
   padding: 0 10px;
   border: 0;
   border-radius: 999px;
@@ -176,12 +184,12 @@
 }
 .stepper-chips {
   gap: 4px;
-  margin-top: 12px;
+  margin-top: 6px;
   touch-action: pan-x;
 }
 .stepper-chip {
   flex: none;
-  min-height: 36px;
+  min-height: 32px;
   padding: 0 10px;
   border: 0;
   border-radius: var(--r-sm);
@@ -206,7 +214,7 @@
   justify-content: space-between;
   gap: 12px;
   min-height: 44px;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 .stepper-caption {
   flex: 1;
@@ -230,7 +238,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 .stepper .stepper-back {
   display: inline-flex;
