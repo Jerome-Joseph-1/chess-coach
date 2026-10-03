@@ -1,19 +1,23 @@
 .install-hint {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 6px 6px 18px;
+  gap: 12px;
   margin-bottom: 16px;
+  padding: 4px 4px 4px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-card);
+  background: var(--surface-2);
 }
 .install-hint p {
   flex: 1;
   margin: 0;
-  font-weight: 600;
+  padding: 8px 0;
+  color: var(--text);
+  font: var(--text-callout);
 }
 .install-glyph {
-  display: inline-block;
-  vertical-align: -4px;
-  color: var(--accent);
+  flex: none;
+  color: var(--text-strong);
 }
 .install-close {
   flex: none;
@@ -24,9 +28,9 @@
   border: 0;
   border-radius: 50%;
   background: none;
-  color: var(--muted);
+  color: var(--text-muted);
   cursor: pointer;
 }
 .install-close:active {
-  background: var(--surface-2);
+  background: var(--surface-3);
 }

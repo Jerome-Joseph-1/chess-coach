@@ -1,100 +1,72 @@
 .recap-head {
   display: grid;
   justify-items: center;
-  gap: 8px;
-  margin: 8px 0 22px;
+  gap: 4px;
+  padding: 32px 0 8px;
   text-align: center;
 }
 .recap-head h1 {
-  font-size: var(--fs-xl);
+  font: var(--text-display);
+  letter-spacing: -0.02em;
 }
-.recap-total {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.recap-head .muted {
   margin: 0;
-  font: 700 64px / 1 var(--font-display);
+}
+.recap-stars {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 20px 0 8px;
+  color: var(--text-strong);
+  font: var(--text-number);
+  font-size: 56px;
+  line-height: 56px;
+  letter-spacing: -0.03em;
 }
 .recap-star {
-  color: var(--star);
+  color: var(--text-muted);
+  font-size: 32px;
 }
-.recap-count {
-  display: inline-block;
-  min-width: 1ch;
-  animation: pop 320ms var(--ease-spring);
-}
-.recap-perfect {
-  margin: 0;
-  color: var(--good);
-  font-weight: 700;
-}
-.recap-quiet {
-  text-align: center;
+.recap-stars-unit {
+  color: var(--text-muted);
+  font: var(--text-headline);
+  letter-spacing: 0;
 }
 
-.moments {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
 .moment {
-  display: grid;
-  grid-template-columns: 40px 1fr;
-  column-gap: 12px;
-  align-items: start;
-  padding: 12px 14px 0;
-  background: var(--surface);
-  border: 2px solid var(--line);
-  border-radius: var(--r-md);
-  animation: rise 360ms var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 60ms);
-}
-.moment-icon {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-}
-.moment-icon--right {
-  background: var(--good-soft);
-  color: var(--good);
-}
-.moment-icon--missed {
-  background: var(--bad-soft);
-  color: var(--bad);
-}
-.moment-text {
-  display: grid;
-  min-width: 0;
+  animation: rise var(--t-move) var(--spring) backwards;
+  animation-delay: calc(var(--i, 0) * 50ms);
 }
 .moment-title {
-  font-weight: 700;
+  color: var(--text-strong);
 }
-.moment-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+.moment-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
 }
-.moment-outcome {
-  color: var(--muted);
-  font-size: var(--fs-sm);
+.moment-mark--right {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
 }
-.moment-stars {
-  color: var(--star);
-  font-size: 18px;
-  letter-spacing: 2px;
+.moment-mark--missed {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+.moment .link {
+  flex: none;
+  padding: 12px 0 12px 4px;
+  font: var(--text-caption);
+  font-weight: 500;
   white-space: nowrap;
 }
-.moment-stars-empty {
-  color: var(--muted);
-}
-.moment-again {
-  justify-self: start;
-  font-size: var(--fs-sm);
+.recap-quiet {
+  margin: 0;
+  padding: 20px 16px;
+  text-align: center;
 }
 
 .recap-actions {
@@ -103,33 +75,25 @@
   display: grid;
   gap: 12px;
   margin-top: 16px;
-  padding: 16px 0 8px;
-  background: linear-gradient(to top, var(--bg) 75%, transparent);
+  padding: 16px 0 calc(8px + var(--safe-bottom));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
 }
 
 .recap-empty {
   display: grid;
   justify-items: center;
   gap: 12px;
-  padding-top: 12vh;
+  padding-top: 18vh;
   text-align: center;
 }
 .recap-empty h1 {
-  font-size: var(--fs-xl);
+  font: var(--text-title);
 }
 .recap-empty p {
   margin: 0 0 12px;
 }
 
-@keyframes rise {
-  from {
-    transform: translateY(10px);
-    opacity: 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .recap-count,
   .moment {
     animation: none;
   }

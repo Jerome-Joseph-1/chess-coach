@@ -4,20 +4,25 @@ import { holds } from './moments';
 export const DEPTHS: Depth[] = [1, 2, 3, 4, 5];
 
 export const DEPTH_NAMES: Record<Depth, string> = {
-  1: 'Spot it',
-  2: 'Find it',
-  3: 'Solve it',
-  4: 'Hold it',
-  5: 'Finish it',
+  1: 'Notice',
+  2: 'Point',
+  3: 'Play',
+  4: 'Follow through',
+  5: 'Finish',
 };
 
 export const DEPTH_BLURBS: Record<Depth, string> = {
-  1: 'The game pauses and asks one thing: is there anything here?',
-  2: 'Now you point to where it is on the board.',
-  3: 'Now you play the move yourself.',
-  4: 'Play the move, then keep finding the follow-ups that hold it together.',
-  5: 'Finish the job: play the idea all the way through.',
+  1: 'Tell us if something important is going on',
+  2: 'Tap the piece that matters',
+  3: 'Find the best move and play it',
+  4: 'Play the next move too',
+  5: "Play it out until it's settled",
 };
+
+/** How a depth is shown to the player, e.g. "Stage 3 of 5: Play". */
+export function stageLine(depth: Depth): string {
+  return `Stage ${depth} of ${DEPTHS.length}: ${DEPTH_NAMES[depth]}`;
+}
 
 export const WINDOW_SIZE = 20;
 export const MOVE_UP_AT = 15;

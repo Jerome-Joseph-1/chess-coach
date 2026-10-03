@@ -32,12 +32,11 @@ export function InstallHint() {
     setVisible(false);
   };
   return (
-    <aside class="card install-hint">
-      <p>
-        Install: tap <ShareGlyph /> Share, then Add to Home Screen
-      </p>
+    <aside class="install-hint">
+      <ShareGlyph />
+      <p>Add to your Home Screen: tap Share, then Add to Home Screen.</p>
       <button type="button" class="install-close" aria-label="Dismiss" onClick={dismiss}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
           <path d="M6 6l12 12M18 6 6 18" />
         </svg>
       </button>

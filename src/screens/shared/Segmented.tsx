@@ -7,9 +7,12 @@ export interface SegmentedProps<T extends string | number> {
   onChange: (value: T) => void;
 }
 
+/** A pill of options with one selected; the thumb slides to the chosen one. */
 export function Segmented<T extends string | number>({ label, options, value, onChange }: SegmentedProps<T>) {
+  const selected = Math.max(0, options.findIndex((o) => o.value === value));
   return (
-    <div class="segmented" role="group" aria-label={label}>
+    <div class="segmented" role="group" aria-label={label} style={{ '--n': options.length, '--i': selected }}>
+      <span class="segmented-thumb" aria-hidden="true" />
       {options.map((o) => (
         <button key={o.value} type="button" aria-pressed={o.value === value} onClick={() => onChange(o.value)}>
           {o.label}

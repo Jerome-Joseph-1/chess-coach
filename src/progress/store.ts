@@ -16,7 +16,7 @@ import {
   type StoredSettings,
 } from './model';
 import { dueItems, updateReviews } from './srs';
-import { setStats, type SetStats } from './stats';
+import { setStats, weekStats, type SetStats, type WeekStats } from './stats';
 import { KEYS, isRecord, migrate, readJson, removeKey, writeJson } from './storage';
 
 export type { StoredSettings } from './model';
@@ -131,6 +131,10 @@ export function dueReviews(opening: OpeningId, level: Level, now: number): Revie
 export function getSetStats(opening: OpeningId, level: Level): SetStats {
   const p = state();
   return setStats(p.moments, p.games, opening, level);
+}
+
+export function getWeekStats(now: number): WeekStats {
+  return weekStats(state().moments, now);
 }
 
 export function getActiveDays(): Set<string> {

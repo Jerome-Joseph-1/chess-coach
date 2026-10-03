@@ -1,23 +1,23 @@
 import { useRef, useState } from 'preact/hooks';
 import type { Depth, Settings as SettingsData } from '../content/types';
 import { dayKey } from '../progress/days';
-import { DEPTHS, DEPTH_BLURBS, DEPTH_NAMES } from '../progress/depth';
+import { DEPTHS, DEPTH_BLURBS, stageLine } from '../progress/depth';
 import { exportProgress, getSettings, importProgress, resetProgress, saveSettings, type StoredSettings } from '../progress/store';
 import { Button } from '../ui/Button';
-import { TabBar } from '../ui/TabBar';
 import { downloadJson } from './shared/download';
+import { Back, Chevron } from './shared/icons';
 import { Segmented } from './shared/Segmented';
 import './shared/screen.css';
 import './settings.css';
 
-type DepthChoice = 'auto' | Depth;
+type StageChoice = 'auto' | Depth;
 
 const THEME_OPTIONS: { value: SettingsData['theme']; label: string }[] = [
   { value: 'system', label: 'System' },
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
 ];
-const DEPTH_OPTIONS: { value: DepthChoice; label: string }[] = [
+const STAGE_OPTIONS: { value: StageChoice; label: string }[] = [
   { value: 'auto', label: 'Auto' },
   ...DEPTHS.map((value) => ({ value, label: String(value) })),
 ];
@@ -27,20 +27,20 @@ function applyTheme(theme: SettingsData['theme']): void {
   else document.documentElement.dataset.theme = theme;
 }
 
-function depthHint(choice: DepthChoice): string {
-  if (choice === 'auto') return 'Auto moves you up a step when you get things right, and back down if it gets tough.';
-  return `Step ${choice} · ${DEPTH_NAMES[choice]}: ${DEPTH_BLURBS[choice]}`;
+function stageHint(choice: StageChoice): string {
+  if (choice === 'auto') return 'Auto moves you up a stage when you play it right, and back down if it gets hard.';
+  return `${stageLine(choice)}. ${DEPTH_BLURBS[choice]}.`;
 }
 
-function Toggle({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (on: boolean) => void }) {
+function Switch({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (on: boolean) => void }) {
   return (
-    <button type="button" role="switch" aria-checked={checked} class="toggle" onClick={() => onChange(!checked)}>
-      <span class="toggle-text">
-        <span class="toggle-label">{label}</span>
-        <span class="toggle-hint">{hint}</span>
+    <button type="button" role="switch" aria-checked={checked} class="row switch-row" onClick={() => onChange(!checked)}>
+      <span class="row-main">
+        <span>{label}</span>
+        <span class="row-sub">{hint}</span>
       </span>
-      <span class="toggle-track" aria-hidden="true">
-        <span class="toggle-knob" />
+      <span class="switch" aria-hidden="true">
+        <span class="switch-knob" />
       </span>
     </button>
   );
@@ -50,13 +50,15 @@ function ResetConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
   return (
     <div class="confirm" role="alertdialog" aria-labelledby="reset-title">
       <h3 id="reset-title">Erase all progress on this device?</h3>
-      <p class="muted">Your games, steps and reviews are cleared. Settings stay. This cannot be undone.</p>
-      <Button variant="secondary" onClick={onCancel}>
-        Keep my progress
-      </Button>
-      <Button variant="secondary" class="danger" onClick={onConfirm}>
-        Erase progress
-      </Button>
+      <p class="muted">Your games, stages and reviews are cleared. Settings stay. This cannot be undone.</p>
+      <div class="confirm-actions">
+        <Button variant="secondary" onClick={onCancel}>
+          Keep my progress
+        </Button>
+        <Button variant="secondary" class="danger" onClick={onConfirm}>
+          Erase progress
+        </Button>
+      </div>
     </div>
   );
 }
@@ -103,59 +105,98 @@ export function Settings() {
     setStatus('Progress erased.');
   };
 
-  const depthChoice: DepthChoice = settings.depthOverride ?? 'auto';
+  const stageChoice: StageChoice = settings.depthOverride ?? 'auto';
 
   return (
-    <main class="screen screen--tabs">
+    <main class="screen">
+      <a class="screen-back" href="#/">
+        <Back /> Today
+      </a>
       <h1 class="screen-title">Settings</h1>
-      <div class="stack">
-        <section class="card settings-group" aria-labelledby="look-title">
-          <h2 id="look-title">Look and feel</h2>
-          <Segmented label="Theme" options={THEME_OPTIONS} value={settings.theme} onChange={chooseTheme} />
-          <Toggle label="Sound" hint="Chimes when you get things right" checked={settings.sound} onChange={(sound) => update({ sound })} />
-          <Toggle label="Haptics" hint="A small tap on your phone" checked={settings.haptics} onChange={(haptics) => update({ haptics })} />
-          <Toggle label="Quick mode" hint="Shorter pauses, less reading" checked={settings.quick} onChange={(quick) => update({ quick })} />
-        </section>
 
-        <section class="card settings-group" aria-labelledby="practice-title">
-          <h2 id="practice-title">Practice step</h2>
-          <Segmented
-            label="Practice step"
-            options={DEPTH_OPTIONS}
-            value={depthChoice}
-            onChange={(choice) => update({ depthOverride: choice === 'auto' ? undefined : choice })}
-          />
-          <p class="settings-hint">{depthHint(depthChoice)}</p>
-        </section>
+      <section aria-labelledby="look-title">
+        <h2 id="look-title" class="section-label">
+          Look and feel
+        </h2>
+        <ul class="card list">
+          <li class="row row-stack">
+            <span>Theme</span>
+            <Segmented label="Theme" options={THEME_OPTIONS} value={settings.theme} onChange={chooseTheme} />
+          </li>
+          <li>
+            <Switch label="Sound" hint="Chimes when you get things right" checked={settings.sound} onChange={(sound) => update({ sound })} />
+          </li>
+          <li>
+            <Switch label="Haptics" hint="A small tap on your phone" checked={settings.haptics} onChange={(haptics) => update({ haptics })} />
+          </li>
+          <li>
+            <Switch label="Quick mode" hint="Shorter pauses, less reading" checked={settings.quick} onChange={(quick) => update({ quick })} />
+          </li>
+        </ul>
+      </section>
 
-        <section class="card settings-group" aria-labelledby="data-title">
-          <h2 id="data-title">Your data</h2>
-          <p class="settings-hint">Everything lives on this device. Export a copy to keep it safe or move it to another phone.</p>
-          <Button variant="secondary" onClick={exportData}>
-            Export progress
-          </Button>
-          <Button variant="secondary" onClick={() => fileInput.current?.click()}>
-            Import progress
-          </Button>
-          <input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={importFile} />
-          {confirming ? (
-            <ResetConfirm onCancel={() => setConfirming(false)} onConfirm={erase} />
-          ) : (
-            <Button variant="secondary" class="danger" onClick={() => setConfirming(true)}>
-              Reset progress
-            </Button>
-          )}
-          <p class="settings-status" role="status">
-            {status}
-          </p>
-        </section>
+      <section aria-labelledby="stage-title">
+        <h2 id="stage-title" class="section-label">
+          Practice
+        </h2>
+        <div class="card">
+          <div class="row row-stack">
+            <span>Stage</span>
+            <Segmented
+              label="Stage"
+              options={STAGE_OPTIONS}
+              value={stageChoice}
+              onChange={(choice) => update({ depthOverride: choice === 'auto' ? undefined : choice })}
+            />
+            <span class="row-sub">{stageHint(stageChoice)}</span>
+          </div>
+        </div>
+      </section>
 
-        <a class="card settings-link" href="#/about">
-          About and licences
-          <span aria-hidden="true">›</span>
-        </a>
-      </div>
-      <TabBar current="settings" />
+      <section aria-labelledby="data-title">
+        <h2 id="data-title" class="section-label">
+          Your data
+        </h2>
+        <ul class="card list">
+          <li>
+            <button type="button" class="row" onClick={exportData}>
+              <span class="row-main">
+                <span>Export progress</span>
+                <span class="row-sub">Save a copy as a file</span>
+              </span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="row" onClick={() => fileInput.current?.click()}>
+              <span class="row-main">
+                <span>Import progress</span>
+                <span class="row-sub">Restore a copy from a file</span>
+              </span>
+            </button>
+            <input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={importFile} />
+          </li>
+          <li>
+            {confirming ? (
+              <ResetConfirm onCancel={() => setConfirming(false)} onConfirm={erase} />
+            ) : (
+              <button type="button" class="row row-danger" onClick={() => setConfirming(true)}>
+                <span class="row-main">
+                  <span>Reset progress</span>
+                  <span class="row-sub">Erase games, stages and reviews on this device</span>
+                </span>
+              </button>
+            )}
+          </li>
+        </ul>
+        <p class="settings-status" role="status">
+          {status}
+        </p>
+      </section>
+
+      <a class="card row about-row" href="#/about">
+        <span class="row-main">About and licences</span>
+        <Chevron />
+      </a>
     </main>
   );
 }

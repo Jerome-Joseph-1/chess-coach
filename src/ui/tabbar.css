@@ -1,35 +1,40 @@
+/* A floating layer, so it is the one thing on screen that casts a shadow. */
 .tabbar {
   position: fixed;
-  inset: auto 0 0;
+  right: 16px;
+  bottom: calc(16px + var(--safe-bottom));
+  left: 16px;
   z-index: 10;
   display: flex;
-  padding-bottom: var(--safe-bottom);
-  background: var(--surface);
-  border-top: 1px solid var(--line);
+  gap: 4px;
+  max-width: 528px;
+  margin: 0 auto;
+  padding: 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 .tabbar-item {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  height: 49px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  gap: 2px;
+  height: 50px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  font: var(--text-label);
   text-decoration: none;
   touch-action: manipulation;
-  transition: transform var(--t-tap) var(--ease-out), color var(--t-tap);
+  transition: transform var(--t-quick) var(--spring);
 }
 .tabbar-item:active {
-  transform: scale(0.92);
+  transform: scale(0.96);
 }
 .tabbar-item[aria-current='page'] {
-  color: var(--accent);
-}
-.tabbar-item:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: -3px;
+  background: var(--surface-3);
+  color: var(--text-strong);
 }

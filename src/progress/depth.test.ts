@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Depth, MomentResult } from '../content/types';
-import { WINDOW_SIZE, applyMoment, newDepthState, type DepthState } from './depth';
+import { DEPTHS, DEPTH_BLURBS, DEPTH_NAMES, WINDOW_SIZE, applyMoment, newDepthState, stageLine, type DepthState } from './depth';
 import { moment, wrong } from './testkit';
 
 function pause(i: number, held: boolean, depth: Depth = 1): MomentResult {
@@ -71,5 +71,22 @@ describe('depth rules', () => {
     expect(applyMoment(state, moment({ type: 'nothing' })).state).toBe(state);
     expect(applyMoment(state, moment({ type: 'silent' })).state).toBe(state);
     expect(applyMoment(state, moment({ depth: 2 })).state).toBe(state);
+  });
+});
+
+describe('stage wording', () => {
+  it('names the five stages in plain language', () => {
+    expect(DEPTHS.map((d) => `${DEPTH_NAMES[d]}: ${DEPTH_BLURBS[d]}`)).toEqual([
+      'Notice: Tell us if something important is going on',
+      'Point: Tap the piece that matters',
+      'Play: Find the best move and play it',
+      'Follow through: Play the next move too',
+      "Finish: Play it out until it's settled",
+    ]);
+  });
+
+  it('writes the stage line', () => {
+    expect(stageLine(3)).toBe('Stage 3 of 5: Play');
+    expect(stageLine(4)).toBe('Stage 4 of 5: Follow through');
   });
 });

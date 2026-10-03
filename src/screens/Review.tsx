@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Side } from '../content/types';
 import { Button } from '../ui/Button';
 import { downloadJson } from './shared/download';
+import { Back } from './shared/icons';
 import { KIND_LABELS } from './shared/labels';
 import {
   exportReviews,
@@ -138,7 +139,7 @@ export function Review() {
   return (
     <main class="screen review">
       <a class="screen-back" href="#/">
-        ‹ Home
+        <Back /> Today
       </a>
       <h1 class="screen-title">Pilot review</h1>
       {failed && <p class="muted">The content could not be loaded.</p>}
@@ -153,13 +154,11 @@ export function Review() {
             <p class="review-count" role="status">
               {reviewed} / {items.length} reviewed
             </p>
-            <div class="progress-track" aria-hidden="true">
-              <div class="progress-fill" style={{ width: `${items.length ? (100 * reviewed) / items.length : 0}%` }} />
+            <div class="meter" aria-hidden="true">
+              <div class="meter-fill" style={{ '--r': items.length ? reviewed / items.length : 0 }} />
             </div>
             <div class="review-actions">
-              <Button variant="secondary" onClick={jumpToNext}>
-                Next to review
-              </Button>
+              <Button onClick={jumpToNext}>Next to review</Button>
               <Button variant="secondary" onClick={() => downloadJson('chess-coach-reviews.json', exportReviews(items, notes))}>
                 Export reviews
               </Button>

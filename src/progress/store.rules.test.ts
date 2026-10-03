@@ -115,3 +115,17 @@ describe('reviews through the store', () => {
     expect(due.map((r) => r.ply)).toEqual([1, 3, 7]);
   });
 });
+
+describe('weekly stats through the store', () => {
+  it('counts what was recorded in the last seven days and keeps it after a reload', async () => {
+    const store = await openStore();
+    store.recordMoment(moment({ ply: 1, kinds: ['win'], at: noon(9) }));
+    store.recordMoment(wrong({ ply: 3, kinds: ['trap'], at: noon(10) }));
+    store.recordMoment(moment({ ply: 5, kinds: ['win'], at: noon(0) }));
+    expect(store.getWeekStats(noon(10)).total).toEqual({ right: 1, total: 2 });
+
+    const reloaded = await openStore();
+    expect(reloaded.getWeekStats(noon(10)).parts.trap).toEqual({ right: 0, total: 1 });
+    expect(reloaded.getWeekStats(noon(30)).total).toEqual({ right: 0, total: 0 });
+  });
+});

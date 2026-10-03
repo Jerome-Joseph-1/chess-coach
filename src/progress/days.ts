@@ -10,6 +10,12 @@ export function dayKey(ms: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** Local midnight that starts the day `daysAgo` days before `now`. */
+export function startOfDay(now: number, daysAgo = 0): number {
+  const d = new Date(now);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysAgo).getTime();
+}
+
 function dayNumber(key: string): number {
   const [y, m, d] = key.split('-').map(Number);
   return Date.UTC(y, m - 1, d) / DAY_MS;

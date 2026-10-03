@@ -1,3 +1,4 @@
+import { Back, Chevron } from './shared/icons';
 import './shared/screen.css';
 import './about.css';
 
@@ -18,13 +19,13 @@ const CREDITS: Credit[] = [
   {
     name: 'Maia-2',
     licence: 'MIT',
-    note: 'Predicts human moves at each rating. Used offline to generate the content, not shipped in the app.',
+    note: 'Predicts the moves players make at each rating. Used offline to prepare the games, not part of the app.',
     href: 'https://github.com/CSSLab/maia2',
   },
   {
     name: 'Stockfish',
     licence: 'GPL-3.0',
-    note: 'Chess engine used offline to analyse positions. Not shipped in the app.',
+    note: 'Chess engine that checked the positions. Used offline to prepare the games, not part of the app.',
     href: 'https://stockfishchess.org',
   },
   {
@@ -36,8 +37,14 @@ const CREDITS: Credit[] = [
   {
     name: 'cm-chessboard',
     licence: 'MIT',
-    note: 'The board. Its piece set is by Colin M.L. Burnett (Wikimedia Commons), licensed CC BY-SA 3.0.',
+    note: 'The board.',
     href: 'https://github.com/shaack/cm-chessboard',
+  },
+  {
+    name: 'Chess pieces',
+    licence: 'CC BY-SA 3.0',
+    note: 'The standard piece set from Wikimedia Commons by Cburnett and Rfc1394, adapted for cm-chessboard by shaack.',
+    href: 'https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces/Standard',
   },
   {
     name: 'canvas-confetti',
@@ -57,29 +64,30 @@ export function About() {
   return (
     <main class="screen">
       <a class="screen-back" href="#/settings">
-        ‹ Settings
+        <Back /> Settings
       </a>
       <h1 class="screen-title">About</h1>
       <p class="about-intro">
-        Chess Coach is a small trainer for the openings you actually play. It replays realistic games at your level and pauses at the moments that
-        matter, asking a little more of you each time you get it right. Everything stays on your device: no accounts, no tracking.
+        Chess Coach replays real games from the openings you play, at the rating of the opponents you pick, and stops at the positions that matter.
+        Everything stays on your phone: no account, no tracking.
       </p>
-      <h2 class="about-heading">Data and licences</h2>
-      <ul class="credits">
+      <h2 class="section-label">Data and licences</h2>
+      <ul class="card list credits">
         {CREDITS.map((c) => (
-          <li key={c.name} class="card credit">
+          <li key={c.name} class="credit">
             <div class="credit-head">
-              <a href={c.href} target="_blank" rel="noopener noreferrer">
+              <a class="link" href={c.href} target="_blank" rel="noopener noreferrer">
                 {c.name}
               </a>
-              <span class="chip">{c.licence}</span>
+              <span class="tag">{c.licence}</span>
             </div>
             <p>{c.note}</p>
           </li>
         ))}
       </ul>
-      <a class="link-button about-pilot" href="#/review">
-        Pilot review mode
+      <a class="card row about-pilot" href="#/review">
+        <span class="row-main">Pilot review</span>
+        <Chevron />
       </a>
     </main>
   );

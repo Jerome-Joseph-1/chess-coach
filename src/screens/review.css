@@ -3,20 +3,21 @@
   top: calc(-1 * var(--safe-top));
   z-index: 5;
   display: grid;
-  gap: 8px;
+  gap: 10px;
   margin: 0 -16px 16px;
-  padding: calc(10px + var(--safe-top)) 16px 10px;
+  padding: calc(10px + var(--safe-top)) 16px 12px;
   background: var(--bg);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hairline);
 }
 .review-count {
   margin: 0;
-  font: 700 var(--fs-lg) / 1.2 var(--font-display);
+  color: var(--text-strong);
+  font: var(--text-headline);
 }
 .review-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 8px;
 }
 
 .pilot-card {
@@ -25,12 +26,13 @@
   padding: 12px;
 }
 .pilot-card h2 {
-  font-size: var(--fs-md);
+  font: var(--text-callout);
+  font-weight: 600;
 }
 .pilot-board {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-row);
   background: var(--surface-2);
   overflow: hidden;
 }
@@ -51,10 +53,10 @@
   text-transform: capitalize;
 }
 .pilot-label--critical {
-  color: var(--bad);
+  color: var(--danger);
 }
 .pilot-label--nothing {
-  color: var(--good);
+  color: var(--success);
 }
 .pilot-facts {
   display: grid;
@@ -64,78 +66,73 @@
 }
 .pilot-facts div {
   padding: 8px 12px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-row);
   background: var(--surface-2);
 }
 .pilot-facts dt {
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  text-transform: uppercase;
+  color: var(--text-muted);
+  font: var(--text-label);
 }
 .pilot-facts dd {
   margin: 0;
-  font-weight: 700;
+  color: var(--text-strong);
+  font: var(--text-callout);
 }
 .pilot-source {
   grid-column: 1 / -1;
 }
 .pilot-source dd {
-  font-weight: 600;
-  font-size: var(--fs-sm);
+  font: var(--text-caption);
 }
 .pilot-line {
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
+  color: var(--text);
+  font: var(--text-code);
   overflow-wrap: anywhere;
 }
 .pilot-line strong {
-  font-family: var(--font);
+  color: var(--text-strong);
+  font: var(--text-callout);
 }
 .pilot-id {
   margin: 0;
-  font-size: var(--fs-xs);
+  font: var(--text-label);
 }
 
 .pilot-votes {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 8px;
 }
 .pilot-vote {
   min-height: 52px;
   border: 0;
-  border-radius: var(--r-md);
-  background: var(--surface);
-  box-shadow: 0 0 0 2px var(--line) inset, 0 4px 0 var(--line);
-  font-size: 26px;
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  font-size: 24px;
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform var(--t-tap) var(--ease-out);
+  transition: transform var(--t-quick) var(--spring);
 }
 .pilot-vote:active {
-  transform: translateY(3px);
+  transform: scale(0.97);
 }
 .pilot-vote--up[aria-pressed='true'] {
-  background: var(--good-soft);
-  box-shadow: 0 0 0 3px var(--good) inset, 0 4px 0 var(--good-lip);
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--success);
 }
 .pilot-vote--down[aria-pressed='true'] {
-  background: var(--bad-soft);
-  box-shadow: 0 0 0 3px var(--bad) inset, 0 4px 0 var(--bad);
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--danger);
 }
 .pilot-note {
   width: 100%;
   padding: 10px 12px;
-  border: 2px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--bg);
-  color: var(--ink);
-  font: inherit;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+  color: var(--text-strong);
+  font: var(--text-body);
   resize: vertical;
-}
-.pilot-note:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 1px;
 }

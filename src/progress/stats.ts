@@ -1,4 +1,5 @@
 import type { Kind, Level, MomentResult, OpeningId } from '../content/types';
+import { startOfDay } from './days';
 import { isRight } from './moments';
 import type { PlayedGame } from './model';
 
@@ -47,6 +48,35 @@ export function setStats(moments: MomentResult[], games: PlayedGame[], opening: 
     }
     tally(stats.found, right);
     for (const kind of m.kinds) tally(stats.byKind[kind], right);
+  }
+  return stats;
+}
+
+export interface WeekStats {
+  total: RateCount;
+  /** Every counted moment sits in exactly one part, so the parts add up to the total. */
+  parts: Record<StatKind, RateCount>;
+}
+
+const WEEK_DAYS = 7;
+
+// A moment with several kinds belongs to its first one, so the weekly bar has no overlaps.
+function partOf(m: MomentResult): StatKind | null {
+  return m.type === 'nothing' ? 'nothing' : (m.kinds[0] ?? null);
+}
+
+/** The last 7 days, today included. Replays are left out like in setStats. */
+export function weekStats(moments: MomentResult[], now: number): WeekStats {
+  const since = startOfDay(now, WEEK_DAYS - 1);
+  const stats: WeekStats = {
+    total: emptyCount(),
+    parts: { win: emptyCount(), defend: emptyCount(), trap: emptyCount(), nothing: emptyCount() },
+  };
+  for (const m of moments) {
+    const part = partOf(m);
+    if (m.review || m.at < since || !part) continue;
+    tally(stats.total, isRight(m));
+    tally(stats.parts[part], isRight(m));
   }
   return stats;
 }
