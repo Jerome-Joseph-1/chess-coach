@@ -1,4 +1,5 @@
 import type { Depth, Game, Kind, Level, StepOutcome, Turn } from '../content/types';
+import { holdShare } from '../game/grading';
 import { material } from './material';
 import { flipTurn, moveBefore, playLine, sanOf, type OpponentMove, type PlayedMove } from './position';
 
@@ -56,7 +57,8 @@ export function opponentName(game: Game): string {
 
 /** Praise for the right move, or how few players find it when most miss it. */
 export function findNote(turn: Turn, level: Level): string {
-  return turn.findShare < 0.5 ? `Only ${percent(turn.findShare)}% of players rated ${level} find this.` : COPY.right;
+  const share = holdShare(turn);
+  return share > 0 && share < 0.5 ? `Only ${percent(share)}% of players rated ${level} find this.` : COPY.right;
 }
 
 export function guidedTitle(san: string): string {

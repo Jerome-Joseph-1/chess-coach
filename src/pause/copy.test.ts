@@ -128,10 +128,9 @@ describe('gainPhrase', () => {
 });
 
 describe('findNote', () => {
-  it('shares how few players find a move that most miss, from the turn\'s own find share', () => {
-    expect(italian1.turns[1].findShare).toBe(0.455);
-    expect(findNote(italian1.turns[1], 1400)).toBe('Only 46% of players rated 1400 find this.');
-    expect(findNote(italian1.turns[7], 1400)).toBe('Only 14% of players rated 1400 find this.');
+  it('shares how few players at this level pick a move that holds', () => {
+    expect(findNote(italian1.turns[1], 1400)).toBe('Only 44% of players rated 1400 find this.');
+    expect(findNote(italian1.turns[7], 1400)).toBe('Only 12% of players rated 1400 find this.');
   });
 
   it('just says right when most players find the move', () => {

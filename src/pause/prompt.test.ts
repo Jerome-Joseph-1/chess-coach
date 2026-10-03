@@ -58,8 +58,10 @@ describe('the solve step', () => {
     });
   });
 
-  it('tells how few players find a rare move, from the turn\'s find share', () => {
-    const rare = { ...italian1, turns: italian1.turns.map((t, i) => (i === TURN ? { ...t, findShare: 0.18 } : t)) };
+  it('tells how few players at this level find a rare move', () => {
+    const scripted = scriptedUci(italian1, TURN);
+    const human = [{ uci: scripted, share: 0.18 }];
+    const rare = { ...italian1, turns: italian1.turns.map((t, i) => (i === TURN ? { ...t, human } : t)) };
     const ctx: FlowContext = { ...ctxAt(3), game: rare };
     const play = [...toSolve, move(scriptedUci(rare, TURN))];
     const state = play.reduce((s, e) => flowReducer(ctx, s, e), initialState(ctx));
