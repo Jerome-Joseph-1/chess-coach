@@ -1,16 +1,18 @@
 import { useState } from 'preact/hooks';
 import { OPENINGS } from '../content/catalog';
-import type { Level, OpeningId } from '../content/types';
-import { dueReviews, getDepth, getLastGame, getSettings, getWeekStats, saveSettings, welcomeBack } from '../progress/store';
+import type { OpeningId } from '../content/types';
+import { dueReviews, getDepth, getLastGame, getSettings, getWeekStats, welcomeBack } from '../progress/store';
 import { InstallHint } from '../ui/InstallHint';
 import { TabBar } from '../ui/TabBar';
 import { OpeningCard } from './home/OpeningCard';
-import { OpeningList } from './home/OpeningList';
 import { ReviewsRow } from './home/ReviewsRow';
-import { useNextGame } from './home/useNextGame';
-import { WeekCard } from './home/WeekCard';
+import { useSetStatus } from './home/useSetStatus';
+import { WeekLine } from './home/WeekLine';
+import { Segmented } from './shared/Segmented';
 import './shared/screen.css';
 import './home.css';
+
+const OPENING_OPTIONS = OPENINGS.map((o) => ({ value: o.id, label: o.name }));
 
 /** The opening you played last, or the first one. */
 function initialOpening(): OpeningId {
@@ -18,21 +20,12 @@ function initialOpening(): OpeningId {
 }
 
 export function Home() {
-  const [settings, setSettings] = useState(getSettings);
   const [featured, setFeatured] = useState(initialOpening);
-  const level = settings.levels[featured];
-  const game = useNextGame(featured, level);
+  const { levels } = getSettings();
+  const level = levels[featured];
+  const status = useSetStatus(featured, level);
   const now = Date.now();
-  const due = OPENINGS.flatMap((o) => dueReviews(o.id, settings.levels[o.id], now));
-
-  const chooseLevel = (opening: OpeningId, next: Level) => {
-    saveSettings({ ...settings, levels: { ...settings.levels, [opening]: next } });
-    setSettings(getSettings());
-  };
-  const choose = (opening: OpeningId) => {
-    setFeatured(opening);
-    scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-  };
+  const due = OPENINGS.flatMap((o) => dueReviews(o.id, levels[o.id], now));
 
   return (
     <main class="screen screen--tabs today">
@@ -49,10 +42,10 @@ export function Home() {
         </p>
       )}
       <div class="stack">
-        <OpeningCard opening={featured} level={level} stage={getDepth(featured, level)} quick={settings.quick} game={game} />
+        <OpeningCard opening={featured} level={level} stage={getDepth(featured, level)} status={status} />
+        <Segmented label="Opening" options={OPENING_OPTIONS} value={featured} onChange={setFeatured} />
         <ReviewsRow due={due} />
-        <WeekCard stats={getWeekStats(now)} />
-        <OpeningList levels={settings.levels} featured={featured} onSelect={choose} onLevel={chooseLevel} />
+        <WeekLine total={getWeekStats(now).total} />
       </div>
       <TabBar current="today" />
     </main>

@@ -56,55 +56,48 @@ async function seed(page: Page, progress: unknown) {
 }
 
 test.describe('Today', () => {
-  test('shows the next game of the opening card', async ({ page }) => {
+  test('shows the opening to play with one Play button', async ({ page }) => {
     await page.goto('./');
     await expect(page.getByRole('heading', { name: 'Chess Coach.' })).toBeVisible();
     const card = page.getByRole('region', { name: 'Italian Game' });
     await expect(card.getByText('You play White · Opponents rated 1400')).toBeVisible();
     await expect(card.getByText('Stage 1 of 5: Notice the moment')).toBeVisible();
-    await expect(card.getByText('Next game')).toBeVisible();
-    await expect(card.getByText('4 key positions')).toBeVisible();
-    await expect(card.getByText('about 2 min')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Play next game' })).toBeEnabled();
+    await expect(card.getByRole('button', { name: 'Play', exact: true })).toBeEnabled();
+    await expect(page.locator('main .btn-primary')).toHaveCount(1);
+    await expect(page.getByText('Download for offline')).toHaveCount(0);
+    await expect(page.getByRole('group', { name: /level/ })).toHaveCount(0);
   });
 
-  test('says "Coming soon" for an opening without games', async ({ page }) => {
+  test('switches the card between the openings', async ({ page }) => {
     await page.goto('./');
-    await page.getByRole('button', { name: /Caro-Kann Defense/ }).click();
-    await expect(page.getByRole('region', { name: 'Caro-Kann Defense' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Coming soon' })).toBeDisabled();
+    const switcher = page.getByRole('group', { name: 'Opening' });
+    await expect(switcher.getByRole('button', { name: 'Italian' })).toHaveAttribute('aria-pressed', 'true');
+
+    await switcher.getByRole('button', { name: 'Caro-Kann' }).click();
+    const card = page.getByRole('region', { name: 'Caro-Kann Defense' });
+    await expect(card.getByText('You play Black · Opponents rated 1400')).toBeVisible();
+    await expect(card.getByRole('button', { name: 'Coming soon' })).toBeDisabled();
+
+    await switcher.getByRole('button', { name: 'Italian' }).click();
+    await expect(page.getByRole('region', { name: 'Italian Game' }).getByRole('button', { name: 'Play', exact: true })).toBeEnabled();
   });
 
   test('starts a game from the card', async ({ page }) => {
     await page.goto('./');
-    await page.getByRole('button', { name: 'Play next game' }).click();
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
     await expect(page).toHaveURL(/#\/play\/italian\/1400$/);
   });
 
-  test('has no stats before a game and shows the week after one', async ({ page }) => {
+  test('has no progress before a game and one line after one', async ({ page }) => {
     await page.goto('./');
-    await expect(page.getByText('Play a game to see your stats here.')).toBeVisible();
+    await expect(page.getByText('Play a game to see your progress here.')).toBeVisible();
 
     const moments = [moment(3, true), moment(7, true), moment(15, false, { kinds: ['trap'] }), moment(19, true, { type: 'nothing', kinds: [] })];
     await seed(page, savedProgress(moments));
     await page.reload();
-    const week = page.getByRole('region', { name: 'This week' });
-    await expect(week.getByText('3 of 4')).toBeVisible();
-    await expect(week.getByText('key positions handled well this week')).toBeVisible();
-    await expect(week.getByText('Chances to win 2/2')).toBeVisible();
-    await expect(week.getByText('Traps 0/1')).toBeVisible();
-    await expect(week.getByText('Quiet 1/1')).toBeVisible();
-  });
-
-  test('lists the openings with how each one is going', async ({ page }) => {
-    await seed(page, savedProgress([moment(3, true), moment(7, true), moment(15, false)]));
-    await page.goto('./');
-    const italian = page.getByRole('button', { name: /^Italian Game/ });
-    await expect(italian.getByText('You play White · 1 game')).toBeVisible();
-    await expect(italian.getByText('67% right')).toBeVisible();
-    const caroKann = page.getByRole('button', { name: /^Caro-Kann Defense/ });
-    await expect(caroKann.getByText('You play Black', { exact: true })).toBeVisible();
-    await expect(caroKann.getByText('Not started')).toBeVisible();
+    await expect(page.getByText('3 of 4 key positions right this week')).toBeVisible();
+    await expect(page.getByText(/Chances to win/)).toHaveCount(0);
+    await expect(page.getByText('Not started')).toHaveCount(0);
   });
 
   test('offers the positions that are due for review', async ({ page }) => {
@@ -130,15 +123,6 @@ test.describe('Today', () => {
     await expect(hint).toBeHidden();
     await page.reload();
     await expect(hint).toBeHidden();
-  });
-
-  test('the chosen level is remembered', async ({ page }) => {
-    await page.goto('./');
-    const picker = () => page.getByRole('group', { name: 'Italian Game level' });
-    await picker().getByRole('button', { name: '1700' }).click();
-    await expect(page.getByText('You play White · Opponents rated 1700')).toBeVisible();
-    await page.reload();
-    await expect(picker().getByRole('button', { name: '1700' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('the tab bar moves between Today, Progress and Settings', async ({ page }) => {
@@ -171,6 +155,22 @@ test.describe('Settings', () => {
     await expect(page.getByRole('switch', { name: /Sound/ })).toHaveAttribute('aria-checked', 'false');
     await expect(page.getByRole('switch', { name: /Quick games/ })).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByRole('button', { name: '3', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('the opponent rating is chosen per opening and remembered', async ({ page }) => {
+    await page.goto('./#/settings');
+    const italian = page.getByRole('group', { name: 'Italian Game opponents' });
+    const caroKann = page.getByRole('group', { name: 'Caro-Kann Defense opponents' });
+    await expect(italian.getByRole('button', { name: '1400' })).toHaveAttribute('aria-pressed', 'true');
+    await italian.getByRole('button', { name: '1700' }).click();
+    await caroKann.getByRole('button', { name: '2000' }).click();
+
+    await page.reload();
+    await expect(italian.getByRole('button', { name: '1700' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(caroKann.getByRole('button', { name: '2000' })).toHaveAttribute('aria-pressed', 'true');
+
+    await page.goto('./');
+    await expect(page.getByText('You play White · Opponents rated 1700')).toBeVisible();
   });
 
   test('a manual stage replaces the automatic one on Today', async ({ page }) => {
@@ -228,8 +228,7 @@ test.describe('Saved progress', () => {
       await page.goto('./');
       await page.reload();
       await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-      await expect(page.getByRole('region', { name: 'This week' }).getByText('2 of 3')).toBeVisible();
-      await expect(page.getByRole('button', { name: /^Italian Game/ }).getByText('You play White · 1 game')).toBeVisible();
+      await expect(page.getByText('2 of 3 key positions right this week')).toBeVisible();
 
       await page.goto('./#/progress');
       await page.reload();
@@ -247,7 +246,7 @@ test.describe('Saved progress', () => {
     await page.getByRole('button', { name: 'Erase progress' }).click();
     await page.goto('./');
     await page.reload();
-    await expect(page.getByText('Play a game to see your stats here.')).toBeVisible();
+    await expect(page.getByText('Play a game to see your progress here.')).toBeVisible();
   });
 });
 
@@ -291,19 +290,16 @@ test.describe('Recap', () => {
     await expect(page).toHaveURL(new RegExp(`#/play/italian/1400\\?review=${GAME}:15$`));
   });
 
-  test('has one ink button, a way back and a close button', async ({ page }) => {
+  test('has one ink button and a close button', async ({ page }) => {
     await seed(page, savedProgress(keyPositions()));
     await page.goto('./#/recap');
-    await expect(page.locator('.btn-primary')).toHaveCount(1);
+    await expect(page.locator('main .btn')).toHaveCount(1);
+    await expect(page.locator('main .btn-primary')).toHaveText('Next game');
     await page.getByRole('link', { name: 'Close' }).click();
     await expect(page.getByRole('heading', { name: 'Chess Coach.' })).toBeVisible();
 
     await page.goto('./#/recap');
-    await page.getByRole('button', { name: 'Back to Today' }).click();
-    await expect(page.getByRole('heading', { name: 'Chess Coach.' })).toBeVisible();
-
-    await page.goto('./#/recap');
-    await page.getByRole('button', { name: 'Play next game' }).click();
+    await page.getByRole('button', { name: 'Next game' }).click();
     await expect(page).toHaveURL(/#\/play\/italian\/1400$/);
   });
 
@@ -395,6 +391,18 @@ test.describe('Phone layout', () => {
       expect(last).toBeLessThanOrEqual(barTop);
     });
   }
+});
+
+test.describe('Today on an iPhone 14', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('fits on one screen when nothing is due', async ({ page }) => {
+    await seed(page, savedProgress([moment(3, true), moment(7, false)]));
+    await page.goto('./');
+    await expect(page.getByText('1 of 2 key positions right this week')).toBeVisible();
+    const hidden = await page.evaluate(() => document.documentElement.scrollHeight - document.documentElement.clientHeight);
+    expect(hidden).toBeLessThanOrEqual(0);
+  });
 });
 
 test('About lists the data and licences', async ({ page }) => {

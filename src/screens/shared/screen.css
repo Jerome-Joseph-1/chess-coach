@@ -267,20 +267,6 @@ a.row:active {
   }
 }
 
-.piece-tile {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--board-dark);
-}
-/* The tile is dark behind white pieces and light behind black ones, so the piece always shows. */
-.piece-tile--b {
-  background: var(--board-light);
-}
-
 /* A quiet line with the orange dot: something is waiting for you. */
 .welcome {
   display: flex;

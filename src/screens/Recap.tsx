@@ -142,10 +142,7 @@ function RecapBody({ game, bonus }: { game: GameSummary; bonus: boolean }) {
           </ol>
         )}
         <Button size="lg" onClick={() => navigate(playPath(game.opening, game.level))}>
-          Play next game
-        </Button>
-        <Button size="lg" variant="secondary" onClick={() => navigate('/')}>
-          Back to Today
+          Next game
         </Button>
       </div>
       {unlocked && <LevelUp depth={unlocked} onClose={closeLevelUp} />}

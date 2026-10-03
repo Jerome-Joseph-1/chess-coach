@@ -7,7 +7,7 @@ export const OPENING_TITLES: Record<OpeningId, string> = {
   'caro-kann': 'Caro-Kann Defense',
 };
 
-/** What the weekly bar, legends and the Progress screen call each part. */
+/** What the Review and Progress screens call each kind of position. */
 export const STAT_LABELS: Record<StatKind, string> = {
   win: 'Chances to win',
   defend: 'Threats',
@@ -17,12 +17,6 @@ export const STAT_LABELS: Record<StatKind, string> = {
 
 export function sideLine(opening: OpeningId): string {
   return `You play ${openingById(opening).side === 'w' ? 'White' : 'Black'}`;
-}
-
-/** The side line, plus how many games you have played once you have played any. */
-export function gamesLine(opening: OpeningId, games: number): string {
-  if (games === 0) return sideLine(opening);
-  return `${sideLine(opening)} · ${games} ${games === 1 ? 'game' : 'games'}`;
 }
 
 export function ratingLine(level: Level): string {

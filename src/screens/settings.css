@@ -68,7 +68,8 @@
   color: var(--danger);
 }
 
-.settings-status {
+.settings-status,
+.settings-hint {
   margin: 8px 4px 0;
   color: var(--text-muted);
   font: var(--text-caption);

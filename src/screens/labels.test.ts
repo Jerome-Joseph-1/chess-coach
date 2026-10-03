@@ -1,17 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { STAT_LABELS, gamesLine, playPath, ratingLine, reviewPath, sideLine } from './shared/labels';
+import { STAT_LABELS, playPath, ratingLine, reviewPath, sideLine } from './shared/labels';
 
 describe('opening wording', () => {
   it('says which side you play and who you face', () => {
     expect(sideLine('italian')).toBe('You play White');
     expect(sideLine('caro-kann')).toBe('You play Black');
     expect(ratingLine(1400)).toBe('Opponents rated 1400');
-  });
-
-  it('adds the games played once there are some', () => {
-    expect(gamesLine('italian', 12)).toBe('You play White · 12 games');
-    expect(gamesLine('italian', 1)).toBe('You play White · 1 game');
-    expect(gamesLine('caro-kann', 0)).toBe('You play Black');
   });
 
   it('names the parts of the week in plain words', () => {

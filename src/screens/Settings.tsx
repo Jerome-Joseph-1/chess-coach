@@ -5,6 +5,7 @@ import { DEPTHS, DEPTH_BLURBS, stageLine } from '../progress/depth';
 import { exportProgress, getSettings, importProgress, resetProgress, saveSettings, type StoredSettings } from '../progress/store';
 import { Button } from '../ui/Button';
 import { TabBar } from '../ui/TabBar';
+import { OpponentRatings } from './settings/OpponentRatings';
 import { downloadJson } from './shared/download';
 import { Chevron } from './shared/icons';
 import { Segmented } from './shared/Segmented';
@@ -152,6 +153,8 @@ export function Settings() {
           </div>
         </div>
       </section>
+
+      <OpponentRatings levels={settings.levels} onChange={(opening, level) => update({ levels: { ...settings.levels, [opening]: level } })} />
 
       <section aria-labelledby="data-title">
         <h2 id="data-title" class="section-label">
