@@ -181,6 +181,7 @@
   cursor: pointer;
 }
 .lab-turn small {
+  text-transform: capitalize;
   color: var(--text-muted);
   font: var(--text-caption);
 }

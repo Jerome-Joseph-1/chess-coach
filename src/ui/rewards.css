@@ -80,9 +80,10 @@
   z-index: 1500;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  translate: -50% -50%;
+  width: 26px;
+  height: 26px;
+  /* Sits in the corner of the square, so the piece that just moved stays visible. */
+  translate: calc(-50% + 15px) calc(-50% - 15px);
   border-radius: 50%;
   background: var(--success);
   color: var(--bg);
@@ -92,8 +93,8 @@
     check-pop-out 240ms ease-out 900ms forwards;
 }
 .check-pop svg {
-  width: 26px;
-  height: 26px;
+  width: 16px;
+  height: 16px;
   fill: none;
   stroke: currentColor;
   stroke-width: 3;
