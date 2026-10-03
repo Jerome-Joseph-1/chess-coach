@@ -404,11 +404,25 @@ function saveText(c: Context, hit: PieceAt[], attacker: PieceAt, best: Move): { 
   if (guards(best.after) > guards(best.before) && !isLoose(best.after, mine.square)) {
     return { text: `${best.san} guards ${it}.`, ask: `Your move: guard your ${name}.` };
   }
+  const behind = pinnedBehind(best, attacker.square);
+  if (behind) {
+    const back = behind.type === 'k' ? 'the king' : c.ref(behind);
+    return { text: `${best.san} pins ${c.ref(attacker)} to ${back}, so it can't take safely.`, ask: 'Your move: pin the attacker.' };
+  }
   if (new Chess(best.after).attackers(attacker.square, c.user).includes(best.to)) {
-    return { text: `${best.san} hits back at ${c.ref(attacker)}, the piece that threatens your ${name}.`, ask: 'Your move: attack the attacker.' };
+    return { text: `${best.san} hits back at ${c.ref(attacker)}, which threatens your ${name}.`, ask: 'Your move: attack the attacker.' };
   }
   const does = purpose(best, c.user);
   return { text: does.length ? `${best.san} ${listOf(does)}.` : `The best answer is ${best.san}.`, ask: 'Your move: play it.' };
+}
+
+/** The bigger piece the moved slider pins the piece on `square` to, if the move makes such a pin. */
+function pinnedBehind(move: Move, square: Square): PieceAt | null {
+  const direction = directionTo(move.to, square);
+  if (!direction || !slidesAlong(move.piece, direction)) return null;
+  const [front, back] = piecesAlong(new Chess(move.after), move.to, direction);
+  if (front?.square !== square || back?.color !== front.color) return null;
+  return back.type === 'k' || VALUE[back.type] > VALUE[front.type] ? back : null;
 }
 
 function threatOther(c: Context, t: Tactic): Beat[] {

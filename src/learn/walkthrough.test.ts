@@ -334,6 +334,13 @@ describe('the patterns', () => {
     );
   });
 
+  it('names every piece a forking attacker hits, and a defence that pins it', () => {
+    expect(texts(beatsOf('italian-2000-0143#10')).slice(0, 2)).toEqual([
+      'The pawn on d4 attacks your bishop on e3 and your knight on c3.',
+      "Rad1 pins the pawn on d4 to the queen on d7, so it can't take safely.",
+    ]);
+  });
+
   it('says how the answer stops the threat', () => {
     const beats = beatsOf('caro-kann-1100-0248#18');
     expect(beats[1].text).toBe('Ne5 blocks the line from the bishop on b2 to your pawn on g7.');
