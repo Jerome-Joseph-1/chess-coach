@@ -228,14 +228,28 @@ function varied(candidates: Candidate[]): Candidate[] {
 const textbookFirst = (a: Candidate, b: Candidate) => a.tier - b.tier || Number(a.contested) - Number(b.contested);
 
 /**
- * Up to three worked examples among the clearest sound positions any pool holds: textbook cases with a clear answer
- * first, then the set's own pool before the other levels, nearest first, each easiest first. `pools` hold one unit's candidates.
+ * The sound positions in the order to show them: the clearest first; within a clarity the set's own pool before
+ * the other levels, each textbook cases with a clear answer first, then nearest level, then easiest. `pools` hold one unit's candidates.
  */
-export function pickExamples(pools: Candidate[][]): Candidate[] {
-  const sound = pools.map((pool) => pool.filter((c) => c.sound));
-  const best = Math.max(0, ...sound.flat().map((c) => c.clarity));
-  const clearest = sound.flatMap((pool) => pool.filter((c) => c.clarity === best).sort(easiestFirst));
-  return varied(clearest.sort(textbookFirst)).slice(0, MAX_EXAMPLES);
+export function rankExamples(pools: Candidate[][]): Candidate[] {
+  const sound = pools.map((pool) => pool.filter((c) => c.sound).sort(easiestFirst));
+  const clarities = [...new Set(sound.flat().map((c) => c.clarity))].sort((a, b) => b - a);
+  return clarities.flatMap((clarity) => {
+    const [own = [], ...others] = sound.map((pool) => pool.filter((c) => c.clarity === clarity));
+    return [...own.sort(textbookFirst), ...others.flat().sort(textbookFirst)];
+  });
+}
+
+/**
+ * Up to three worked examples among the clearest sound positions. The first is the best ranked one that is not
+ * `overused`, falling back to a less clear one; only when every one is overused does it repeat one.
+ */
+export function pickExamples(pools: Candidate[][], overused: (position: string) => boolean = () => false): Candidate[] {
+  const ranked = rankExamples(pools);
+  const first = ranked.find((c) => !overused(c.position)) ?? ranked[0];
+  if (!first) return [];
+  const clearest = ranked.filter((c) => c.clarity === ranked[0].clarity && c !== first);
+  return varied([first, ...clearest]).slice(0, MAX_EXAMPLES);
 }
 
 /**
@@ -254,22 +268,56 @@ export function pickDrills(pools: Candidate[][], examples: Candidate[]): Candida
   return drills;
 }
 
-function unitEntry(id: UnitId, pools: Candidate[][]): UnitEntry | null {
-  const unitPools = pools.map((pool) => pool.filter((c) => c.unit === id));
-  const examples = pickExamples(unitPools);
-  if (!examples.length) return null;
-  const drills = pickDrills(unitPools, examples);
-  return { id, examples: examples.map((c) => c.ref), drills: drills.map((c) => c.ref) };
+/** How many levels of an opening may open a unit with the same worked example. */
+const MAX_SHARED_FIRST = 2;
+
+/** The set's candidates for a unit, one pool per level: its own first, then the nearest. */
+function unitPools(set: string, unit: UnitId, candidates: ReadonlyMap<string, Candidate[]>): Candidate[][] {
+  const { opening, level } = setOf(set)!;
+  return levelsByDistance(level).map((l) => (candidates.get(`${opening}-${l}`) ?? []).filter((c) => c.unit === unit));
 }
 
-/** The set's course from the candidates of every set of its opening, keyed by set name. */
-export function buildCourse(set: string, candidates: ReadonlyMap<string, Candidate[]>): CourseFile {
+const refsOf = (cs: Candidate[]) => cs.map((c) => c.ref);
+
+/**
+ * The entry for a unit of each set that has an example. Sets whose best example is their own choose first,
+ * so a set keeps its own position when others would borrow it too.
+ */
+function unitEntries(unit: UnitId, sets: string[], candidates: ReadonlyMap<string, Candidate[]>): Map<string, UnitEntry> {
+  const pools = new Map(sets.map((set) => [set, unitPools(set, unit, candidates)]));
+  const ownsBest = (set: string) => rankExamples(pools.get(set)!)[0]?.ref.set === set;
+  const order = [...sets].sort((a, b) => Number(ownsBest(b)) - Number(ownsBest(a)));
+  const firsts = new Map<string, number>();
+  const overused = (position: string) => (firsts.get(position) ?? 0) >= MAX_SHARED_FIRST;
+  const entries = new Map<string, UnitEntry>();
+  for (const set of order) {
+    const examples = pickExamples(pools.get(set)!, overused);
+    if (!examples.length) continue;
+    firsts.set(examples[0].position, (firsts.get(examples[0].position) ?? 0) + 1);
+    entries.set(set, { id: unit, examples: refsOf(examples), drills: refsOf(pickDrills(pools.get(set)!, examples)) });
+  }
+  return entries;
+}
+
+function emptyCourse(set: string): CourseFile {
   const parsed = setOf(set);
   if (!parsed) throw new Error(`Not a set name: ${set}`);
-  const { opening, level } = parsed;
-  const pools = levelsByDistance(level).map((l) => candidates.get(`${opening}-${l}`) ?? []);
-  const units = UNIT_IDS.map((id) => unitEntry(id, pools)).filter((unit) => unit !== null);
-  return { v: 1, opening, level, units };
+  return { v: 1, ...parsed, units: [] };
+}
+
+/**
+ * Every set's course, keyed by set name, from the candidates of every set. The levels of an opening are built
+ * together, each unit at a time, so they borrow from each other but share a first example at most twice.
+ */
+export function buildCourses(candidates: ReadonlyMap<string, Candidate[]>): Map<string, CourseFile> {
+  const courses = new Map([...candidates.keys()].map((set) => [set, emptyCourse(set)]));
+  for (const { id: opening } of OPENINGS) {
+    const sets = [...courses].filter(([, course]) => course.opening === opening).map(([set]) => set);
+    for (const unit of UNIT_IDS) {
+      for (const [set, entry] of unitEntries(unit, sets, candidates)) courses.get(set)!.units.push(entry);
+    }
+  }
+  return courses;
 }
 
 /** A lesson position with its game loaded. */

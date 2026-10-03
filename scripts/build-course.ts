@@ -3,7 +3,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Game, SetIndex } from '../src/content/types';
-import { buildCourse, candidatesOf, type Candidate } from '../src/course/select';
+import { buildCourses, candidatesOf, type Candidate } from '../src/course/select';
 import { UNIT_IDS, type CourseFile, type PositionRef, type UnitId } from '../src/course/types';
 
 const args = process.argv.slice(2);
@@ -48,7 +48,7 @@ const sets = readdirSync(contentDir)
   .filter((set) => existsSync(join(contentDir, set, 'index.json')))
   .sort();
 const candidates = new Map(sets.map((set) => [set, setCandidates(set)]));
-const courses = new Map(sets.map((set) => [set, buildCourse(set, candidates)]));
+const courses = buildCourses(candidates);
 for (const [set, course] of courses) writeFileSync(join(contentDir, set, 'course.json'), `${JSON.stringify(course)}\n`);
 printSupply(courses);
 

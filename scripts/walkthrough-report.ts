@@ -5,7 +5,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Game, SetIndex } from '../src/content/types';
 import type { CourseFile } from '../src/course/types';
-import { buildCourse, candidatesOf } from '../src/course/select';
+import { buildCourses, candidatesOf } from '../src/course/select';
 import { UNIT_IDS, type PositionRef } from '../src/course/types';
 import { lessonFor } from '../src/learn';
 import { playLine } from '../src/learn/board';
@@ -32,9 +32,11 @@ function readSet(set: string): Game[] {
 const games = new Map(sets.map((set) => [set, readSet(set)]));
 const candidates = new Map(sets.map((set) => [set, games.get(set)!.flatMap((game) => candidatesOf(set, game))]));
 
+const built = buildCourses(candidates);
+
 function courseOf(set: string): CourseFile {
   const path = join(contentDir, set, 'course.json');
-  return existsSync(path) ? readJson<CourseFile>(path) : buildCourse(set, candidates);
+  return existsSync(path) ? readJson<CourseFile>(path) : built.get(set)!;
 }
 
 function sanLine(fen: string, ucis: string[] = []): string {

@@ -8,7 +8,7 @@ import { italian1, italian2 } from '../pause/testGames';
 import { FakeStorage } from '../progress/testkit';
 import {
   CLEAN,
-  buildCourse,
+  buildCourses,
   canSidestep,
   candidatesOf,
   levelsByDistance,
@@ -152,11 +152,33 @@ describe('pickExamples', () => {
     expect(games(pickExamples([[unsound, candidate('italian-1400', 2, 0.5, 3)]]))).toEqual(['italian-1400-0002']);
   });
 
-  it('puts textbook cases first, then the ones with a clear answer, even from another level', () => {
+  it('puts textbook cases with a clear answer first, its own level before the others', () => {
     const threat = { ...candidate('italian-1400', 1, 0.9, CLEAN, 'checkmate'), tier: 9 };
     const contested = { ...candidate('italian-1400', 2, 0.8, CLEAN, 'checkmate'), contested: true };
     const mate = candidate('italian-1100', 1, 0.3, CLEAN, 'checkmate');
-    expect(games(pickExamples([[threat, contested], [mate]]))).toEqual(['italian-1100-0001', 'italian-1400-0002', 'italian-1400-0001']);
+    const farMate = candidate('italian-1700', 1, 0.9, CLEAN, 'checkmate');
+    const nearThreat = { ...candidate('italian-1100', 2, 0.9, CLEAN, 'checkmate'), tier: 9 };
+    expect(games(pickExamples([[threat, contested], [mate, nearThreat], [farMate]]))).toEqual([
+      'italian-1400-0002',
+      'italian-1400-0001',
+      'italian-1100-0001',
+    ]);
+    expect(games(pickExamples([[], [nearThreat, mate], [farMate]]))).toEqual(['italian-1100-0001', 'italian-1700-0001', 'italian-1100-0002']);
+  });
+
+  it('opens with the next position when the best is overused, a less clear one if need be', () => {
+    const best = candidate('italian-1400', 1, 0.9);
+    const next = candidate('italian-1400', 2, 0.5);
+    const muddled = candidate('italian-1100', 1, 0.9, 3);
+    const used = (...cs: Candidate[]) => (position: string) => cs.some((c) => c.position === position);
+    expect(games(pickExamples([[best, next], [muddled]], used(best)))).toEqual(['italian-1400-0002', 'italian-1400-0001']);
+    expect(games(pickExamples([[best, next], [muddled]], used(best, next)))).toEqual([
+      'italian-1100-0001',
+      'italian-1400-0001',
+      'italian-1400-0002',
+    ]);
+    // With nothing else to show, a repeat beats no lesson.
+    expect(games(pickExamples([[best]], used(best)))).toEqual(['italian-1400-0001']);
   });
 });
 
@@ -186,18 +208,22 @@ describe('pickDrills', () => {
   });
 });
 
-describe('buildCourse', () => {
+describe('buildCourses', () => {
+  const firsts = (courses: Map<string, CourseFile>, unit: UnitId) =>
+    [...courses].map(([set, course]) => [set, course.units.find((u) => u.id === unit)?.examples[0]?.gameId]);
+
   it('builds the test course from the test games', () => {
     const candidates = new Map([['italian-1400', [italian1, italian2].flatMap((g) => candidatesOf('italian-1400', g))]]);
-    expect(buildCourse('italian-1400', candidates)).toEqual(fixtureCourse);
+    expect(buildCourses(candidates).get('italian-1400')).toEqual(fixtureCourse);
   });
 
   it('borrows from the same opening only, each position keeping its own set', () => {
     const candidates = new Map([
+      ['italian-1100', []],
       ['italian-1400', [candidate('italian-1400', 1, 0.6), candidate('italian-1400', 2, 0.4)]],
       ['caro-kann-1100', [candidate('caro-kann-1100', 1, 0.9, CLEAN, 'pin')]],
     ]);
-    const course = buildCourse('italian-1100', candidates);
+    const course = buildCourses(candidates).get('italian-1100')!;
     expect(course).toMatchObject({ v: 1, opening: 'italian', level: 1100 });
     expect(course.units.map((u) => u.id)).toEqual(['fork']);
     expect(course.units[0].examples.map((r) => r.set)).toEqual(['italian-1400', 'italian-1400']);
@@ -206,11 +232,42 @@ describe('buildCourse', () => {
 
   it('lists units in teaching order and leaves out units with no example', () => {
     const candidates = new Map([['italian-1400', [candidate('italian-1400', 1, 0.5, CLEAN, 'traps'), candidate('italian-1400', 2, 0.5, CLEAN, 'free-piece')]]]);
-    expect(buildCourse('italian-1400', candidates).units.map((u) => u.id)).toEqual(['free-piece', 'traps']);
+    expect(buildCourses(candidates).get('italian-1400')!.units.map((u) => u.id)).toEqual(['free-piece', 'traps']);
+  });
+
+  it('opens each level with its own position when it has one', () => {
+    const mate = (set: string, n: number, tier: number) => ({ ...candidate(set, n, 0.5, CLEAN, 'checkmate'), tier });
+    const candidates = new Map(['italian-1100', 'italian-1400', 'italian-1700', 'italian-2000'].map((set, i) => [set, [mate(set, i, i === 2 ? 0 : 9)]]));
+    expect(firsts(buildCourses(candidates), 'checkmate')).toEqual([
+      ['italian-1100', 'italian-1100-0000'],
+      ['italian-1400', 'italian-1400-0001'],
+      ['italian-1700', 'italian-1700-0002'],
+      ['italian-2000', 'italian-2000-0003'],
+    ]);
+  });
+
+  it('never opens more than two levels with one position, and lets its own level keep it', () => {
+    const own = candidate('italian-1700', 1, 0.9);
+    const spare = candidate('italian-2000', 1, 0.2);
+    const candidates = new Map([
+      ['italian-1100', []],
+      ['italian-1400', []],
+      ['italian-1700', [own]],
+      ['italian-2000', [spare]],
+      ['caro-kann-1100', []],
+    ]);
+    const opened = firsts(buildCourses(candidates), 'fork');
+    expect(opened).toEqual([
+      ['italian-1100', 'italian-1700-0001'],
+      ['italian-1400', 'italian-2000-0001'],
+      ['italian-1700', 'italian-1700-0001'],
+      ['italian-2000', 'italian-2000-0001'],
+      ['caro-kann-1100', undefined],
+    ]);
   });
 
   it('refuses a folder that is not a set', () => {
-    expect(() => buildCourse('italian', new Map())).toThrow();
+    expect(() => buildCourses(new Map([['italian', []]]))).toThrow();
   });
 });
 
