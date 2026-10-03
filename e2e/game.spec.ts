@@ -11,6 +11,7 @@ import {
   stepForwardButton,
   yesButton,
 } from './board';
+import { readAllNotes } from './notes';
 
 const PLAY_URL = './#/play/italian/1400';
 const FIRST_KEY_POSITION = 'Is something important happening?';
@@ -18,6 +19,8 @@ const LOOKING_BACK = /^Move \d+ of \d+ · you are looking back$/;
 const RUN_MS = 15_000;
 
 test.use({ serviceWorkers: 'block' });
+// The opening notes have their own checks; here the coach's line reports the game.
+test.beforeEach(({ page }) => readAllNotes(page));
 
 /** Serves the fixture set with no pauses, optionally cut to its first `plies` moves, so the game runs unprompted. */
 async function playQuietGame(page: Page, plies = Infinity) {
