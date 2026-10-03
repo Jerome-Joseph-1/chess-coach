@@ -30,7 +30,7 @@ export interface BoardController {
   dim(except: string[] | null): void;
   /** A round check or cross on a square, like a puzzle verdict; null removes it. */
   badge(square: string, kind: BadgeKind | null): void;
-  /** Draw a move arrow; it stays until clearArrows. */
+  /** Draw a move arrow; it stays until clearArrows. The player's own right-click drawings are separate. */
   arrow(from: string, to: string, tone: ArrowTone): void;
   clearArrows(): void;
 }

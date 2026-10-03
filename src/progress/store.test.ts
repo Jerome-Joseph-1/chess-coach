@@ -17,7 +17,7 @@ describe('settings', () => {
   it('starts with defaults', async () => {
     const store = await openStore();
     expect(store.getSettings()).toEqual({
-      theme: 'system', sound: true, haptics: true, quick: false, levels: { italian: 1400, 'caro-kann': 1400 },
+      theme: 'system', board: 'green', sound: true, haptics: true, quick: false, levels: { italian: 1400, 'caro-kann': 1400 },
     });
   });
 
@@ -27,6 +27,13 @@ describe('settings', () => {
     store = await openStore();
     expect(store.getSettings()).toMatchObject({ theme: 'dark', sound: false, levels: { italian: 1700, 'caro-kann': 1100 } });
     expect(storage.data.has('cc.settings.v1')).toBe(true);
+  });
+
+  it('reads the board colour and defaults to green for older saves', async () => {
+    storage.data.set('cc.settings.v1', JSON.stringify({ v: 1, theme: 'dark', sound: true }));
+    expect((await openStore()).getSettings().board).toBe('green');
+    storage.data.set('cc.settings.v1', JSON.stringify({ v: 1, board: 'brown' }));
+    expect((await openStore()).getSettings().board).toBe('brown');
   });
 
   it('falls back to defaults for corrupt or invalid data', async () => {

@@ -47,6 +47,7 @@ export interface LastGame {
 
 export const DEFAULT_SETTINGS: StoredSettings = {
   theme: 'system',
+  board: 'green',
   sound: true,
   haptics: true,
   quick: false,
@@ -58,6 +59,7 @@ export function emptyProgress(): Progress {
 }
 
 const THEMES: Settings['theme'][] = ['system', 'light', 'dark'];
+const BOARDS: Settings['board'][] = ['green', 'brown', 'gray'];
 const MOMENT_TYPES: MomentResult['type'][] = ['pause', 'nothing', 'silent'];
 const KINDS: Kind[] = ['win', 'defend', 'trap'];
 const STEPS: StepOutcome['step'][] = ['spot', 'find', 'solve', 'hold'];
@@ -88,6 +90,7 @@ export function readSettings(raw: unknown): StoredSettings {
   const d = DEFAULT_SETTINGS;
   const settings: StoredSettings = {
     theme: pick(THEMES, r.theme, d.theme),
+    board: pick(BOARDS, r.board, d.board),
     sound: flag(r.sound, d.sound),
     haptics: flag(r.haptics, d.haptics),
     quick: flag(r.quick, d.quick),

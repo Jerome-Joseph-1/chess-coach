@@ -1,7 +1,11 @@
 .board-host {
+  /* green by default; Settings sets data-board on the page */
+  --sq-light: #ebecd0;
+  --sq-dark: #779556;
+  position: relative;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--r-row);
+  border-radius: 8px;
   overflow: hidden;
   outline: 1px solid var(--hairline);
   outline-offset: -1px;
@@ -10,44 +14,49 @@
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+:root[data-board='brown'] .board-host {
+  --sq-light: #f0d9b5;
+  --sq-dark: #b58863;
+}
+:root[data-board='gray'] .board-host {
+  --sq-light: var(--board-light);
+  --sq-dark: var(--board-dark);
+}
 
 .cm-chessboard.coach .board .square.white {
-  fill: var(--board-light);
+  fill: var(--sq-light);
 }
 .cm-chessboard.coach .board .square.black {
-  fill: var(--board-dark);
+  fill: var(--sq-dark);
 }
 .cm-chessboard.coach .board .border {
-  fill: var(--board-dark);
+  fill: var(--sq-dark);
   stroke: none;
 }
+
+/* Coordinates sit inside the corner squares in the other square's colour. */
 .cm-chessboard.coach .coordinates {
   pointer-events: none;
   user-select: none;
 }
 .cm-chessboard.coach .coordinates .coordinate {
   font-family: var(--font);
-  font-weight: 500;
-  opacity: 0.8;
+  font-weight: 600;
 }
 .cm-chessboard.coach .coordinates .coordinate.white {
-  fill: var(--board-dark);
+  fill: var(--sq-dark);
 }
 .cm-chessboard.coach .coordinates .coordinate.black {
-  fill: var(--board-light);
+  fill: var(--sq-light);
 }
 
 /* Highlight tones and board marks. */
 .cm-chessboard .markers {
   pointer-events: none;
 }
-.cm-chessboard .marker-select {
-  fill: var(--text-strong);
-  opacity: 0.18;
-}
+.cm-chessboard .marker-select,
 .cm-chessboard .marker-last-move {
-  fill: var(--warning);
-  opacity: 0.4;
+  fill: rgba(255, 255, 51, 0.5);
 }
 .cm-chessboard .marker-focus {
   stroke: var(--text-strong);
@@ -72,8 +81,174 @@
   fill: var(--bg);
   opacity: 0.72;
 }
-.cm-chessboard .marker-dot,
-.cm-chessboard .marker-bevel {
-  fill: #0a0a0b;
-  opacity: 0.26;
+.cm-chessboard .marker-dot {
+  fill: rgba(0, 0, 0, 0.14);
+}
+/* A ring that touches the square's edge, so a piece to take stays visible inside it. */
+.cm-chessboard .marker-capture {
+  stroke: rgba(0, 0, 0, 0.14);
+  stroke-width: 4px;
+}
+
+/* Arrows: one solid shape per arrow, faded as a whole so the line and head do not double up. */
+.cm-chessboard .arrow {
+  opacity: 0.85;
+  pointer-events: none;
+}
+.cm-chessboard .arrow-best {
+  --arrow: #81b64c;
+}
+.cm-chessboard .arrow-threat {
+  --arrow: #fa412d;
+}
+.cm-chessboard .arrow-mistake {
+  --arrow: #ffa028;
+}
+.cm-chessboard .arrow-draw-green {
+  --arrow: #1f8a2e;
+}
+.cm-chessboard .arrow-draw-red {
+  --arrow: #d93636;
+}
+.cm-chessboard .arrow-draw-blue {
+  --arrow: #3b82f6;
+}
+.cm-chessboard .arrow-draw-orange {
+  --arrow: #f08a00;
+}
+.cm-chessboard .arrow .arrow-line {
+  stroke: var(--arrow);
+  stroke-linecap: round;
+}
+.cm-chessboard .arrow .arrow-head {
+  fill: var(--arrow);
+  fill-rule: nonzero;
+}
+
+.cm-chessboard .marker-draw-green {
+  stroke: #1f8a2e;
+}
+.cm-chessboard .marker-draw-red {
+  stroke: #d93636;
+}
+.cm-chessboard .marker-draw-blue {
+  stroke: #3b82f6;
+}
+.cm-chessboard .marker-draw-orange {
+  stroke: #f08a00;
+}
+.cm-chessboard [class*='marker-draw-'] {
+  stroke-width: 3px;
+  opacity: 0.8;
+}
+
+/* Elements above the board: verdict badges and the drag target outline. */
+.board-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.overlay-cell {
+  position: absolute;
+  width: 12.5%;
+  height: 12.5%;
+}
+.overlay-hover {
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.75);
+}
+.overlay-hover[hidden] {
+  display: none;
+}
+.overlay-badge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--flash);
+  animation: square-flash 300ms ease-out forwards;
+}
+.overlay-badge--good {
+  --flash: rgba(129, 182, 76, 0.55);
+  --badge: #81b64c;
+}
+.overlay-badge--bad {
+  --flash: rgba(250, 65, 45, 0.5);
+  --badge: #fa412d;
+}
+.badge {
+  position: absolute;
+  top: 2%;
+  right: 2%;
+  display: grid;
+  place-items: center;
+  /* a quarter of the square, but never too small to read on the pause board */
+  width: max(26%, 13px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--badge);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  animation: badge-pop 160ms var(--spring) backwards;
+}
+.badge svg {
+  width: 72%;
+  height: 72%;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@keyframes square-flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes badge-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* The piece under the finger lifts and casts a soft shadow; on drop it settles. */
+.cm-chessboard-draggable-piece {
+  z-index: 50;
+  transform: scale(1.15);
+  filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.35));
+  animation: piece-lift 120ms var(--spring) backwards;
+}
+@media (pointer: coarse) {
+  /* keeps the piece in view above the finger */
+  .cm-chessboard-draggable-piece {
+    translate: 0 -30%;
+  }
+}
+.cm-chessboard g.piece-settle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: piece-settle 140ms var(--spring);
+}
+@keyframes piece-lift {
+  from {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+  }
+}
+@keyframes piece-settle {
+  from {
+    scale: 1.12;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge,
+  .cm-chessboard-draggable-piece,
+  .cm-chessboard g.piece-settle {
+    animation: none;
+  }
+  .overlay-badge::before {
+    display: none;
+  }
 }

@@ -19,6 +19,11 @@ const THEME_OPTIONS: { value: SettingsData['theme']; label: string }[] = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
 ];
+const BOARD_OPTIONS: { value: SettingsData['board']; label: string }[] = [
+  { value: 'green', label: 'Green' },
+  { value: 'brown', label: 'Brown' },
+  { value: 'gray', label: 'Gray' },
+];
 const STAGE_OPTIONS: { value: StageChoice; label: string }[] = [
   { value: 'auto', label: 'Auto' },
   ...DEPTHS.map((value) => ({ value, label: String(value) })),
@@ -27,6 +32,10 @@ const STAGE_OPTIONS: { value: StageChoice; label: string }[] = [
 function applyTheme(theme: SettingsData['theme']): void {
   if (theme === 'system') delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = theme;
+}
+
+function applyBoard(board: SettingsData['board']): void {
+  document.documentElement.dataset.board = board;
 }
 
 function stageHint(choice: StageChoice): string {
@@ -81,6 +90,11 @@ export function Settings() {
     applyTheme(theme);
   };
 
+  const chooseBoard = (board: SettingsData['board']) => {
+    update({ board });
+    applyBoard(board);
+  };
+
   const exportData = () => {
     downloadJson(`chess-coach-progress-${dayKey(Date.now())}.json`, exportProgress());
     setStatus('Backup saved.');
@@ -95,6 +109,7 @@ export function Settings() {
     if (result.ok) {
       setSettings(getSettings());
       applyTheme(getSettings().theme);
+      applyBoard(getSettings().board);
       setStatus('Progress restored.');
     } else {
       setStatus(result.error);
@@ -123,6 +138,10 @@ export function Settings() {
           <li class="row row-stack">
             <span>Theme</span>
             <Segmented label="Theme" options={THEME_OPTIONS} value={settings.theme} onChange={chooseTheme} />
+          </li>
+          <li class="row row-stack">
+            <span>Board</span>
+            <Segmented label="Board" options={BOARD_OPTIONS} value={settings.board} onChange={chooseBoard} />
           </li>
           <li>
             <Switch label="Sound" hint="Chimes when you get things right" checked={settings.sound} onChange={(sound) => update({ sound })} />

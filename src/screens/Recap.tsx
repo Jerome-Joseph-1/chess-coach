@@ -8,6 +8,7 @@ import { navigate } from '../router';
 import { Button } from '../ui/Button';
 import { LevelUp } from '../ui/LevelUp';
 import { celebrate } from '../ui/rewards';
+import { playSound } from '../ui/sound';
 import { handledWell, momentSub, momentTitle, momentTone, type MomentTone } from './recap/moments';
 import { Check, Chevron, Cross, Dash } from './shared/icons';
 import { playPath, reviewPath } from './shared/labels';
@@ -20,6 +21,7 @@ const CELEBRATE_DELAY_MS = 700;
 
 // Coming back to the recap later in the same session must not celebrate the same game twice.
 let celebratedGameAt: number | null = null;
+let endedGameAt: number | null = null;
 
 const MARKS: Record<MomentTone, ComponentChildren> = {
   right: <Check size={14} />,
@@ -75,6 +77,14 @@ function useTurns(game: GameSummary): Map<number, Turn> {
   return turns;
 }
 
+function useEndSound(game: GameSummary): void {
+  useEffect(() => {
+    if (endedGameAt === game.at) return;
+    endedGameAt = game.at;
+    playSound('end');
+  }, [game.at]);
+}
+
 function usePerfectCelebration(game: GameSummary, perfect: boolean): void {
   useEffect(() => {
     if (!perfect || celebratedGameAt === game.at) return;
@@ -116,6 +126,7 @@ function RecapBody({ game, bonus }: { game: GameSummary; bonus: boolean }) {
   const turns = useTurns(game);
   const [unlocked, setUnlocked] = useState(getLastGameUnlock);
   const perfect = game.moments.some((m) => m.type !== 'nothing') && game.moments.every(isRight);
+  useEndSound(game);
   usePerfectCelebration(game, perfect && !unlocked);
 
   const closeLevelUp = () => {

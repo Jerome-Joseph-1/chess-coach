@@ -116,6 +116,7 @@ export interface ReviewItem {
 
 export interface Settings {
   theme: 'system' | 'light' | 'dark';
+  board: 'green' | 'brown' | 'gray';
   sound: boolean;
   haptics: boolean;
   quick: boolean;

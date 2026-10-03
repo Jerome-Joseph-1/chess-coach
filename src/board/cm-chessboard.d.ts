@@ -4,6 +4,7 @@ declare module 'cm-chessboard' {
 
   export const INPUT_EVENT_TYPE: {
     moveInputStarted: string;
+    movingOverSquare: string;
     validateMoveInput: string;
     moveInputCanceled: string;
     moveInputFinished: string;
@@ -53,8 +54,6 @@ declare module 'cm-chessboard/src/extensions/markers/Markers.js' {
     position?: 'above';
   }
 
-  export const MARKER_TYPE: { dot: MarkerType; bevel: MarkerType };
-
   export class Markers {
     constructor(chessboard: unknown, props?: object);
     /** While true, addMarker and removeMarkers skip the redraw. */
@@ -62,7 +61,18 @@ declare module 'cm-chessboard/src/extensions/markers/Markers.js' {
     onRedrawBoard(): void;
     addMarker(type: MarkerType, square: string): void;
     removeMarkers(type?: MarkerType, square?: string): void;
-    addLegalMovesMarkers(moves: { to: string; promotion?: string }[]): void;
-    removeLegalMovesMarkers(): void;
+  }
+}
+
+declare module 'cm-chessboard/src/extensions/arrows/Arrows.js' {
+  export interface ArrowType {
+    class: string;
+  }
+
+  export class Arrows {
+    constructor(chessboard: unknown, props?: object);
+    addArrow(type: ArrowType, from: string, to: string): void;
+    /** Removes the arrows that match; with no arguments, all of them. */
+    removeArrows(type?: ArrowType, from?: string, to?: string): void;
   }
 }
