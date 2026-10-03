@@ -1,9 +1,10 @@
-// Writes the worked examples each set's lessons would show, to read by eye,
+// Writes the worked examples each set's lessons show, from its course.json or else built as at deploy, to read by eye,
 // and next to the report a JSONL file of what their sentences claim about the board.
 // Usage: npx vite-node scripts/walkthrough-report.ts <content-dir> <report.md> [examples per unit]
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Game, SetIndex } from '../src/content/types';
+import type { CourseFile } from '../src/course/types';
 import { buildCourse, candidatesOf } from '../src/course/select';
 import { UNIT_IDS, type PositionRef } from '../src/course/types';
 import { lessonFor } from '../src/learn';
@@ -30,6 +31,11 @@ function readSet(set: string): Game[] {
 
 const games = new Map(sets.map((set) => [set, readSet(set)]));
 const candidates = new Map(sets.map((set) => [set, games.get(set)!.flatMap((game) => candidatesOf(set, game))]));
+
+function courseOf(set: string): CourseFile {
+  const path = join(contentDir, set, 'course.json');
+  return existsSync(path) ? readJson<CourseFile>(path) : buildCourse(set, candidates);
+}
 
 function sanLine(fen: string, ucis: string[] = []): string {
   return playLine(fen, ucis)
@@ -75,7 +81,7 @@ function example(ref: PositionRef): { text: string; claims: object[] } | null {
 const sections: string[] = [];
 const claims: object[] = [];
 for (const set of sets) {
-  const course = buildCourse(set, candidates);
+  const course = courseOf(set);
   sections.push(`## ${set}`);
   for (const unit of UNIT_IDS) {
     const examples = (course.units.find((u) => u.id === unit)?.examples ?? []).map(example).filter((e) => e !== null);
