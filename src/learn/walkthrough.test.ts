@@ -1,0 +1,306 @@
+import { Chess, type Color, type Square } from 'chess.js';
+import { describe, expect, it } from 'vitest';
+import type { Game } from '../content/types';
+import { withTurn } from '../game/position';
+import { italian1, italian2 } from '../pause/testGames';
+import { VALUE, exchangeGain, isLoose, playLine } from './board';
+import { learnGame, learnGames, realTurn } from './fixtures';
+import turns from './fixtures/turns.json';
+import { walkthrough, type Beat, type Claim } from './walkthrough';
+
+type Key = Parameters<typeof realTurn>[0];
+
+const beatsOf = (key: Key) => walkthrough(realTurn(key), 0);
+const texts = (beats: Beat[]) => beats.map((b) => b.text);
+const other = (color: Color): Color => (color === 'w' ? 'b' : 'w');
+const sameSet = (a: Square[], b: Square[]) => [...a].sort().join() === [...b].sort().join();
+
+/** The squares strictly between two squares on one line, or null when they share none. */
+function between(a: Square, b: Square): Square[] | null {
+  const [af, ar, bf, br] = [a.charCodeAt(0), Number(a[1]), b.charCodeAt(0), Number(b[1])];
+  const [df, dr] = [Math.sign(bf - af), Math.sign(br - ar)];
+  if (af !== bf && ar !== br && Math.abs(bf - af) !== Math.abs(br - ar)) return null;
+  const squares: Square[] = [];
+  for (let f = af + df, r = ar + dr; f !== bf || r !== br; f += df, r += dr) squares.push(`${String.fromCharCode(f)}${r}` as Square);
+  return squares;
+}
+
+function around(square: Square): Square[] {
+  const [file, rank] = [square.charCodeAt(0), Number(square[1])];
+  return [-1, 0, 1].flatMap((df) =>
+    [-1, 0, 1].flatMap((dr) => {
+      const [f, r] = [file + df, rank + dr];
+      return (df || dr) && f >= 97 && f <= 104 && r >= 1 && r <= 8 ? [`${String.fromCharCode(f)}${r}` as Square] : [];
+    }),
+  );
+}
+
+/** Checks a claim straight on the board, without the walkthrough's own helpers. */
+function holds(fen: string, claim: Claim): boolean {
+  const board = new Chess(fen);
+  const colorOf = (square: Square) => board.get(square)!.color;
+  const empty = (squares: Square[] | null) => squares !== null && squares.every((s) => !board.get(s));
+  switch (claim.claim) {
+    case 'undefended':
+      return board.attackers(claim.square, colorOf(claim.square)).length === 0;
+    case 'hangs':
+      return isLoose(fen, claim.square);
+    case 'attackers':
+      return sameSet(board.attackers(claim.square, other(colorOf(claim.square))), claim.squares);
+    case 'guards':
+      return sameSet(board.attackers(claim.square, colorOf(claim.square)), claim.squares);
+    case 'attacks':
+      return claim.squares.every((s) => board.attackers(s, colorOf(claim.square)).includes(claim.square));
+    case 'escape-squares': {
+      const color = colorOf(claim.square);
+      const moves = new Chess(withTurn(fen, color)).moves({ square: claim.square, verbose: true });
+      const lost = moves.filter((m) => exchangeGain(new Chess(m.after), m.to) > (m.captured ? VALUE[m.captured] : 0));
+      return sameSet([...new Set(moves.map((m) => m.to))], claim.squares) && sameSet([...new Set(lost.map((m) => m.to))], claim.covered);
+    }
+    case 'boxed': {
+      const color = colorOf(claim.square);
+      const near = around(claim.square);
+      const blocked = near.filter((s) => board.get(s)?.color === color);
+      const covered = near.filter((s) => !blocked.includes(s) && board.attackers(s, other(color)).length > 0);
+      const free = near.filter((s) => !blocked.includes(s) && !covered.includes(s));
+      return sameSet(blocked, claim.blocked) && sameSet(covered, claim.covered) && sameSet(free, claim.free);
+    }
+    case 'in-line':
+      return empty(between(...claim.squares));
+    case 'blocks': {
+      const line = between(claim.from, claim.to);
+      return line !== null && line.includes(claim.square) && empty(line.filter((s) => s !== claim.square));
+    }
+    case 'pin': {
+      const { pinner, square, behind } = claim;
+      const aligned = between(pinner, behind)?.includes(square) ?? false;
+      const slides = board.attackers(square, colorOf(pinner)).includes(pinner);
+      return aligned && slides && empty(between(square, behind)) && colorOf(behind) === colorOf(square) && colorOf(pinner) !== colorOf(square);
+    }
+  }
+}
+
+function keyPositions(games: Game[]) {
+  return games.flatMap((game) =>
+    game.turns.flatMap((turn, i) => (turn.label === 'critical' ? [{ id: `${game.id}#${i}`, beats: walkthrough(game, i) }] : [])),
+  );
+}
+
+const realTurns = Object.keys(turns).map((key) => realTurn(key as Key));
+const all = keyPositions([...learnGames, italian1, italian2, ...realTurns]);
+
+/** The position a beat's move starts from: the beat before it, or after the move that beat asked for. */
+function startOf(beat: Beat, previous: Beat): string | undefined {
+  const asked = previous.answer ? playLine(previous.fen, [previous.answer])[0]?.after : undefined;
+  return [previous.fen, asked].find((fen) => fen && playLine(fen, [beat.move!])[0]?.after === beat.fen);
+}
+
+describe('walkthrough on every fixture key position', () => {
+  it('steps through a few beats and ends on the line', () => {
+    for (const { id, beats } of all) {
+      expect(beats.length, id).toBeGreaterThanOrEqual(1);
+      expect(beats.length, id).toBeLessThanOrEqual(5);
+      expect(beats.at(-1)!.line, id).toBeDefined();
+      expect(beats.slice(0, -1).every((b) => b.line === undefined), id).toBe(true);
+      expect(beats.filter((b) => b.ask).length, id).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('speaks in clean, short sentences', () => {
+    for (const { id, beats } of all) {
+      for (const text of beats.flatMap((b) => [b.text, b.ask ?? 'Ask.'])) {
+        expect(text, id).toMatch(/^([A-Z]|[a-h][1-8x])/);
+        expect(text, id).toMatch(/[.]$/);
+        expect(text, id).not.toMatch(/undefined|null|NaN|\s{2}|\s[,.]/);
+      }
+      for (const beat of beats.slice(0, -1)) {
+        expect(beat.text.split(' ').length, id).toBeLessThanOrEqual(28);
+        // A mate is said in words, not with the sign.
+        expect(beat.text, id).not.toMatch(/#/);
+      }
+    }
+  });
+
+  it('marks and draws on real squares only', () => {
+    for (const { id, beats } of all) {
+      for (const beat of beats) {
+        const squares = [...beat.marks.map((m) => m.square), ...beat.arrows.flatMap((a) => [a.from, a.to])];
+        for (const square of squares) expect(square, id).toMatch(/^[a-h][1-8]$/);
+        expect(new Set(beat.marks.map((m) => m.square)).size, id).toBe(beat.marks.length);
+      }
+    }
+  });
+
+  it('asks only for legal moves, and slides each beat in from the one before', () => {
+    for (const { id, beats } of all) {
+      beats.forEach((beat, i) => {
+        if (beat.ask) expect(playLine(beat.fen, [beat.answer!]), id).toHaveLength(1);
+        if (beat.move) expect(startOf(beat, beats[i - 1]), `${id} beat ${i}`).toBeDefined();
+      });
+      const last = beats.at(-1)!;
+      expect(playLine(last.fen, last.line!), id).toHaveLength(last.line!.length);
+    }
+  });
+
+  it('says only what is true on the board', () => {
+    let checked = 0;
+    for (const { id, beats } of all) {
+      for (const beat of beats) {
+        for (const claim of beat.claims ?? []) {
+          expect(holds(beat.fen, claim), `${id}: ${JSON.stringify(claim)}`).toBe(true);
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(30);
+  });
+});
+
+describe('the patterns', () => {
+  it('shows a free piece: what attacks it, that nothing guards it, then takes it', () => {
+    const beats = beatsOf('caro-kann-1100-0026#26');
+    expect(texts(beats).slice(0, 2)).toEqual(['Your pawn on f7 attacks the queen on e6, and nothing guards it.', 'So fxe6 wins it for free.']);
+    expect(beats[0].marks).toEqual([
+      { square: 'e6', tone: 'focus' },
+      { square: 'f7', tone: 'good' },
+    ]);
+    expect(beats[1]).toMatchObject({ ask: 'Your move: take the queen.', answer: 'f7e6', arrows: [{ from: 'f7', to: 'e6', tone: 'best' }] });
+    expect(beats[2]).toMatchObject({ line: [], text: 'Nothing defends the queen on e6, so fxe6 wins it for free.' });
+  });
+
+  it('weighs a guarded piece worth more than the one taking it, over the moves it shows', () => {
+    expect(texts(beatsOf('caro-kann-1400-0002#20')).slice(0, 2)).toEqual([
+      'The queen on c5 is guarded, but it is worth more than your bishop.',
+      'So Bxc5 wins the queen for a bishop.',
+    ]);
+    expect(beatsOf('caro-kann-1400-0002#20').at(-1)!.line).toEqual(['b4c5']);
+  });
+
+  it('plays a fork, then shows both prongs from the landing square', () => {
+    const beats = beatsOf('italian-1400-0006#3');
+    expect(texts(beats).slice(0, 2)).toEqual([
+      'From f7, your knight on g5 would attack the queen on d8 and the rook on h8.',
+      'Only one of them can be saved.',
+    ]);
+    expect(beats[1]).toMatchObject({ move: 'g5f7', arrows: [{ from: 'f7', to: 'd8' }, { from: 'f7', to: 'h8' }] });
+    expect(beats[2]).toMatchObject({ fen: beats[1].fen, line: ['d8e8', 'f7h8'] });
+  });
+
+  it('says which piece falls when a fork comes with check', () => {
+    expect(walkthrough(learnGame('caro-kann-1100-0001'), 12)[1].text).toBe('White must answer the check, so the queen on f3 falls.');
+  });
+
+  it('builds a pin: the pieces on one line, the move onto it, and why the front one is stuck', () => {
+    expect(texts(beatsOf('italian-2000-0026#2')).slice(0, 3)).toEqual([
+      'The knight on e4 stands in front of the king, on the e-file.',
+      'Re1 puts your rook on that line.',
+      "It can't move: the king is behind it. Black can't save it.",
+    ]);
+  });
+
+  it('uses a pin that is already there', () => {
+    expect(texts(beatsOf('caro-kann-1400-0022#8')).slice(0, 2)).toEqual([
+      'The knight on g5 is pinned to the queen on f4 by your bishop on h6.',
+      "So exf6 takes a pawn and attacks it. It can't run.",
+    ]);
+    expect(beatsOf('italian-1400-0013#14')[1].text).toBe("So Qxd5 wins a knight: the knight on e7 can't take back.");
+    expect(beatsOf('italian-1100-0013#6')[1].text).toBe('So after Nd5 Nxd5, Bxe7 wins the queen on e7.');
+  });
+
+  it('lines up a skewer and takes the piece behind', () => {
+    expect(texts(beatsOf('italian-2000-0029#15')).slice(0, 3)).toEqual([
+      'The queen on c6 and the rook on a8 stand on the same diagonal.',
+      'Bd5 attacks the queen along that line.',
+      'When the queen steps aside, you take the rook on a8 behind it.',
+    ]);
+  });
+
+  it('counts exactly two attacks in a discovered attack', () => {
+    const beats = beatsOf('caro-kann-1700-0003#21');
+    expect(texts(beats).slice(0, 3)).toEqual([
+      'Your knight on d4 blocks the line from your queen on d6 to the queen on d2.',
+      'Nf3+ moves it out of the way.',
+      'Your queen now attacks the queen on d2, and your knight gives check. Two attacks at once.',
+    ]);
+    expect(beats[2].arrows).toHaveLength(2);
+  });
+
+  it("counts a trapped piece's squares", () => {
+    const beats = walkthrough(learnGame('italian-1400-0003'), 3);
+    expect(texts(beats).slice(0, 2)).toEqual([
+      'Count the squares of the knight on a5: it has three, and every one is covered.',
+      'b4 attacks it, and it has nowhere safe to go.',
+    ]);
+    expect(beats[0].claims).toEqual([{ claim: 'escape-squares', square: 'a5', squares: ['c6', 'c4', 'b3'], covered: ['c6', 'c4', 'b3'] }]);
+  });
+
+  it('takes away a guard, then shows the piece left hanging after the reply', () => {
+    const beats = beatsOf('caro-kann-1400-0015#8');
+    expect(texts(beats).slice(0, 3)).toEqual([
+      'The knight on f3 is one of two pieces guarding the pawn on d4.',
+      'Bxf3 trades off the knight.',
+      'Now nothing guards it, and Nxd4 wins it.',
+    ]);
+    expect(beats[1]).toMatchObject({ ask: 'Your move: take the knight.', answer: 'g4f3' });
+    expect(beats[2]).toMatchObject({ move: 'd1f3', arrows: [{ from: 'f5', to: 'd4', tone: 'best' }] });
+  });
+
+  it("boxes the king in and mates it, covering the squares it had left", () => {
+    expect(texts(beatsOf('caro-kann-1400-0013#18')).slice(0, 2)).toEqual([
+      'Its own pawns and pieces box the king in: only f1 and h1 are free.',
+      'Re1 gives check and also covers f1 and h1, so the king has no way out.',
+    ]);
+    const forced = beatsOf('italian-1100-0027#16');
+    expect(texts(forced).slice(0, 2)).toEqual([
+      "Qg4+ starts a forced mate. Black's best try is Kh7.",
+      'The king is short of squares: only h8 is free. Qg7 gives check and also covers h8, so the king has no way out.',
+    ]);
+    expect(forced.at(-1)!.line).toEqual(['g4g7']);
+  });
+
+  it('threatens mate and wins the piece that cannot be saved as well', () => {
+    expect(texts(beatsOf('italian-2000-0009#18')).slice(0, 2)).toEqual([
+      'Qf5 threatens Qh7 mate.',
+      "It also attacks the bishop on f6. Black can't stop the mate and save the bishop.",
+    ]);
+  });
+
+  it('saves a piece in danger', () => {
+    expect(texts(beatsOf('caro-kann-1100-0014#5')).slice(0, 2)).toEqual([
+      'Your bishop on g4 is attacked by the bishop on e2, and nothing guards it.',
+      'Bxe2 takes the attacker.',
+    ]);
+    const outnumbered = beatsOf('italian-1700-0027#7');
+    expect(texts(outnumbered).slice(0, 2)).toEqual(['Two enemy pieces attack your pawn on f2, and only one guards it.', 'Re2 guards it.']);
+    expect(outnumbered[0].arrows).toHaveLength(2);
+  });
+
+  it("stops the opponent's threat", () => {
+    const beats = beatsOf('caro-kann-1400-0028#11');
+    expect(texts(beats)).toEqual([
+      'White threatens Nc7+, checking your king and attacking your rook on a8 at the same time.',
+      'Your move must stop it, and Rc8 does.',
+      'White threatens Nc7+, checking your king and attacking your rook on a8 at the same time. Rc8 stops it.',
+    ]);
+    expect(beats[0].arrows).toEqual([{ from: 'd5', to: 'c7', tone: 'threat' }]);
+  });
+
+  it('shows the trap, what it runs into, then the better move', () => {
+    const beats = beatsOf('caro-kann-1100-0013#7');
+    expect(texts(beats).slice(0, 3)).toEqual(['Rb8 looks like a natural move.', 'But Bxb8 wins your rook on b8.', 'Instead, play Bb4.']);
+    expect(beats[0].arrows).toEqual([{ from: 'a8', to: 'b8', tone: 'mistake' }]);
+    expect(beats[1]).toMatchObject({ move: 'a8b8', marks: [{ square: 'b8', tone: 'bad' }] });
+    expect(beats[2]).toMatchObject({ fen: beats[0].fen, answer: 'f8b4' });
+    expect(beatsOf('italian-1400-0020#15')[0].text).toBe('Rxc7 takes a pawn, and it looks free.');
+    expect(beatsOf('caro-kann-2000-0001#3')[1].text).toBe('But Qxf7 is checkmate.');
+  });
+
+  it('falls back to the pieces and the idea when no pattern fits', () => {
+    expect(texts(beatsOf('caro-kann-1100-0002#14'))).toEqual([
+      'Look at your pawn on b7 and the queen on e2.',
+      'b5+ starts a sequence that wins the queen for two pawns: b5+ Qxb5 cxb5+.',
+    ]);
+    // A tactic set up by earlier moves has its pieces elsewhere now, so only the line is shown.
+    expect(beatsOf('caro-kann-1100-0015#17')).toHaveLength(1);
+  });
+});

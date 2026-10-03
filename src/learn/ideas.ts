@@ -349,7 +349,7 @@ function baitIdea(theme: Theme, user: Color): string {
 }
 
 /** The opponent's answer to a bait, as a clause: "Qb6 traps your bishop on b7". */
-function replyText(t: Tactic, user: Color): string {
+export function replyText(t: Tactic, user: Color): string {
   const lead = t.at === 0 ? '' : `after ${sequence(t.moves.slice(0, t.at))}, `;
   const move = `${lead}${san(t)}`;
   const ref = (p: PieceAt) => refer(p, user);
