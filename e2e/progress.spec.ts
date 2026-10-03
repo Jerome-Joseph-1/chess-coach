@@ -508,12 +508,14 @@ test.describe('Reduced motion', () => {
     await seed(page, savedProgress([moment(3, true), moment(7, false)]));
     await page.goto('./#/recap');
     await expect(page.locator('.summary-number')).toHaveText('1 of 2');
-    const pip = await page.locator('.pip').first().evaluate((p) => getComputedStyle(p, '::before').animationName);
-    expect(pip).toBe('fade-in');
+    const pip = () => page.locator('.pip').first().evaluate((p) => getComputedStyle(p, '::before').animationName);
+    await expect.poll(pip).toBe('fade-in');
 
     await page.getByRole('link', { name: 'Close' }).click();
     await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Progress' }).click();
-    const pill = await page.locator('.tabbar-pill').evaluate((p) => getComputedStyle(p).animationName);
-    expect(pill).toBe('tabbar-fade');
+    await expect(page.getByRole('heading', { name: 'Progress', level: 1 })).toBeVisible();
+    // The pill takes its animation once the tab change has rendered, which can lag on a busy machine.
+    const pill = () => page.locator('.tabbar-pill').evaluate((p) => getComputedStyle(p).animationName);
+    await expect.poll(pill).toBe('tabbar-fade');
   });
 });
