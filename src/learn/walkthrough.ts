@@ -454,7 +454,7 @@ function bait(c: Context, t: Tactic): Beat[] | null {
   if (!lure) return null;
   const reasons = appeal(lure, c.user);
   const free = looksFree(lure) ? ', and it looks free' : '';
-  const looks = reasons.length ? `${lure.san} is tempting: it ${listOf(reasons)}${free}.` : `${lure.san} looks like a normal move.`;
+  const looks = reasons.length ? `${lure.san} is tempting: it ${listOf(reasons)}${free}.` : `${lure.san} looks quiet and safe.`;
   const reply = t.moves[0];
   const hit = standing(lure.after, c.theme.pieces.filter((p) => p.color === c.user && p.role !== 'mover'));
   const beats: Beat[] = [

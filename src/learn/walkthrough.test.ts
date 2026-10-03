@@ -359,7 +359,7 @@ describe('the patterns', () => {
 
   it('shows the trap, what it runs into, then the better move', () => {
     const beats = beatsOf('caro-kann-1100-0013#7');
-    expect(texts(beats).slice(0, 3)).toEqual(['Rb8 looks like a normal move.', 'But Bxb8 wins your rook on b8.', 'Instead, Bb4 attacks the knight on c3.']);
+    expect(texts(beats).slice(0, 3)).toEqual(['Rb8 looks quiet and safe.', 'But Bxb8 wins your rook on b8.', 'Instead, Bb4 attacks the knight on c3.']);
     expect(beats[0].arrows).toEqual([{ from: 'a8', to: 'b8', tone: 'mistake' }]);
     expect(beats[1]).toMatchObject({ move: 'a8b8', marks: [{ square: 'b8', tone: 'bad' }] });
     expect(beats[2]).toMatchObject({ fen: beats[0].fen, answer: 'f8b4' });

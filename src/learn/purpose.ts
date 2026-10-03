@@ -60,8 +60,14 @@ function facts(move: Move, user: Color, castles: string): string[] {
 /** What makes a move tempting, as clauses after "it": "takes a pawn", "gives check", "attacks the queen on e5". */
 export function appeal(move: Move, user: Color): string[] {
   const reasons = facts(move, user, 'castles your king');
-  if (!reasons.length && develops(move)) reasons.push(`develops your ${NAME[move.piece]}`);
-  return reasons;
+  if (reasons.length) return reasons;
+  if (develops(move)) return [`develops your ${NAME[move.piece]}`];
+  return escapes(move) ? [`moves your ${NAME[move.piece]} out of danger`] : [];
+}
+
+/** A piece other than the king that could be won where it stood, and the move takes it away. */
+function escapes(move: Move): boolean {
+  return move.piece !== 'k' && isLoose(move.before, move.from);
 }
 
 /** Counting on the square says the capture wins, whatever else it allows. */
@@ -86,7 +92,7 @@ export function purpose(move: Move, user: Color): string[] {
   if (reasons.length) return reasons;
   if (develops(move)) return [`develops your ${NAME[move.piece]}`];
   if (makesLuft(move)) return ['gives your king a square to escape to'];
-  if (isLoose(move.before, move.from) && !isLoose(move.after, move.to)) return [`takes your ${NAME[move.piece]} out of danger`];
+  if (escapes(move) && !isLoose(move.after, move.to)) return [`takes your ${NAME[move.piece]} out of danger`];
   if (move.piece === 'r' && move.from[0] !== move.to[0] && openFile(move.after, move.to[0])) {
     return [`puts your rook on the open ${move.to[0]}-file`];
   }
