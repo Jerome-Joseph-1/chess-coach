@@ -7,7 +7,7 @@ import piecesSprite from 'cm-chessboard/assets/pieces/standard.svg?no-inline';
 import type { Side } from '../content/types';
 import { parseUci, toUci } from '../game/position';
 import { legalMoves, pickMove } from './moves';
-import type { BoardController, Tone } from './types';
+import type { ArrowTone, BadgeKind, BoardController, Tone } from './types';
 
 type MoveHandler = (uci: string) => boolean | Promise<boolean>;
 
@@ -135,6 +135,12 @@ export class CmBoardController implements BoardController {
     const row = flipped ? rank : 7 - rank;
     return { x: rect.left + (column + 0.5) * size, y: rect.top + (row + 0.5) * size };
   }
+
+  badge(_square: string, _kind: BadgeKind | null): void {}
+
+  arrow(_from: string, _to: string, _tone: ArrowTone): void {}
+
+  clearArrows(): void {}
 
   destroy(): void {
     if (this.destroyed) return;

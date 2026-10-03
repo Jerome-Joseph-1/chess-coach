@@ -58,6 +58,9 @@ class FakeBoard implements BoardController {
   dim(except: string[] | null) {
     this.dimmed = except;
   }
+  badge() {}
+  arrow() {}
+  clearArrows() {}
 
   /** The user moves a piece; like the real board, an unwanted move is not kept. */
   userMove(uci: string): boolean {

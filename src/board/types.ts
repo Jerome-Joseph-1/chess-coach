@@ -1,6 +1,8 @@
 import type { Side } from '../content/types';
 
 export type Tone = 'focus' | 'good' | 'bad' | 'hint';
+export type BadgeKind = 'good' | 'bad';
+export type ArrowTone = 'best' | 'threat' | 'mistake';
 
 /** Imperative handle to the board. Implemented by Board.tsx, used by the game session and the pause sheet. */
 export interface BoardController {
@@ -26,4 +28,9 @@ export interface BoardController {
   squareCenter(square: string): { x: number; y: number };
   /** Dim the board except the given squares (empty array removes the dim). */
   dim(except: string[] | null): void;
+  /** A round check or cross on a square, like a puzzle verdict; null removes it. */
+  badge(square: string, kind: BadgeKind | null): void;
+  /** Draw a move arrow; it stays until clearArrows. */
+  arrow(from: string, to: string, tone: ArrowTone): void;
+  clearArrows(): void;
 }
