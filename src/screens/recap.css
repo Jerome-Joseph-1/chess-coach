@@ -46,7 +46,9 @@
   animation-delay: calc(var(--i, 0) * 50ms);
 }
 .moment {
+  gap: 10px;
   min-height: 64px;
+  padding-inline: 14px;
 }
 .moment-title {
   color: var(--text-strong);

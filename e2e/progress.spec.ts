@@ -367,6 +367,9 @@ test.describe('Progress', () => {
 });
 
 test.describe('Phone layout', () => {
+  // The SE project is 320px wide; 375px is the width most small phones have.
+  test.use({ viewport: { width: 375, height: 667 } });
+
   const screens = [
     { name: 'Today', path: './' },
     { name: 'Progress', path: './#/progress' },

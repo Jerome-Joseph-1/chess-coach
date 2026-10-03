@@ -284,11 +284,14 @@ a.row:active {
 /* A quiet line with the orange dot: something is waiting for you. */
 .welcome {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   margin: 0;
   color: var(--text);
   font: var(--text-caption);
+}
+.welcome .due-dot {
+  margin-top: 6px;
 }
 .welcome--card {
   padding: 12px 16px;

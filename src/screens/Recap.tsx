@@ -63,6 +63,7 @@ function MomentRow({ m, turn, index }: { m: MomentResult; turn?: Turn; index: nu
 function useTurns(game: GameSummary): Map<number, Turn> {
   const [turns, setTurns] = useState(new Map<number, Turn>());
   useEffect(() => {
+    if (game.moments.length === 0) return;
     let current = true;
     loadGame(game.opening, game.level, game.gameId)
       .then((data) => current && setTurns(new Map(data.turns.map((t) => [t.ply, t]))))
@@ -70,7 +71,7 @@ function useTurns(game: GameSummary): Map<number, Turn> {
     return () => {
       current = false;
     };
-  }, [game.opening, game.level, game.gameId]);
+  }, [game.opening, game.level, game.gameId, game.moments.length]);
   return turns;
 }
 
