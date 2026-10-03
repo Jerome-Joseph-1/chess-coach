@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { playButton, tapSquare, tapSquares } from './board';
+import { SPOT_QUESTION, playButton, tapSquare, tapSquares, winButton } from './board';
 
 test.use({ serviceWorkers: 'block' });
 test.beforeEach(({}, testInfo) => test.skip(testInfo.project.name !== 'iphone-14', 'Motion is checked on the iPhone 14 profile'));
@@ -9,8 +9,8 @@ async function reachYourMove(page: Page) {
   await page.addInitScript(() => localStorage.setItem('cc.settings.v1', JSON.stringify({ depthOverride: 3 })));
   await page.goto('./#/play/italian/1400');
   await playButton(page).click();
-  await expect(page.getByText('Is something important happening?')).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible({ timeout: 15_000 });
+  await winButton(page).click();
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
 }
 

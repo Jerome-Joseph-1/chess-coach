@@ -1,7 +1,7 @@
 import type { Game } from '../content/types';
 import { lessonFor } from '../learn';
-import { COPY, findNote, holdSub, replySub, spotSub } from './copy';
-import type { FlowState } from './flow';
+import { COPY, findNote, holdSub, replySub, spotNudge, spotRight, spotSub } from './copy';
+import { spotAnswers, type FlowContext, type FlowState } from './flow';
 import { pieceInTrouble } from './hints';
 
 /** How the coach's bubble reads: a question, a hint, an error to try again, a right answer, or neither. */
@@ -15,23 +15,21 @@ export interface Prompt {
 
 type Line = Pick<Prompt, 'sub' | 'tone'>;
 
-const RIGHT: Line = { sub: COPY.right, tone: 'success' };
-
 /** What the last answer earned, as the line that replaces the question's sub line. */
 function feedbackLine(game: Game, state: FlowState): Line | null {
   const feedback = state.feedback;
   switch (feedback?.kind) {
-    case 'spot':
-      return feedback.correct ? RIGHT : { sub: COPY.lookAgain, tone: 'error' };
     case 'move': {
       const rare = state.phase === 'solve' && state.hint === 0;
       return { sub: rare ? findNote(game.turns[feedback.turn], game.level) : COPY.right, tone: 'success' };
     }
     case 'alt':
       return { sub: COPY.altNote, tone: 'success' };
-    case 'wrong':
-      // A hint that points at the board stays in view; the bubble only turns to the error tone.
-      return { sub: state.hint >= 2 ? hintText(game, state)!.sub! : COPY.tryAgain, tone: 'error' };
+    case 'wrong': {
+      // With nothing more to say about the move, a hint that points at the board stays in view.
+      const plain = feedback.why.text === COPY.tryAgain;
+      return { sub: plain && state.hint >= 2 ? hintText(game, state)!.sub! : feedback.why.text, tone: 'error' };
+    }
     default:
       return null;
   }
@@ -58,7 +56,8 @@ function questionFor(game: Game, state: FlowState): Pick<Prompt, 'title' | 'sub'
     case 'reply':
       return { title: COPY.holdTitle, sub: replySub(game) };
     default:
-      return { title: COPY.solveTitle, sub: COPY.solveSub };
+      // The right answer to step 1 stays in view until the user moves or asks for a hint.
+      return { title: COPY.solveTitle, sub: state.spot ? spotRight(state.spot) : COPY.solveSub };
   }
 }
 
@@ -71,8 +70,10 @@ export function promptFor(game: Game, state: FlowState): Prompt {
 }
 
 /** Line of the spot step: what just happened, then how the answer went. */
-export function spotPromptFor(game: Game, turnIndex: number, state: FlowState): Line {
-  return feedbackLine(game, state) ?? { sub: spotSub(game, turnIndex), tone: 'neutral' };
+export function spotPromptFor(ctx: FlowContext, state: FlowState): Line {
+  const { feedback, spot } = state;
+  if (feedback?.kind !== 'spot' || !spot) return { sub: spotSub(ctx.game, ctx.turnIndex), tone: 'neutral' };
+  return feedback.correct ? { sub: spotRight(spot), tone: 'success' } : { sub: spotNudge(spot, spotAnswers(ctx)), tone: 'error' };
 }
 
 /** "Key position · Move 7", over every question of a pause. */

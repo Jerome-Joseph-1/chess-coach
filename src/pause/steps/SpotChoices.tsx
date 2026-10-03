@@ -1,23 +1,24 @@
 import type { RefObject } from 'preact';
+import { SITUATIONS, type Situation } from '../../learn/situation';
 import { COPY } from '../copy';
 
 export interface SpotChoicesProps {
-  /** The right answer is "Yes". */
-  expectYes: boolean;
-  /** The user's latest answer. */
-  picked: boolean | null;
-  /** The right answer is in: the row is done, otherwise a wrong one can be picked over. */
+  /** The picks that count as right. */
+  answers: Situation[];
+  /** The user's latest pick. */
+  picked: Situation | null;
+  /** A right pick is in: the grid is done, otherwise a wrong one can be picked over. */
   settled: boolean;
-  onAnswer: (yes: boolean) => void;
+  onAnswer: (pick: Situation) => void;
   innerRef?: RefObject<HTMLDivElement>;
 }
 
 type ChoiceState = 'idle' | 'right' | 'wrong' | 'dim';
 
-function stateOf(isYes: boolean, { expectYes, picked, settled }: SpotChoicesProps): ChoiceState {
-  if (picked === null || (!settled && picked !== isYes)) return 'idle';
-  if (picked !== isYes) return 'dim';
-  return isYes === expectYes ? 'right' : 'wrong';
+function stateOf(id: Situation, { answers, picked, settled }: SpotChoicesProps): ChoiceState {
+  if (picked === null || (!settled && picked !== id)) return 'idle';
+  if (picked !== id) return 'dim';
+  return answers.includes(id) ? 'right' : 'wrong';
 }
 
 const GLYPHS: Record<ChoiceState, string | null> = {
@@ -27,7 +28,7 @@ const GLYPHS: Record<ChoiceState, string | null> = {
   wrong: 'M12 6L6 12M6 6L12 12',
 };
 
-/** A ring that fills and draws its check, or its cross, once the row is answered. */
+/** A ring that fills and draws its check, or its cross, once the pick is in. */
 function ChoiceRing({ state }: { state: ChoiceState }) {
   const glyph = GLYPHS[state];
   return (
@@ -38,27 +39,28 @@ function ChoiceRing({ state }: { state: ChoiceState }) {
   );
 }
 
-function Choice({ isYes, ...props }: SpotChoicesProps & { isYes: boolean }) {
-  const state = stateOf(isYes, props);
+function Choice({ id, label, ...props }: SpotChoicesProps & { id: Situation; label: string }) {
+  const state = stateOf(id, props);
   return (
     <button
       type="button"
-      class={`dock-btn btn btn-secondary is-wide pause-choice is-${state}`}
+      class={`dock-btn btn btn-secondary pause-choice is-${state}`}
       aria-disabled={props.settled}
-      onClick={() => !props.settled && props.onAnswer(isYes)}
+      onClick={() => !props.settled && props.onAnswer(id)}
     >
       <ChoiceRing state={state} />
-      {isYes ? COPY.spotYes : COPY.spotNo}
+      {label}
     </button>
   );
 }
 
-/** Step 1's answers sit in the dock: No and Yes. A wrong one is only an error; the other can still be picked. */
+/** Step 1's five answers under the question: two rows of two, then "Nothing urgent" across. A wrong pick is only an error. */
 export function SpotChoices(props: SpotChoicesProps) {
   return (
-    <div class="pause-choices" role="group" aria-label={COPY.spotTitle} ref={props.innerRef}>
-      <Choice isYes={false} {...props} />
-      <Choice isYes={true} {...props} />
+    <div class="spot-choices rise-in" role="group" aria-label={COPY.spotTitle} ref={props.innerRef}>
+      {SITUATIONS.map(({ id, label }) => (
+        <Choice key={id} id={id} label={label} {...props} />
+      ))}
     </div>
   );
 }

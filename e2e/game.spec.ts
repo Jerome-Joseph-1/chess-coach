@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import {
+  SPOT_QUESTION,
   coachLine,
   continueAfterPause,
   continueButton,
@@ -9,12 +10,11 @@ import {
   previousKeyButton,
   stepBackButton,
   stepForwardButton,
-  yesButton,
+  winButton,
 } from './board';
 import { readAllNotes } from './notes';
 
 const PLAY_URL = './#/play/italian/1400';
-const FIRST_KEY_POSITION = 'Is something important happening?';
 const LOOKING_BACK = /^Move \d+ of \d+ · you are looking back$/;
 const RUN_MS = 15_000;
 
@@ -116,7 +116,7 @@ test('Play moves both sides up to the first key position without a tap on the bo
   await page.goto(PLAY_URL);
   await playButton(page).click();
 
-  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible({ timeout: RUN_MS });
   await expect(moveList(page).last()).toHaveText('Nxe4');
   await expect(moveList(page).nth(-2)).toHaveText(/d4$/);
   await expect(playButton(page)).toHaveCount(0);
@@ -132,26 +132,26 @@ test('Pause stops the moves and Play carries on from there', async ({ page }) =>
   const played = await moveList(page).count();
   await page.waitForTimeout(1500);
   await expect(moveList(page)).toHaveCount(played);
-  await expect(page.getByText(FIRST_KEY_POSITION)).toHaveCount(0);
+  await expect(page.getByText(SPOT_QUESTION)).toHaveCount(0);
 
   await playButton(page).click();
   await expect(pauseButton(page)).toBeVisible();
   await expect.poll(() => moveList(page).count()).toBeGreaterThan(played);
-  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible({ timeout: RUN_MS });
 });
 
 test('after a key position the game plays on by itself to the next one', async ({ page }) => {
   await page.goto(PLAY_URL);
   await playButton(page).click();
-  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
-  await yesButton(page).click();
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible({ timeout: RUN_MS });
+  await winButton(page).click();
   await page.getByRole('button', { name: 'Show solution' }).click();
   const played = await moveList(page).count();
 
   await continueAfterPause(page);
   await expect(moveList(page).filter({ hasText: /dxe5$/ }).getByRole('img', { name: 'Missed' })).toBeVisible();
   await expect.poll(() => moveList(page).count()).toBeGreaterThanOrEqual(played + 2);
-  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible({ timeout: RUN_MS });
   await expect(page.locator('.game-sub')).toHaveText(/^Key position 2 of \d+$/);
 });
 
@@ -166,15 +166,15 @@ test('Next move plays one scripted move per tap and walks into the first key pos
 
   await stepForwardButton(page).click();
   await stepForwardButton(page).click();
-  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible();
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible();
   await expect(moveList(page).last()).toHaveText('Nxe4');
 });
 
 test('after a key position the user can stop, look back, step on, continue and try it again', async ({ page }) => {
   await page.goto(PLAY_URL);
   await playButton(page).click();
-  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
-  await yesButton(page).click();
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible({ timeout: RUN_MS });
+  await winButton(page).click();
   await page.getByRole('button', { name: 'Show solution' }).click();
   const played = await moveList(page).count();
   await continueAfterPause(page);
@@ -206,9 +206,9 @@ test('after a key position the user can stop, look back, step on, continue and t
   await expect.poll(() => moveList(page).count()).toBeGreaterThan(total);
 
   await previousKeyButton(page).click();
-  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible();
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible();
   await expect(page.locator('.game-sub')).toHaveText('Practice');
-  await yesButton(page).click();
+  await winButton(page).click();
   await page.getByRole('button', { name: 'Show solution' }).click();
   await continueButton(page).click();
 

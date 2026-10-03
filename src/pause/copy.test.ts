@@ -11,10 +11,13 @@ import {
   opponentName,
   piecesPhrase,
   resultLine,
+  spotNudge,
+  spotRight,
   spotSub,
   stepLabel,
   winSentence,
 } from './copy';
+import { SITUATIONS } from '../learn/situation';
 import queenForKnight from './fixtures/queen-for-knight.json';
 import olderItalian from './fixtures/italian-1400-0003.json';
 import { playLine } from './position';
@@ -84,14 +87,40 @@ describe('headline', () => {
 
 describe('spotSub', () => {
   it('says what the opponent just did', () => {
-    expect(spotSub(italian1, 3)).toBe('Black just took back on e5. Take a look before you move.');
-    expect(spotSub(italian1, 1)).toBe('Black just took your pawn on e4. Take a look before you move.');
-    expect(spotSub(italian1, 18)).toBe('Black just put you in check. Take a look before you move.');
-    expect(spotSub(italian1, 11)).toBe('Black just played Nf5. Take a look before you move.');
+    expect(spotSub(italian1, 3)).toBe('Black just took back on e5.');
+    expect(spotSub(italian1, 1)).toBe('Black just took your pawn on e4.');
+    expect(spotSub(italian1, 18)).toBe('Black just put you in check.');
+    expect(spotSub(italian1, 11)).toBe('Black just played Nf5.');
   });
 
   it('takes back on the square of the latest capture, even a move later', () => {
-    expect(spotSub(italian1, 9)).toBe('Black just took back on e6. Take a look before you move.');
+    expect(spotSub(italian1, 9)).toBe('Black just took back on e6.');
+  });
+});
+
+describe('the answers to step 1', () => {
+  const all = SITUATIONS.map((s) => s.id);
+
+  it('confirm a right pick in general terms, never with a move', () => {
+    for (const pick of all) {
+      expect(spotRight(pick)).toMatch(/^Yes: /);
+      expect(spotRight(pick)).not.toMatch(/[a-h][1-8]/);
+    }
+  });
+
+  it('nudge every wrong pick in words that fit the pick and the position', () => {
+    expect(spotNudge('win', ['defend'])).toBe('Before you grab, check what they threaten.');
+    expect(spotNudge('quiet', ['win'])).toBe('Look again: check every capture and every attack.');
+    expect(spotNudge('defend', ['quiet'])).toBe('Is anything of yours actually attacked? Count the attackers.');
+    for (const real of all) {
+      const nudges = all.filter((pick) => pick !== real).map((pick) => spotNudge(pick, [real]));
+      expect(new Set(nudges).size, real).toBeGreaterThan(1);
+      for (const nudge of nudges) expect(nudge).toMatch(/^[A-Z][^.?]*[.?]( [A-Z][^.?]*[.?])?$/);
+    }
+  });
+
+  it('speak to the most urgent answer when a position has several', () => {
+    expect(spotNudge('trap', ['win', 'defend'])).toBe(spotNudge('trap', ['defend']));
   });
 });
 

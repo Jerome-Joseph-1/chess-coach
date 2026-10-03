@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Depth, Game } from '../content/types';
+import type { Situation } from '../learn/situation';
+import { whyWrong } from '../learn/whyWrong';
 import {
   HOLD_MAX,
   flowReducer,
@@ -9,6 +11,7 @@ import {
   plannedSteps,
   revealTurn,
   scriptedUci,
+  spotAnswers,
   stars,
   stepNumber,
   stepTotal,
@@ -35,7 +38,7 @@ const replied: FlowEvent = { type: 'replied' };
 const hint: FlowEvent = { type: 'hint' };
 const solution: FlowEvent = { type: 'solution' };
 const move = (uci: string): FlowEvent => ({ type: 'move', uci });
-const spot = (up: boolean): FlowEvent => ({ type: 'spot', up });
+const spot = (pick: Situation): FlowEvent => ({ type: 'spot', pick });
 
 /** A move at this turn that loses at least `min` win%. */
 function losingMove(game: Game, turnIndex: number, min = 10): string {
@@ -53,7 +56,7 @@ function otherHoldingMove(game: Game, turnIndex: number): string {
 /** Events for a pause answered perfectly at the given depth, ending on the reveal. */
 function perfectRun(ctx: FlowContext): FlowEvent[] {
   const { game, turnIndex } = ctx;
-  const events: FlowEvent[] = [spot(true), advance];
+  const events: FlowEvent[] = [spot(spotAnswers(ctx)[0]), advance];
   const asked = [turnIndex, ...holdTurns(ctx)];
   asked.forEach((turn, i) => {
     events.push(move(scriptedUci(game, turn)), advance);
@@ -152,14 +155,14 @@ describe('a perfect pause', () => {
   it('asks the user to play the move after a right spot, at every depth', () => {
     for (const depth of DEPTHS) {
       const ctx = ctxFor(italian1, 3, depth);
-      const state = run(ctx, [spot(true), advance]);
+      const state = run(ctx, [spot('win'), advance]);
       expect(state.phase).toBe('solve');
     }
   });
 
   it('follows the opponent reply between follow-up moves', () => {
     const ctx = ctxFor(italian1, 3, 5);
-    const afterSolve = run(ctx, [spot(true), advance, move(scriptedUci(italian1, 3)), advance]);
+    const afterSolve = run(ctx, [spot('win'), advance, move(scriptedUci(italian1, 3)), advance]);
     expect(afterSolve.phase).toBe('reply');
     const asked = run(ctx, [replied], afterSolve);
     expect(asked.phase).toBe('hold');
@@ -170,7 +173,7 @@ describe('a perfect pause', () => {
 describe('a quiet turn', () => {
   it.each(DEPTHS)('depth %i asks only the spot and resumes at the turn itself', (depth) => {
     const ctx = ctxFor(italian1, 11, depth, 'nothing');
-    const state = run(ctx, [spot(false), advance]);
+    const state = run(ctx, [spot('quiet'), advance]);
     expect(state.phase).toBe('reveal');
     expect(state.outcomes).toEqual([{ step: 'spot', correct: true }]);
     const done = run(ctx, [{ type: 'continue' }], state);
@@ -183,13 +186,14 @@ describe('a quiet turn', () => {
     });
   });
 
-  it('shows the error for "Something\'s up", lets the user switch to "Nothing special", and scores the first answer', () => {
+  it('shows the error for any other answer, lets the user switch to "Nothing urgent", and scores the first answer', () => {
     const ctx = ctxFor(italian1, 11, 3, 'nothing');
-    const wrong = run(ctx, [spot(true)]);
+    expect(spotAnswers(ctx)).toEqual(['quiet']);
+    const wrong = run(ctx, [spot('defend')]);
     expect(wrong.phase).toBe('spot');
     expect(wrong.answered).toBe(false);
     expect(wrong.feedback).toEqual({ kind: 'spot', correct: false });
-    const state = run(ctx, [spot(false), advance], wrong);
+    const state = run(ctx, [spot('quiet'), advance], wrong);
     expect(state.phase).toBe('reveal');
     expect(state.outcomes).toEqual([{ step: 'spot', correct: false }]);
   });
@@ -199,33 +203,40 @@ describe('the spot step', () => {
   const ctx = ctxFor(italian1, 3, 3);
 
   it('holds the right answer on screen until advance, then asks for the move', () => {
-    const answered = run(ctx, [spot(true)]);
+    const answered = run(ctx, [spot('win')]);
     expect(answered.phase).toBe('spot');
     expect(answered.answered).toBe(true);
     expect(answered.feedback).toEqual({ kind: 'spot', correct: true });
-    expect(answered.spotUp).toBe(true);
-    expect(run(ctx, [spot(false)], answered)).toBe(answered);
+    expect(answered.spot).toBe('win');
+    expect(run(ctx, [spot('quiet')], answered)).toBe(answered);
     expect(run(ctx, [advance], answered).phase).toBe('solve');
   });
 
   it('is only an error when the answer is wrong: the question stays open for another pick', () => {
-    const wrong = run(ctx, [spot(false)]);
+    const wrong = run(ctx, [spot('quiet')]);
     expect(wrong.phase).toBe('spot');
     expect(wrong.answered).toBe(false);
-    expect(wrong.spotUp).toBe(false);
+    expect(wrong.spot).toBe('quiet');
     expect(wrong.outcomes).toEqual([]);
     expect(wrong.feedback).toEqual({ kind: 'spot', correct: false });
     expect(run(ctx, [advance], wrong)).toBe(wrong);
   });
 
   it('lets the user keep trying, and scores the first answer', () => {
-    const state = run(ctx, [spot(false), spot(false), spot(true), advance]);
+    const state = run(ctx, [spot('quiet'), spot('trap'), spot('attack'), spot('defend'), spot('win'), advance]);
     expect(state.phase).toBe('solve');
     expect(state.outcomes).toEqual([{ step: 'spot', correct: false }]);
   });
 
   it('scores a right first answer as right', () => {
-    expect(run(ctx, [spot(true), advance]).outcomes).toEqual([{ step: 'spot', correct: true }]);
+    expect(run(ctx, [spot('win'), advance]).outcomes).toEqual([{ step: 'spot', correct: true }]);
+  });
+
+  it('takes any answer that fits a position about two things', () => {
+    const both = ctxFor(italian1, 7, 3);
+    expect(spotAnswers(both)).toEqual(['win', 'defend']);
+    for (const pick of ['win', 'defend'] as const) expect(run(both, [spot(pick), advance]).outcomes).toEqual([{ step: 'spot', correct: true }]);
+    expect(run(both, [spot('trap')]).answered).toBe(false);
   });
 
   it('ignores the hint and the solution buttons', () => {
@@ -237,7 +248,7 @@ describe('the spot step', () => {
 
 describe('the play step', () => {
   const ctx = ctxFor(italian1, 3, 3);
-  const toSolve = () => run(ctx, [spot(true), advance]);
+  const toSolve = () => run(ctx, [spot('win'), advance]);
   const scripted = scriptedUci(italian1, 3);
   const wrong = losingMove(italian1, 3);
 
@@ -256,7 +267,7 @@ describe('the play step', () => {
     expect(state.tries).toBe(8);
     expect(state.hint).toBe(0);
     expect(state.hinted).toBe(false);
-    expect(state.feedback).toEqual({ kind: 'wrong', uci: wrong });
+    expect(state.feedback).toEqual({ kind: 'wrong', uci: wrong, why: whyWrong(italian1, 3, wrong, 0) });
     expect(state.outcomes).toEqual([{ step: 'spot', correct: true }]);
   });
 
@@ -269,7 +280,7 @@ describe('the play step', () => {
   it('treats a move the script cannot follow as correct but ends the play-out', () => {
     const deep = ctxFor(italian1, 3, 5);
     const alt = otherHoldingMove(italian1, 3);
-    const state = run(deep, [spot(true), advance, move(alt), advance]);
+    const state = run(deep, [spot('win'), advance, move(alt), advance]);
     expect(state.phase).toBe('reveal');
     expect(state.alt).toBe(true);
     expect(state.outcomes).toEqual([
@@ -293,7 +304,8 @@ describe('the play step', () => {
     const shown = run(ctx, [hint, hint, hint], toSolve());
     const state = run(ctx, [move(alt)], shown);
     expect(state.phase).toBe('solve');
-    expect(state.feedback).toEqual({ kind: 'wrong', uci: alt });
+    expect(state.feedback).toEqual({ kind: 'wrong', uci: alt, why: whyWrong(italian1, 3, alt, 3) });
+    expect(state.feedback?.kind === 'wrong' && state.feedback.why.text).toBe('Not quite. Try again.');
     expect(run(ctx, [move(scripted)], shown).feedback).toMatchObject({ kind: 'move' });
   });
 
@@ -307,7 +319,7 @@ describe('the play step', () => {
 
 describe('hints', () => {
   const ctx = ctxFor(italian1, 3, 3);
-  const toSolve = () => run(ctx, [spot(true), advance]);
+  const toSolve = () => run(ctx, [spot('win'), advance]);
   const scripted = scriptedUci(italian1, 3);
 
   it('walks from the pattern to the piece to the move and stops there', () => {
@@ -338,9 +350,16 @@ describe('hints', () => {
     expect(run(ctx, [hint, move(wrong), move(wrong)], toSolve()).hint).toBe(1);
   });
 
+  it('explains a wrong move as far as the hints allow, until the next hint replaces it', () => {
+    const wrong = losingMove(italian1, 3);
+    const tried = run(ctx, [hint, move(wrong)], toSolve());
+    expect(tried.feedback).toEqual({ kind: 'wrong', uci: wrong, why: whyWrong(italian1, 3, wrong, 1) });
+    expect(run(ctx, [hint], tried).feedback).toBeNull();
+  });
+
   it('starts again at zero on the next question, and remembers a hint was used', () => {
     const deep = ctxFor(italian1, 3, 5);
-    const solved = run(deep, [spot(true), advance, hint, move(scriptedUci(italian1, 3)), advance, replied]);
+    const solved = run(deep, [spot('win'), advance, hint, move(scriptedUci(italian1, 3)), advance, replied]);
     expect(solved.phase).toBe('hold');
     expect(solved.hint).toBe(0);
     expect(solved.tries).toBe(0);
@@ -355,7 +374,7 @@ describe('hints', () => {
 
 describe('show solution', () => {
   const ctx = ctxFor(italian1, 3, 3);
-  const toSolve = () => run(ctx, [spot(true), advance]);
+  const toSolve = () => run(ctx, [spot('win'), advance]);
 
   it('goes straight to the reveal, scored as missed', () => {
     const state = run(ctx, [solution], toSolve());
@@ -383,14 +402,14 @@ describe('show solution', () => {
 
   it('counts the follow-ups still to come as missed', () => {
     const deep = ctxFor(italian1, 3, 5);
-    const state = run(deep, [spot(true), advance, solution]);
+    const state = run(deep, [spot('win'), advance, solution]);
     expect(state.outcomes).toHaveLength(plannedSteps(deep).length);
     expect(state.outcomes.slice(2).every((o) => !o.correct)).toBe(true);
   });
 
   it('shows the lines of the later turn when asked in the play-out', () => {
     const deep = ctxFor(italian1, 3, 5);
-    const hold = run(deep, [spot(true), advance, move(scriptedUci(italian1, 3)), advance, replied]);
+    const hold = run(deep, [spot('win'), advance, move(scriptedUci(italian1, 3)), advance, replied]);
     expect(hold.phase).toBe('hold');
     const state = run(deep, [solution], hold);
     expect(state.phase).toBe('reveal');
@@ -401,7 +420,7 @@ describe('show solution', () => {
 
   it('hands the board back at the pause position all the same', () => {
     const deep = ctxFor(italian1, 3, 5);
-    const hold = run(deep, [spot(true), advance, move(scriptedUci(italian1, 3)), advance, replied]);
+    const hold = run(deep, [spot('win'), advance, move(scriptedUci(italian1, 3)), advance, replied]);
     const done = run(deep, [solution, { type: 'continue' }], hold);
     expect(done.phase).toBe('done');
     expect(flowResult(deep, done).resumePly).toBe(italian1.turns[3].ply);
@@ -415,7 +434,7 @@ describe('show solution', () => {
 
 describe('the follow-up steps', () => {
   const ctx = ctxFor(italian1, 3, 5);
-  const toFirstHold = () => run(ctx, [spot(true), advance, move(scriptedUci(italian1, 3)), advance, replied]);
+  const toFirstHold = () => run(ctx, [spot('win'), advance, move(scriptedUci(italian1, 3)), advance, replied]);
 
   it('grades the next turn with its own grades', () => {
     const state = toFirstHold();
@@ -425,7 +444,7 @@ describe('the follow-up steps', () => {
   });
 
   it('accepts a scripted move even when its grade is above the hold limit', () => {
-    const state = run(ctx, [spot(true), advance, move(scriptedUci(italian1, 3)), advance, replied, move(scriptedUci(italian1, 4)), advance, replied]);
+    const state = run(ctx, [spot('win'), advance, move(scriptedUci(italian1, 3)), advance, replied, move(scriptedUci(italian1, 4)), advance, replied]);
     expect(state.turn).toBe(5);
     const uci = scriptedUci(italian1, 5);
     expect(italian1.turns[5].grades[uci]).toBeGreaterThan(HOLD_MAX);
@@ -437,7 +456,7 @@ describe('the follow-up steps', () => {
     const state = run(ctx, [move(wrong), move(wrong)], toFirstHold());
     expect(state.phase).toBe('hold');
     expect(state.answered).toBe(false);
-    expect(state.feedback).toEqual({ kind: 'wrong', uci: wrong });
+    expect(state.feedback).toEqual({ kind: 'wrong', uci: wrong, why: whyWrong(italian1, 4, wrong, 0) });
     const solved = run(ctx, [move(scriptedUci(italian1, 4)), advance], state);
     expect(solved.phase).toBe('reply');
     expect(solved.outcomes.at(-1)).toEqual({ step: 'hold', correct: true });
@@ -461,7 +480,7 @@ describe('the reveal', () => {
 
   it('says solved with a hint, not missed, when hints carried the user through', () => {
     const ctx = ctxFor(italian1, 3, 3);
-    const state = run(ctx, [spot(true), advance, hint, hint, move(scriptedUci(italian1, 3)), advance]);
+    const state = run(ctx, [spot('win'), advance, hint, hint, move(scriptedUci(italian1, 3)), advance]);
     expect(state.phase).toBe('reveal');
     expect(state.hinted).toBe(true);
     expect(state.outcomes).toEqual([
@@ -473,10 +492,10 @@ describe('the reveal', () => {
   it('gives the verdict for the mark on the move: found, found with a hint, or missed', () => {
     const ctx = ctxFor(italian1, 3, 3);
     expect(verdictOf(ctx, run(ctx, perfectRun(ctx)))).toBe('found');
-    expect(verdictOf(ctx, run(ctx, [spot(true), advance, hint, move(scriptedUci(italian1, 3))]))).toBe('hinted');
-    expect(flowResult(ctx, run(ctx, [spot(true), advance, hint, move(scriptedUci(italian1, 3))])).hinted).toBe(true);
-    expect(verdictOf(ctx, run(ctx, [spot(true), advance, hint, solution]))).toBe('missed');
-    expect(verdictOf(ctx, run(ctx, [spot(false), spot(true), advance, move(scriptedUci(italian1, 3))]))).toBe('missed');
+    expect(verdictOf(ctx, run(ctx, [spot('win'), advance, hint, move(scriptedUci(italian1, 3))]))).toBe('hinted');
+    expect(flowResult(ctx, run(ctx, [spot('win'), advance, hint, move(scriptedUci(italian1, 3))])).hinted).toBe(true);
+    expect(verdictOf(ctx, run(ctx, [spot('win'), advance, hint, solution]))).toBe('missed');
+    expect(verdictOf(ctx, run(ctx, [spot('quiet'), spot('win'), advance, move(scriptedUci(italian1, 3))]))).toBe('missed');
     expect(verdictOf(ctxFor(italian1, 11, 3, 'nothing'), initialState(ctxFor(italian1, 11, 3, 'nothing')))).toBe('quiet');
   });
 

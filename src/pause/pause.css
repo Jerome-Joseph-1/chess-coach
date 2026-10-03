@@ -603,13 +603,32 @@
   cursor: default;
 }
 
-/* Step 1's answers: a ring that fills and draws a check, or a cross, on the chosen pill. */
-.pause-choices {
-  display: flex;
-  gap: 12px;
+/* Step 1's answers under the question: two rows of two, then "Nothing urgent" across. */
+.spot-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  animation-delay: 200ms;
+}
+.spot-choices > :last-child {
+  grid-column: 1 / -1;
+}
+/* The chosen pill's ring fills and draws a check, or a cross. */
+.pause-choice {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  font: 500 15px/18px var(--font);
+  white-space: normal;
+  transition:
+    transform var(--d-press) var(--spring),
+    opacity var(--d-quick) ease-out;
 }
 .pause-choice[aria-disabled='true'] {
   cursor: default;
+}
+.pause-choice[aria-disabled='true']:active {
+  transform: none;
 }
 .pause-choice.is-dim {
   opacity: 0.4;

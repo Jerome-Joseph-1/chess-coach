@@ -29,14 +29,28 @@
   --above: var(--nav);
   --below: 330px;
 }
+/*
+ * Step 1 of a key position: the question, a reply of up to two lines and the five answers sit under the board.
+ * The move strip folds away (keeping its place in the moves) and the bars step aside, so the board stays nearly as big.
+ */
+.game[data-mode='ask']:has(.spot-choices) {
+  --strip: 0px;
+  --above: calc(var(--nav) + 8px);
+  --below: 306px;
+}
+.game[data-mode='ask']:has(.spot-choices) .game-strip {
+  overflow: hidden;
+}
 .game[data-mode='answer'] .game-strip,
 .game[data-mode='answer'] .game-player,
 .game[data-mode='analysis'] .game-strip,
 .game[data-mode='analysis'] .game-player,
-.game[data-mode='ask'] .game-player.is-you {
+.game[data-mode='ask'] .game-player.is-you,
+.game[data-mode='ask']:has(.spot-choices) .game-player {
   display: none;
 }
-.game[data-mode='answer'] .game-board {
+.game[data-mode='answer'] .game-board,
+.game[data-mode='ask']:has(.spot-choices) .game-board {
   padding-top: 8px;
 }
 

@@ -1,4 +1,6 @@
 import type { Depth, Game, StepName, StepOutcome } from '../content/types';
+import { situationsOf, type Situation } from '../learn/situation';
+import { whyWrong, type WrongMove } from '../learn/whyWrong';
 import { fenAfter, uciOfSan } from './position';
 
 /** A move losing at most this much win% still holds the position. */
@@ -34,7 +36,7 @@ export type Feedback =
   | { kind: 'spot'; correct: boolean }
   | { kind: 'move'; uci: string; turn: number }
   | { kind: 'alt'; uci: string }
-  | { kind: 'wrong'; uci: string };
+  | { kind: 'wrong'; uci: string; why: WrongMove };
 
 export interface FlowState {
   phase: Phase;
@@ -48,8 +50,8 @@ export interface FlowState {
   answered: boolean;
   /** Where `advance` goes after the feedback. */
   next: Phase | null;
-  /** The user's latest spot answer: true for "Something's up". */
-  spotUp: boolean | null;
+  /** The user's latest answer to "What's going on here?". */
+  spot: Situation | null;
   /** What the first answer to each settled question scored. */
   outcomes: StepOutcome[];
   /** The scripted move at the last turn is not on the board: a different but fine move ended the play-out. */
@@ -65,7 +67,7 @@ export interface FlowState {
 }
 
 export type FlowEvent =
-  | { type: 'spot'; up: boolean }
+  | { type: 'spot'; pick: Situation }
   | { type: 'move'; uci: string }
   | { type: 'hint' }
   | { type: 'solution' }
@@ -81,7 +83,7 @@ export function initialState(ctx: FlowContext): FlowState {
     hint: startingHint(ctx),
     answered: false,
     next: null,
-    spotUp: null,
+    spot: null,
     outcomes: [],
     alt: false,
     hinted: false,
@@ -90,6 +92,11 @@ export function initialState(ctx: FlowContext): FlowState {
     missedUci: null,
     feedback: null,
   };
+}
+
+/** The answers to "What's going on here?" that count as right; a quiet pause accepts only "Nothing urgent". */
+export function spotAnswers(ctx: FlowContext): Situation[] {
+  return ctx.type === 'nothing' ? ['quiet'] : situationsOf(ctx.game, ctx.turnIndex);
 }
 
 export function scriptedUci(game: Game, turnIndex: number): string {
@@ -166,7 +173,7 @@ export function flowResult(ctx: FlowContext, state: FlowState) {
 export function flowReducer(ctx: FlowContext, state: FlowState, event: FlowEvent): FlowState {
   switch (event.type) {
     case 'spot':
-      return state.phase === 'spot' && !state.answered ? answerSpot(ctx, state, event.up) : state;
+      return state.phase === 'spot' && !state.answered ? answerSpot(ctx, state, event.pick) : state;
     case 'move':
       return playMove(ctx, state, event.uci);
     case 'hint':
@@ -197,18 +204,19 @@ function isAsking(state: FlowState): boolean {
 }
 
 /** A wrong answer is only an error: the question stays open and the first answer is what counts. */
-function answerSpot(ctx: FlowContext, state: FlowState, up: boolean): FlowState {
-  const correct = up === (ctx.type === 'pause');
-  if (!correct) return { ...state, spotUp: up, tries: state.tries + 1, feedback: { kind: 'spot', correct } };
+function answerSpot(ctx: FlowContext, state: FlowState, pick: Situation): FlowState {
+  const correct = spotAnswers(ctx).includes(pick);
+  if (!correct) return { ...state, spot: pick, tries: state.tries + 1, feedback: { kind: 'spot', correct } };
   const outcomes: StepOutcome[] = [...state.outcomes, { step: 'spot', correct: state.tries === 0 }];
-  return settle(state, outcomes, ctx.type === 'pause' ? 'solve' : 'reveal', { kind: 'spot', correct }, { spotUp: up });
+  return settle(state, outcomes, ctx.type === 'pause' ? 'solve' : 'reveal', { kind: 'spot', correct }, { spot: pick });
 }
 
+/** A hint replaces whatever the last answer earned. */
 function takeHint(state: FlowState): FlowState {
   if (!isAsking(state) || state.hint >= 3) return state;
   // Follow-up moves have no pattern of their own to name, so their first hint marks the piece.
   const hint = state.hint === 0 && state.phase === 'hold' ? 2 : state.hint + 1;
-  return { ...state, hint: hint as HintLevel, hinted: true };
+  return { ...state, hint: hint as HintLevel, hinted: true, feedback: null };
 }
 
 function playMove(ctx: FlowContext, state: FlowState, uci: string): FlowState {
@@ -227,7 +235,8 @@ function playMove(ctx: FlowContext, state: FlowState, uci: string): FlowState {
   if (state.hint < 3 && grade !== undefined && grade <= HOLD_MAX) {
     return settle(state, outcomes, 'reveal', { kind: 'alt', uci }, { alt: true });
   }
-  return { ...state, tries: state.tries + 1, wrongUci: state.wrongUci ?? uci, feedback: { kind: 'wrong', uci } };
+  const why = whyWrong(ctx.game, state.turn, uci, state.hint);
+  return { ...state, tries: state.tries + 1, wrongUci: state.wrongUci ?? uci, feedback: { kind: 'wrong', uci, why } };
 }
 
 /** A failed step ends the pause: the steps it would still have asked count as missed. */

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { continueAfterPause, moveList, playButton, tapSquares } from './board';
+import { SPOT_QUESTION, continueAfterPause, moveList, playButton, tapSquares, winButton } from './board';
 
 test.use({ serviceWorkers: 'block' });
 // The engine's first load and a few searches of about a second each.
@@ -20,8 +20,8 @@ async function reachReveal(page: Page) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('./#/play/italian/1400');
   await playButton(page).click();
-  await expect(page.getByText('Is something important happening?')).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible({ timeout: 15_000 });
+  await winButton(page).click();
   await page.getByRole('button', { name: 'Show solution' }).click();
   await expect(page.getByText('Missed it')).toBeVisible();
   await expect(caption(page)).toContainText('5. dxe5');

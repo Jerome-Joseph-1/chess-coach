@@ -13,7 +13,7 @@ function after(depth: Depth, events: FlowEvent[]): FlowState {
 }
 
 const hint: FlowEvent = { type: 'hint' };
-const toSolve: FlowEvent[] = [{ type: 'spot', up: true }, { type: 'advance' }];
+const toSolve: FlowEvent[] = [{ type: 'spot', pick: 'win' }, { type: 'advance' }];
 const toFollowUp: FlowEvent[] = [...toSolve, { type: 'move', uci: scriptedUci(italian1, TURN) }, { type: 'advance' }, { type: 'replied' }];
 
 describe('the hint ladder', () => {

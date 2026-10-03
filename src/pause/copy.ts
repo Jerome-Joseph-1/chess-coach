@@ -1,14 +1,12 @@
 import type { Game, Kind, Level, Side, StepOutcome, Turn } from '../content/types';
 import { holdShare } from '../game/grading';
+import type { Situation } from '../learn/situation';
 import { capturesIn, materialLoss, valueOf } from './captures';
 import { material, pieceValue } from './material';
 import { flipTurn, moveBefore, playLine, sanOf, type OpponentMove, type PlayedMove } from './position';
 
 export const COPY = {
-  spotTitle: 'Is something important happening?',
-  spotYes: 'Yes',
-  spotNo: 'No',
-  lookAgain: 'Not quite. Look again.',
+  spotTitle: "What's going on here?",
   solveTitle: 'Your move',
   solveSub: 'Play the best move on the board.',
   tryAgain: 'Not quite. Try again.',
@@ -98,8 +96,66 @@ export function resultLine(type: 'pause' | 'nothing', outcomes: StepOutcome[], h
 /** What the opponent just did, as the sub line of step 1. */
 export function spotSub(game: Game, turnIndex: number): string {
   const move = moveBefore(game, game.turns[turnIndex].ply);
-  const look = 'Take a look before you move.';
-  return move ? `${describeMove(opponentName(game), move)} ${look}` : look;
+  return move ? describeMove(opponentName(game), move) : 'Take a look before you move.';
+}
+
+/** The right pick said back in general terms: what kind of position it is, never the move. */
+const SPOT_RIGHT: Record<Situation, string> = {
+  win: "Yes: there's material to win. Find the move.",
+  attack: 'Yes: you can go after the king. Find the move.',
+  defend: 'Yes: something of yours needs defending.',
+  trap: 'Yes: the obvious move has a catch. Find a better one.',
+  quiet: 'Yes: nothing urgent here.',
+};
+
+export function spotRight(pick: Situation): string {
+  return SPOT_RIGHT[pick];
+}
+
+const CHECK_TAKES = 'Look again: check every capture and every attack.';
+const NOT_ATTACKED = 'Is anything of yours actually attacked? Count the attackers.';
+
+/** A wrong pick, answered for what the position really is: NUDGES[real][picked]. */
+const NUDGES: Record<Situation, Partial<Record<Situation, string>>> = {
+  win: {
+    attack: 'Look past the king: is anything of theirs loose?',
+    defend: NOT_ATTACKED,
+    trap: 'Check every capture: is one of them simply good?',
+    quiet: CHECK_TAKES,
+  },
+  attack: {
+    win: 'Look at their king first: check every check.',
+    defend: NOT_ATTACKED,
+    trap: 'Look at their king: which checks do you have?',
+    quiet: 'Look again: check every check and every attack on the king.',
+  },
+  defend: {
+    win: 'Before you grab, check what they threaten.',
+    attack: 'Before you attack, check what they threaten.',
+    trap: 'Look at their last move: what does it threaten?',
+    quiet: 'Look again: what does their last move threaten?',
+  },
+  trap: {
+    win: 'Before you grab, check their best reply.',
+    attack: 'Before you go after the king, check their best reply.',
+    defend: 'Is anything of yours actually attacked? Check what your natural move allows.',
+    quiet: 'Look again: check what your natural move allows.',
+  },
+  quiet: {
+    win: 'Is it really free? Count attackers and defenders.',
+    attack: 'Is their king really in danger? Count attackers and defenders.',
+    defend: NOT_ATTACKED,
+    trap: 'Look again: does any natural move really lose something?',
+  },
+};
+
+/** When a position has several right answers, the nudge speaks to the most urgent. */
+const URGENCY: Situation[] = ['defend', 'attack', 'win', 'trap', 'quiet'];
+
+/** A nudge for a wrong pick that fits both the pick and what the position is really about. */
+export function spotNudge(pick: Situation, answers: Situation[]): string {
+  const real = URGENCY.find((situation) => answers.includes(situation)) ?? 'quiet';
+  return NUDGES[real][pick] ?? CHECK_TAKES;
 }
 
 function describeMove(who: string, move: OpponentMove): string {

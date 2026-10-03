@@ -1,7 +1,16 @@
 import { expect, type Page } from '@playwright/test';
 
 export async function boardSquares(page: Page) {
-  const box = (await page.locator('.board-host').boundingBox())!;
+  // The board grows or shrinks when the layout changes, e.g. after step 1; read it once it holds still.
+  const host = page.locator('.board-host');
+  let box = (await host.boundingBox())!;
+  await expect
+    .poll(async () => {
+      const last = box;
+      box = (await host.boundingBox())!;
+      return box.x === last.x && box.y === last.y && box.width === last.width;
+    }, { intervals: [100] })
+    .toBe(true);
   const size = box.width / 8;
   return (square: string) => ({
     x: box.x + (square.charCodeAt(0) - 97 + 0.5) * size,
@@ -15,9 +24,10 @@ export async function tapSquare(page: Page, square: string) {
 }
 
 export async function tapSquares(page: Page, from: string, to: string) {
-  const at = await boardSquares(page);
-  // The board ignores a pick-up while a piece is still sliding, so tap again until the legal moves show.
+  let at = await boardSquares(page);
+  // The board ignores a pick-up while a piece is still sliding, and may move into a new layout, so tap again until the legal moves show.
   await expect(async () => {
+    at = await boardSquares(page);
     await page.touchscreen.tap(at(from).x, at(from).y);
     await expect(page.locator('.cm-chessboard .marker-dot').first()).toBeVisible({ timeout: 400 });
   }).toPass();
@@ -40,8 +50,12 @@ export const continueButton = (page: Page) => page.getByRole('button', { name: '
 export const stepBackButton = (page: Page) => page.getByRole('button', { name: 'Previous move' });
 export const stepForwardButton = (page: Page) => page.getByRole('button', { name: 'Next move' });
 export const previousKeyButton = (page: Page) => page.getByRole('button', { name: 'Previous key position' });
-export const yesButton = (page: Page) => page.getByRole('button', { name: 'Yes', exact: true });
-export const noButton = (page: Page) => page.getByRole('button', { name: 'No', exact: true });
+/** Step 1 asks this at every key position. */
+export const SPOT_QUESTION = "What's going on here?";
+/** One of step 1's five answers, by its label. */
+export const choiceButton = (page: Page, label: string) => page.getByRole('button', { name: label, exact: true });
+/** The right answer at the fixture game's first key position, where dxe5 wins a pawn. */
+export const winButton = (page: Page) => choiceButton(page, 'Win material');
 export const hintButton = (page: Page) => page.getByRole('button', { name: /^Hint · \d of \d$/ });
 export const moveList = (page: Page) => page.locator('.game-moves .game-move');
 /** The coach's line under the board, which also says when the board shows an earlier move. */

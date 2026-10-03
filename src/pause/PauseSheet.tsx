@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { BoardController } from '../board/types';
 import type { Depth, Game, StepOutcome } from '../content/types';
 import { lessonFor } from '../learn';
+import type { WrongMove } from '../learn/whyWrong';
+import { readingMs } from '../opening';
 import { shake } from '../ui/motion';
 import { celebrate, nudge } from '../ui/rewards';
 import { COPY, continuesWith, holdMissHeadline, resultLine } from './copy';
@@ -13,6 +15,7 @@ import {
   replyUci,
   revealTurn,
   scriptedUci,
+  spotAnswers,
   stepNumber,
   stepTotal,
   type Feedback,
@@ -75,6 +78,8 @@ export interface PauseSheetProps {
 const REPLY_MS = 350;
 /** A wrong answer's cross stays this long, then the piece snaps back. */
 const WRONG_FLASH_MS = 600;
+/** A wrong move's punishing reply stays on the board at least this long, so the coach's line can be read. */
+const PUNISH_MIN_MS = 1800;
 /** A right answer stays on screen this long before the flow moves on. */
 const SETTLE_MS = 400;
 
@@ -115,6 +120,9 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
   const [why, setWhy] = useState<number | null>(null);
   const [lineAt, setLineAt] = useState(0);
   const [leaving, setLeaving] = useState(false);
+  /** The board is showing what a wrong move loses: no moves and no hints until it is put back. */
+  const [punishing, setPunishing] = useState(false);
+  const alive = useRef(true);
   const latest = useRef(state);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
@@ -137,7 +145,10 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
     return next;
   }
 
-  /** Board callback: keep the piece when the move was right; a wrong one shows a cross, then snaps back. */
+  /**
+   * Board callback: keep the piece when the move was right. A wrong one shows a cross; when it loses something it
+   * stays for the opponent's reply, otherwise it snaps back.
+   */
   function tryMove(uci: string): boolean | Promise<boolean> {
     const before = latest.current;
     const next = send({ type: 'move', uci });
@@ -148,10 +159,34 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
       return true;
     }
     marks.badge(to, 'bad');
+    if (next.feedback.why.reply) return true;
     return wait(WRONG_FLASH_MS).then(() => {
       marks.clearBadges();
       return false;
     });
+  }
+
+  /** Plays the reply that punishes a wrong move, marks what it wins while the coach says why, then puts the position back. */
+  async function showPunishment(why: WrongMove, at: number) {
+    const reply = why.reply!;
+    setPunishing(true);
+    board.disableInput();
+    await wait(REPLY_MS);
+    if (!alive.current) return;
+    marks.clearBadges();
+    await board.playMove(reply);
+    board.arrow(...squaresOf(reply), 'threat');
+    board.highlight(why.targets, 'bad');
+    await wait(Math.max(PUNISH_MIN_MS, readingMs(why.text)));
+    if (!alive.current) return;
+    marks.clear();
+    await board.setPosition(game.turns[at].fen, true);
+    if (!alive.current) return;
+    const last = moveBefore(game, game.turns[at].ply);
+    board.setLastMove(last ? last.from + last.to : null);
+    setPunishing(false);
+    board.enableMoves(game.side, tryMove);
+    showHint(latest.current);
   }
 
   /** Marks what the hint in hand shows on the board: the piece in trouble, then the move itself. */
@@ -175,7 +210,9 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
         board.clearHighlights();
         board.clearArrows();
         board.burst(to);
-        return celebrate('move', board.squareCenter(to));
+        // Confetti is for a move found unaided; one found after a hint earns the smaller reward.
+        const unaided = latest.current.outcomes.at(-1)?.correct;
+        return unaided ? celebrate('move', board.squareCenter(to)) : celebrate('step');
       }
       case 'alt':
         board.disableInput();
@@ -184,7 +221,8 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
         return celebrate('alt');
       case 'wrong':
         nudge();
-        return shake(bubbleRef.current);
+        shake(bubbleRef.current);
+        if (feedback.why.reply) void showPunishment(feedback.why, latest.current.turn);
     }
   }
 
@@ -239,6 +277,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
 
   useEffect(
     () => () => {
+      alive.current = false;
       board.disableInput();
       board.dim(null);
       marks.clear();
@@ -259,7 +298,18 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
     const step = stepNumber(ctx, view, state.turn);
     const common = { eyebrow: eyebrowFor(game, turnIndex), step, total: stepTotal(ctx), innerRef: bubbleRef };
     if (view === 'spot') {
-      return <Question {...common} title={COPY.spotTitle} {...spotPromptFor(game, turnIndex, state)} />;
+      return (
+        <>
+          <Question {...common} title={COPY.spotTitle} {...spotPromptFor(ctx, state)} />
+          <SpotChoices
+            innerRef={choicesRef}
+            answers={spotAnswers(ctx)}
+            picked={state.spot}
+            settled={state.answered}
+            onAnswer={(pick) => send({ type: 'spot', pick })}
+          />
+        </>
+      );
     }
     const prompt = promptFor(game, state);
     const named = state.hint > 0 && view === 'solve';
@@ -299,17 +349,6 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
   }
 
   function actions() {
-    if (view === 'spot') {
-      return (
-        <SpotChoices
-          innerRef={choicesRef}
-          expectYes={type === 'pause'}
-          picked={state.spotUp}
-          settled={state.answered}
-          onAnswer={(yes) => send({ type: 'spot', up: yes })}
-        />
-      );
-    }
     if (view === 'reveal') {
       const onWhy = watchable && why === null ? () => setWhy(lineAt) : undefined;
       return <RevealActions onContinue={carryOn} onWhy={onWhy} whyDisabled={lineAt === 0} />;
@@ -319,23 +358,26 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
       <PlayActions
         hintLabel={hintButtonLabel(ladder)}
         hintsLeft={ladder.used < ladder.stops.length}
-        disabled={state.answered || view === 'reply'}
+        disabled={state.answered || view === 'reply' || punishing}
         onHint={() => send({ type: 'hint' })}
         onSolution={() => send({ type: 'solution' })}
       />
     );
   }
 
-  const dockKind = view === 'reveal' ? `reveal-${stage}` : view === 'spot' ? 'spot' : 'play';
+  const dockKind = view === 'reveal' ? `reveal-${stage}` : 'play';
   return (
     <Sheet
       innerRef={panelRef}
       label="Pause"
       stage={stage}
+      // Step 1's answers sit in the panel under the question, so it has no dock.
       footer={
-        <CrossFade value={dockKind} class="dock-fade">
-          {actions()}
-        </CrossFade>
+        view !== 'spot' && (
+          <CrossFade value={dockKind} class="dock-fade">
+            {actions()}
+          </CrossFade>
+        )
       }
     >
       {view === 'reveal' ? answer() : question()}

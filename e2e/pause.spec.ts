@@ -1,22 +1,24 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
+  SPOT_QUESTION as QUESTION,
+  choiceButton,
   coachBubble,
   continueAfterPause,
   continueButton,
   hintButton,
   moveList,
-  noButton,
   pauseButton,
   playButton,
   rememberCard,
   squareOf,
   tapSquares,
-  yesButton,
+  winButton,
 } from './board';
 
 test.use({ serviceWorkers: 'block' });
 
-const QUESTION = 'Is something important happening?';
+const ANSWERS = ['Win material', 'Attack the king', 'Defend', 'Avoid a trap', 'Nothing urgent'];
+const RIGHT_PICK = "Yes: there's material to win. Find the move.";
 
 async function atStage(page: Page, stage: number) {
   await page.addInitScript((depth) => {
@@ -29,6 +31,20 @@ async function reachFirstPause(page: Page) {
   await page.goto('./#/play/italian/1400');
   await playButton(page).click();
   await expect(page.getByText(QUESTION)).toBeVisible({ timeout: 15_000 });
+}
+
+/** Every answer to step 1 is in full view, inside the panel and under the board. */
+async function expectAnswersInView(page: Page) {
+  const [board, panel, ...answers] = await page.evaluate((labels) => {
+    const box = (el: Element | null | undefined) => el!.getBoundingClientRect().toJSON();
+    const buttons = [...document.querySelectorAll('.spot-choices button')];
+    return [box(document.querySelector('.board-host')), box(document.querySelector('.coach-scroll')), ...labels.map((label) => box(buttons.find((b) => b.textContent === label)))];
+  }, ANSWERS);
+  for (const answer of answers) {
+    expect(answer.y).toBeGreaterThanOrEqual(Math.max(board.y + board.height, panel.y) - 1);
+    expect(answer.y + answer.height).toBeLessThanOrEqual(panel.y + panel.height + 1);
+    expect(answer.height).toBeGreaterThanOrEqual(43.5);
+  }
 }
 
 async function expectBoardUncovered(page: Page) {
@@ -46,11 +62,12 @@ test('stage 1: spot it, play it, and the game moves on by itself', async ({ page
   await reachFirstPause(page);
   await expect(page.getByRole('img', { name: 'Step 1 of 2' })).toBeVisible();
   await expectBoardUncovered(page);
+  await expectAnswersInView(page);
 
-  await yesButton(page).click();
+  await winButton(page).click();
   await expect(page.getByRole('img', { name: 'Step 2 of 2' })).toBeVisible();
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
-  await expect(page.getByText('Play the best move on the board.')).toBeVisible();
+  await expect(page.getByText(RIGHT_PICK)).toBeVisible();
   await expectBoardUncovered(page);
 
   await tapSquares(page, 'd4', 'e5');
@@ -60,23 +77,27 @@ test('stage 1: spot it, play it, and the game moves on by itself', async ({ page
   await expect(moveList(page).filter({ hasText: /dxe5$/ })).toBeVisible();
 });
 
-test('a wrong answer at the spot step is only an error, and the user can pick again', async ({ page }) => {
+test('a wrong answer at the spot step is only an error with a nudge, and the user can pick again', async ({ page }) => {
   await atStage(page, 3);
   await reachFirstPause(page);
 
-  await noButton(page).click();
-  await expect(page.getByText('Not quite. Look again.')).toBeVisible();
+  await choiceButton(page, 'Nothing urgent').click();
+  await expect(page.getByText('Look again: check every capture and every attack.')).toBeVisible();
   await expect(page.getByText(QUESTION)).toBeVisible();
-  await expect(yesButton(page)).toBeEnabled();
+  await choiceButton(page, 'Defend').click();
+  await expect(page.getByText('Is anything of yours actually attacked? Count the attackers.')).toBeVisible();
+  await expect(page.locator('.pause-choice.is-wrong')).toHaveText('Defend');
 
-  await yesButton(page).click();
+  await winButton(page).click();
+  await expect(page.locator('.pause-choice.is-right')).toHaveText('Win material');
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
+  await expect(page.getByText(RIGHT_PICK)).toBeVisible();
 });
 
 test('a wrong move is only an error and the piece goes back; the right one finishes it', async ({ page }) => {
   await atStage(page, 3);
   await reachFirstPause(page);
-  await yesButton(page).click();
+  await winButton(page).click();
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
 
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -92,10 +113,37 @@ test('a wrong move is only an error and the piece goes back; the right one finis
   await expect(continueButton(page)).toBeVisible();
 });
 
+test('a move that loses material stays on the board while the reply shows what it loses, then the position comes back', async ({
+  page,
+}) => {
+  await atStage(page, 3);
+  await reachFirstPause(page);
+  await winButton(page).click();
+  await expect(page.getByText('Your move', { exact: true })).toBeVisible();
+
+  await tapSquares(page, 'c4', 'f7');
+  const why = 'After Bxf7+, Black plays Kxf7, which wins your bishop for two pawns.';
+  await expect(page.getByText(why)).toBeVisible();
+  await expect(page.locator('.cm-chessboard .arrow-threat')).toHaveCount(1);
+  await expect(page.locator(".cm-chessboard .pieces g[data-square='f7']")).toHaveAttribute('data-piece', 'bk');
+  await expect(page.locator('.cm-chessboard .marker-bad')).toHaveCount(1);
+  expect(await squareOf(page, '.cm-chessboard .marker-bad')).toBe('f7');
+  await expect(hintButton(page)).toBeDisabled();
+
+  await expect(page.locator(".cm-chessboard .pieces g[data-square='c4']")).toHaveAttribute('data-piece', 'wb', { timeout: 8000 });
+  await expect(page.locator('.cm-chessboard .arrow-threat')).toHaveCount(0);
+  await expect(page.locator('.cm-chessboard .marker-bad')).toHaveCount(0);
+  await expect(hintButton(page)).toBeEnabled();
+  await expect(page.getByText(why)).toBeVisible();
+
+  await tapSquares(page, 'd4', 'e5');
+  await expect(page.getByText('You found the move')).toBeVisible();
+});
+
 test('hints climb Pattern, Piece, Move: the pattern, then the piece in trouble, then the move', async ({ page }) => {
   await atStage(page, 3);
   await reachFirstPause(page);
-  await yesButton(page).click();
+  await winButton(page).click();
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
 
   await hintButton(page).click();
@@ -128,7 +176,7 @@ test('hints climb Pattern, Piece, Move: the pattern, then the piece in trouble, 
 test('show solution goes to the line playing itself, scored as missed', async ({ page }) => {
   await atStage(page, 1);
   await reachFirstPause(page);
-  await yesButton(page).click();
+  await winButton(page).click();
   await page.getByRole('button', { name: 'Show solution' }).click();
 
   await expect(page.getByText('Missed it')).toBeVisible();
@@ -155,9 +203,9 @@ test('buttons say what they do in words, with at most a drawn icon and never an 
   const labels = () => page.locator('.pause-sheet button:not([aria-hidden="true"] button)').allTextContents();
   const plain = /^[A-Za-z' ,.?·\d]*$/;
 
-  await expect(yesButton(page)).toBeVisible();
-  expect(await labels()).toEqual(['No', 'Yes']);
-  await yesButton(page).click();
+  await expect(winButton(page)).toBeVisible();
+  expect(await labels()).toEqual(ANSWERS);
+  await winButton(page).click();
   await expect(page.getByRole('button', { name: 'Show solution' })).toBeVisible();
   await expect(page.locator('.pause-sheet .xfade-out')).toHaveCount(0);
   expect(await labels()).toEqual(['Hint · 1 of 3', 'Show solution']);
@@ -184,14 +232,14 @@ test.describe('the coach panel on an iPhone 14', () => {
     await expect(page.locator('.cm-chessboard .marker-dim')).toHaveCount(62);
     await expect(page.locator('.game-player.is-you')).toBeHidden();
 
-    await yesButton(page).click();
+    await winButton(page).click();
     await expect(page.locator('.cm-chessboard .marker-dim')).toHaveCount(0);
   });
 
   test('keeps the Remember card back while the line plays and shows it once the line has ended', async ({ page }) => {
     await atStage(page, 1);
     await reachFirstPause(page);
-    await yesButton(page).click();
+    await winButton(page).click();
     await tapSquares(page, 'd4', 'e5');
     await expect(page.getByText('You found the move')).toBeVisible();
 
@@ -208,7 +256,7 @@ test.describe('the coach panel on an iPhone 14', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await atStage(page, 1);
     await reachFirstPause(page);
-    await yesButton(page).click();
+    await winButton(page).click();
     await page.getByRole('button', { name: 'Show solution' }).click();
 
     await expect(page.locator('.stepper-caption')).toContainText('5. dxe5');
@@ -220,7 +268,7 @@ test.describe('the coach panel on an iPhone 14', () => {
   test('Continue sends the panel back into the dock and autoplay carries on to the next key position', async ({ page }) => {
     await atStage(page, 1);
     await reachFirstPause(page);
-    await yesButton(page).click();
+    await winButton(page).click();
     await tapSquares(page, 'd4', 'e5');
     await continueButton(page).click();
 

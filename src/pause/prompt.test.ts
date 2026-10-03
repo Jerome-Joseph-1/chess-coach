@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Depth } from '../content/types';
-import { flowReducer, initialState, scriptedUci, type FlowContext, type FlowEvent, type FlowState } from './flow';
 import { lessonFor } from '../learn';
+import type { Situation } from '../learn/situation';
+import { whyWrong } from '../learn/whyWrong';
+import { flowReducer, initialState, scriptedUci, type FlowContext, type FlowEvent, type FlowState } from './flow';
 import { eyebrowFor, promptFor, spotPromptFor } from './prompt';
 import { italian1 } from './testGames';
 
@@ -17,33 +19,39 @@ function after(depth: Depth, events: FlowEvent[]): FlowState {
 }
 
 const advance: FlowEvent = { type: 'advance' };
-const spot = (up: boolean): FlowEvent => ({ type: 'spot', up });
+const spot = (pick: Situation): FlowEvent => ({ type: 'spot', pick });
 const move = (uci: string): FlowEvent => ({ type: 'move', uci });
 const hint: FlowEvent = { type: 'hint' };
-const toSolve: FlowEvent[] = [spot(true), advance];
+const toSolve: FlowEvent[] = [spot('win'), advance];
 const wrongMove = Object.keys(italian1.turns[TURN].grades).find((uci) => italian1.turns[TURN].grades[uci] >= 10)!;
 
 describe('the spot step', () => {
-  it('says what just happened until the user answers, then how it went', () => {
-    expect(spotPromptFor(italian1, TURN, after(3, []))).toEqual({
-      sub: 'Black just took back on e5. Take a look before you move.',
-      tone: 'neutral',
-    });
-    expect(spotPromptFor(italian1, TURN, after(3, [spot(true)]))).toEqual({ sub: 'Right.', tone: 'success' });
+  it('says what just happened until the user answers, then what kind of position it is, never the move', () => {
+    expect(spotPromptFor(ctxAt(3), after(3, []))).toEqual({ sub: 'Black just took back on e5.', tone: 'neutral' });
+    expect(spotPromptFor(ctxAt(3), after(3, [spot('win')]))).toEqual({ sub: "Yes: there's material to win. Find the move.", tone: 'success' });
   });
 
-  it('asks to look again after a wrong answer', () => {
-    expect(spotPromptFor(italian1, TURN, after(3, [spot(false)]))).toEqual({ sub: 'Not quite. Look again.', tone: 'error' });
+  it('nudges a wrong pick towards what the position is really about', () => {
+    expect(spotPromptFor(ctxAt(3), after(3, [spot('quiet')]))).toEqual({
+      sub: 'Look again: check every capture and every attack.',
+      tone: 'error',
+    });
+    expect(spotPromptFor(ctxAt(3), after(3, [spot('defend')])).sub).toBe('Is anything of yours actually attacked? Count the attackers.');
+  });
+
+  it('keeps the confirmation in view on the play step until the user moves', () => {
+    expect(promptFor(italian1, after(3, toSolve))).toEqual({
+      title: 'Your move',
+      sub: "Yes: there's material to win. Find the move.",
+      tone: 'neutral',
+    });
   });
 });
 
 describe('the play step', () => {
-  it.each([1, 2, 3, 4, 5] as const)('asks for the best move on the board at stage %i', (depth) => {
-    expect(promptFor(italian1, after(depth, toSolve))).toEqual({
-      title: 'Your move',
-      sub: 'Play the best move on the board.',
-      tone: 'neutral',
-    });
+  it('asks for the best move on the board when there was no step 1', () => {
+    const drill: FlowContext = { ...ctxAt(3), mode: 'drill' };
+    expect(promptFor(italian1, initialState(drill)).sub).toBe('Play the best move on the board.');
   });
 
   it('tells how few players at this level find a rare move', () => {
@@ -61,11 +69,11 @@ describe('the play step', () => {
     expect(promptFor(italian1, after(3, play))).toMatchObject({ sub: 'Right.', tone: 'success' });
   });
 
-  it('says to try again after every wrong move', () => {
-    expect(promptFor(italian1, after(3, [...toSolve, move(wrongMove)])).sub).toBe('Not quite. Try again.');
-    expect(promptFor(italian1, after(3, [...toSolve, move(wrongMove), move(wrongMove), move(wrongMove)])).sub).toBe(
-      'Not quite. Try again.',
-    );
+  it('says why each wrong move is wrong', () => {
+    const why = whyWrong(italian1, TURN, wrongMove, 0).text;
+    expect(why).not.toBe('Not quite. Try again.');
+    expect(promptFor(italian1, after(3, [...toSolve, move(wrongMove)]))).toMatchObject({ sub: why, tone: 'error' });
+    expect(promptFor(italian1, after(3, [...toSolve, move(wrongMove), move(wrongMove), move(wrongMove)])).sub).toBe(why);
   });
 
   it('names the pattern first, then the piece in trouble, then asks for the move shown', () => {
@@ -75,13 +83,20 @@ describe('the play step', () => {
     expect(promptFor(italian1, after(3, [...toSolve, hint, hint, hint])).sub).toBe("It's Black's knight on c6. Play the move shown.");
   });
 
-  it('keeps a hint that points at the board in view after a wrong move, and does not boast of a rare find after a hint', () => {
-    expect(promptFor(italian1, after(3, [...toSolve, hint, hint, move(wrongMove)]))).toMatchObject({
-      sub: "It's Black's knight on c6.",
+  it('keeps the drawn move in view after a wrong move, and does not boast of a rare find after a hint', () => {
+    expect(promptFor(italian1, after(3, [...toSolve, hint, hint, hint, move(wrongMove)]))).toMatchObject({
+      sub: "It's Black's knight on c6. Play the move shown.",
       tone: 'error',
     });
-    expect(promptFor(italian1, after(3, [...toSolve, hint, move(wrongMove)])).sub).toBe('Not quite. Try again.');
+    expect(promptFor(italian1, after(3, [...toSolve, hint, hint, move(wrongMove)])).sub).toBe(whyWrong(italian1, TURN, wrongMove, 2).text);
     expect(promptFor(italian1, after(3, [...toSolve, hint, move(scriptedUci(italian1, TURN))])).sub).toBe('Right.');
+  });
+
+  it('lets the next hint take the place of the explanation', () => {
+    expect(promptFor(italian1, after(3, [...toSolve, move(wrongMove), hint]))).toMatchObject({
+      sub: 'Play the best move on the board.',
+      tone: 'hint',
+    });
   });
 
   it('asks to keep going on a follow-up move', () => {
