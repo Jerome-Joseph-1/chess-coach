@@ -33,7 +33,7 @@ function counted(type: PieceSymbol, n: number, queen: string): string {
 }
 
 /** "a knight and a pawn", biggest first. */
-export function material(types: PieceSymbol[], queen = 'the queen'): string {
+function material(types: PieceSymbol[], queen = 'the queen'): string {
   const counts = new Map<PieceSymbol, number>();
   for (const type of [...types].sort((a, b) => VALUE[b] - VALUE[a])) counts.set(type, (counts.get(type) ?? 0) + 1);
   return listOf([...counts].map(([type, n]) => counted(type, n, queen)));

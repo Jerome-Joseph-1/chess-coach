@@ -41,8 +41,9 @@ interface Say {
   ref: (piece: PieceAt) => string;
 }
 
-// Longest run of moves worth spelling out in a sentence.
+// Longest runs of moves worth spelling out: as a lead-in, and as a whole line.
 const SHORT_LINE = 4;
+const LONG_LINE = 6;
 
 const GENERAL = {
   win: 'There is a strong move here that wins material.',
@@ -231,7 +232,9 @@ function materialIdea(t: Of<'material-win'>, { move }: Say): string {
     return `${move} wins ${tradeText(t.trade)}.`;
   }
   const end = Math.max(t.key, 1, ...t.trade.gains);
-  return `${move} starts a sequence that wins ${tradeText(t.trade)}: ${sequence(t.moves.slice(0, end + 1))}.`;
+  const wins = `${move} starts a sequence that wins ${tradeText(t.trade)}`;
+  if (end > LONG_LINE) return `${wins}, ending with ${san(t, end)}.`;
+  return `${wins}: ${sequence(t.moves.slice(0, end + 1))}.`;
 }
 
 function hangingIdea(t: Tactic, user: Color, position: Position): string {
