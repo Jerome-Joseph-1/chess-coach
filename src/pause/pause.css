@@ -258,7 +258,7 @@
 .hint-ladder {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -330,10 +330,11 @@
     box-shadow: inset 0 0 0 1.5px var(--coach);
   }
 }
+/* The rules take what the stops leave, down to nothing on the narrowest phones. */
 .hint-rule {
   position: relative;
   flex: 1;
-  min-width: 12px;
+  min-width: 0;
   height: 1px;
   background: var(--hairline);
 }
