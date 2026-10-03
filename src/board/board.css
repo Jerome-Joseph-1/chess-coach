@@ -1,0 +1,77 @@
+.board-host {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--line), 0 8px 20px rgba(18, 22, 28, 0.08);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.cm-chessboard.coach .board .square.white {
+  fill: var(--board-light);
+}
+.cm-chessboard.coach .board .square.black {
+  fill: var(--board-dark);
+}
+.cm-chessboard.coach .board .border {
+  fill: var(--board-dark);
+  stroke: none;
+}
+.cm-chessboard.coach .coordinates {
+  pointer-events: none;
+  user-select: none;
+}
+.cm-chessboard.coach .coordinates .coordinate {
+  font-family: var(--font);
+  font-weight: 700;
+  opacity: 0.8;
+}
+.cm-chessboard.coach .coordinates .coordinate.white {
+  fill: var(--board-dark);
+}
+.cm-chessboard.coach .coordinates .coordinate.black {
+  fill: var(--board-light);
+}
+
+/* Highlight tones and board marks. */
+.cm-chessboard .markers {
+  pointer-events: none;
+}
+.cm-chessboard .marker-select {
+  fill: var(--accent);
+  opacity: 0.32;
+}
+.cm-chessboard .marker-last-move {
+  fill: var(--warn);
+  opacity: 0.4;
+}
+.cm-chessboard .marker-focus {
+  stroke: var(--accent);
+  stroke-width: 3px;
+  opacity: 1;
+}
+.cm-chessboard .marker-good {
+  fill: var(--good);
+  opacity: 0.6;
+}
+.cm-chessboard .marker-bad {
+  fill: var(--bad);
+  opacity: 0.6;
+}
+.cm-chessboard .marker-hint {
+  stroke: var(--warn);
+  stroke-width: 3.5px;
+  opacity: 1;
+}
+.cm-chessboard .marker-dim {
+  fill: #0b0e13;
+  opacity: 0.58;
+}
+.cm-chessboard .marker-dot,
+.cm-chessboard .marker-bevel {
+  fill: #12161c;
+  opacity: 0.26;
+}

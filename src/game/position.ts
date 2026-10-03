@@ -20,6 +20,14 @@ export function playSan(chess: Chess, san: string): string {
   return toUci(chess.move(san));
 }
 
+export function sanToUci(fen: string, san: string): string {
+  return playSan(new Chess(fen), san);
+}
+
+export function uciToSan(fen: string, uci: string): string {
+  return new Chess(fen).move(parseUci(uci)).san;
+}
+
 /** The placement field of a FEN: enough to tell whether two boards look the same. */
 export function placement(fen: string): string {
   return fen.split(' ')[0];
