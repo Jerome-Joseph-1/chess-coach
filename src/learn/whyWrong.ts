@@ -56,7 +56,7 @@ export function whyWrong(game: Game, turnIndex: number, uci: string, hint: HintL
   const turn = game.turns[turnIndex];
   const [move] = playLine(turn.fen, [uci]);
   if (turn.grades[uci] === undefined || !move) return plain('unknown');
-  const answers = [playLine(turn.fen, turn.lines.best ?? [])[0]?.san, game.moves[turn.ply]].filter((san) => san !== undefined);
+  const answers = [playLine(turn.fen, turn.lines.best?.slice(0, 1) ?? [])[0]?.san, game.moves[turn.ply]].filter((san) => san !== undefined);
   const after = pawnsAt(turn.bestWin - turn.grades[uci]);
   const say: Say = { turn, user: game.side, them: colorName(otherColor(game.side)), move, answers, after };
   const found = classify(game, say, hint >= 2);
@@ -64,12 +64,24 @@ export function whyWrong(game: Game, turnIndex: number, uci: string, hint: HintL
   return hint >= 3 ? plain(found.kind) : found;
 }
 
+// Each hint asks about the same move again, so what the lines show is worked out once per turn and move.
+const caughtLines = new WeakMap<Turn, Map<string, Caught | null>>();
+const exposures = new WeakMap<Turn, Map<string, Exposure>>();
+
+function perMove<T>(cache: WeakMap<Turn, Map<string, T>>, { turn, move }: Say, find: () => T): T {
+  const byMove = cache.get(turn) ?? new Map<string, T>();
+  cache.set(turn, byMove);
+  const uci = uciOf(move);
+  if (!byMove.has(uci)) byMove.set(uci, find());
+  return byMove.get(uci)!;
+}
+
 function plain(kind: WrongKind): WrongMove {
   return { kind, text: FALLBACK, reply: null, targets: [] };
 }
 
 function classify(game: Game, say: Say, named: boolean): WrongMove {
-  const caught = caughtBy(say);
+  const caught = perMove(caughtLines, say, () => caughtBy(say));
   const down = leftDown(game, say);
   if (down) return stillDown(say, down, caught, named);
   if (caught) return punished(say, caught, named);
@@ -229,11 +241,22 @@ function marked(kind: WrongKind, { theme, t, cost }: Caught, text: string): Wron
 
 function unpunished(say: Say, named: boolean): WrongMove {
   const kind = quietKind(say);
-  const mate = mateAfter(say.move);
+  const { mate, capture } = perMove(exposures, say, () => exposed(say));
   if (mate) return { kind, text: `After ${say.move.san}, ${mate.san.replace('#', '')} is checkmate.`, reply: uciOf(mate), targets: [] };
-  const capture = hangingAfter(say.move);
-  if (capture && reallyHangs(say, capture)) return hanging(say, kind, capture, named);
+  if (capture) return hanging(say, kind, capture, named);
   return threatStillOn(say, named) ?? { kind, text: quietText(say, kind), reply: null, targets: [] };
+}
+
+interface Exposure {
+  mate: Move | null;
+  capture: Move | null;
+}
+
+/** A mate in one the move allows, or else a piece it leaves en prise. */
+function exposed(say: Say): Exposure {
+  const mate = mateAfter(say.move);
+  const capture = mate ? null : hangingAfter(say.move);
+  return { mate, capture: capture && reallyHangs(say, capture) ? capture : null };
 }
 
 /**

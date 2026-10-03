@@ -39,8 +39,7 @@ function claimedPieces(text: string): string[] {
 }
 
 /** The opponent takes a piece of this type in the line; a promoted piece taken back was only a pawn. */
-function takes(fen: string, line: string[], side: Side, type: string): boolean {
-  const moves = playedLine(fen, line);
+function takes(moves: ReturnType<typeof playedLine>, side: Side, type: string): boolean {
   const promoted = new Set(moves.filter((m) => m.side === side && m.uci.length === 5).map((m) => m.uci.slice(2, 4)));
   return moves.some((m) => m.side !== side && (promoted.has(m.uci.slice(2, 4)) ? 'p' : m.captured) === type);
 }
@@ -69,6 +68,7 @@ describe.skipIf(!CONTENT_DIR)('whyWrong over a whole content folder', () => {
           // The opponent may play a move written the same way, which names nothing of the user's.
           const played = playLine(turn.fen, line);
           const theirs = new Set(played.filter((m) => m.color !== game.side).flatMap((m) => [m.san, m.san.replace(/[+#]$/, '')]));
+          const lineMoves = playedLine(turn.fen, line);
           const told: WrongMove[] = [0, 1, 2].map((hint) => whyWrong(game, i, uci, hint as 0 | 1 | 2));
           for (const why of told) {
             const where = `${game.id} turn ${i} ${move.san}: ${why.text}`;
@@ -76,12 +76,13 @@ describe.skipIf(!CONTENT_DIR)('whyWrong over a whole content folder', () => {
             expect(why.text, where).not.toMatch(/\bsafe\b|line that follows/);
             const down = why.text.match(/you stay a (\w+) down/);
             if (down) expect(moveBefore(game, turn.ply)?.captured, where).toBe(PIECES[down[1]]);
-            const shown = why.reply ? [uci, why.reply] : [];
+            // The reply on the board, with the exchange it starts: the line a giveaway in the stored one is cut back to.
+            const shown = playedLine(turn.fen, why.reply ? [uci, ...settled(move.after, [why.reply])] : []);
             for (const piece of claimedPieces(why.text.replace(/you stay a \w+ down/, ''))) {
-              expect(takes(turn.fen, line, game.side, piece) || takes(turn.fen, shown, game.side, piece), where).toBe(true);
+              expect(takes(lineMoves, game.side, piece) || takes(shown, game.side, piece), where).toBe(true);
             }
             if (why.kind === 'blunder' && !down && !/checkmate|forced mate/.test(why.text)) {
-              expect(materialChange(turn.fen, playedLine(turn.fen, line).at(-1)!.after, game.side), where).toBeLessThan(0);
+              expect(materialChange(turn.fen, lineMoves.at(-1)!.after, game.side), where).toBeLessThan(0);
             }
           }
           checked++;
