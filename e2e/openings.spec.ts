@@ -85,6 +85,17 @@ test('a note takes at most three lines and never covers the board or the dock', 
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 });
 
+test('the Course tab lists the variations met with their plans', async ({ page }) => {
+  await page.goto('./#/course');
+  const section = page.getByRole('region', { name: 'Variations met' });
+  await expect(section).toContainText('Play a few games to meet the main lines.');
+
+  await seedNotesSeen(page, { 'two-knights-ng5': 2, 'giuoco-piano-c3': 1, 'two-knights-ng5:d5': 2 });
+  await page.reload();
+  await expect(section.locator('.variation')).toHaveText([/^Giuoco Piano: 4\.c3\s*4\.c3 prepares d4/, /^Two Knights: 4\.Ng5\s*4\.Ng5 hits f7 twice/]);
+  await expect(section.locator('.section-note')).toHaveText(/^2 of \d+$/);
+});
+
 test('About credits the opening names', async ({ page }) => {
   await page.goto('./#/about');
   const credit = page.locator('.credit', { has: page.getByRole('link', { name: 'Opening names', exact: true }) });
