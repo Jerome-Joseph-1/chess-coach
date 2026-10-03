@@ -1,0 +1,136 @@
+.recap-head {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin: 8px 0 22px;
+  text-align: center;
+}
+.recap-head h1 {
+  font-size: var(--fs-xl);
+}
+.recap-total {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font: 700 64px / 1 var(--font-display);
+}
+.recap-star {
+  color: var(--star);
+}
+.recap-count {
+  display: inline-block;
+  min-width: 1ch;
+  animation: pop 320ms var(--ease-spring);
+}
+.recap-perfect {
+  margin: 0;
+  color: var(--good);
+  font-weight: 700;
+}
+.recap-quiet {
+  text-align: center;
+}
+
+.moments {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.moment {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  column-gap: 12px;
+  align-items: start;
+  padding: 12px 14px 0;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--r-md);
+  animation: rise 360ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+.moment-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+.moment-icon--right {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.moment-icon--missed {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.moment-text {
+  display: grid;
+  min-width: 0;
+}
+.moment-title {
+  font-weight: 700;
+}
+.moment-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.moment-outcome {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.moment-stars {
+  color: var(--star);
+  font-size: 18px;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+.moment-stars-empty {
+  color: var(--muted);
+}
+.moment-again {
+  justify-self: start;
+  font-size: var(--fs-sm);
+}
+
+.recap-actions {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px 0 8px;
+  background: linear-gradient(to top, var(--bg) 75%, transparent);
+}
+
+.recap-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding-top: 12vh;
+  text-align: center;
+}
+.recap-empty h1 {
+  font-size: var(--fs-xl);
+}
+.recap-empty p {
+  margin: 0 0 12px;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recap-count,
+  .moment {
+    animation: none;
+  }
+}

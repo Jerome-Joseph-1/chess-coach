@@ -1,21 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GameSummary, MomentResult } from '../content/types';
 import { migrate } from './storage';
-import { DAY, FakeStorage, moment, noon, wrong } from './testkit';
-
-type Store = typeof import('./store');
+import { DAY, FakeStorage, moment, noon, openStore, summary, wrong, type Store } from './testkit';
 
 let storage: FakeStorage;
-
-/** A fresh copy of the store, as after a page reload. */
-async function openStore(): Promise<Store> {
-  vi.resetModules();
-  return import('./store');
-}
-
-function summary(at: number, moments: MomentResult[] = [], gameId = 'italian-1400-0001'): GameSummary {
-  return { opening: 'italian', level: 1400, gameId, moments, at };
-}
 
 beforeEach(() => {
   storage = new FakeStorage();

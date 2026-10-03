@@ -1,4 +1,17 @@
-import type { MomentResult } from '../content/types';
+import { vi } from 'vitest';
+import type { GameSummary, MomentResult } from '../content/types';
+
+export type Store = typeof import('./store');
+
+/** A fresh copy of the store, as after a page reload. */
+export async function openStore(): Promise<Store> {
+  vi.resetModules();
+  return import('./store');
+}
+
+export function summary(at: number, moments: MomentResult[] = [], gameId = 'italian-1400-0001'): GameSummary {
+  return { opening: 'italian', level: 1400, gameId, moments, at };
+}
 
 export const HOUR = 3_600_000;
 export const DAY = 24 * HOUR;

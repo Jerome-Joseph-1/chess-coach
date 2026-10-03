@@ -1,0 +1,125 @@
+.set-progress {
+  display: grid;
+  gap: 16px;
+}
+.set-progress h2,
+.activity h2,
+.progress-empty h2 {
+  font-size: var(--fs-lg);
+}
+.set-progress h3 {
+  margin-bottom: 10px;
+  font-size: var(--fs-md);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0;
+}
+.facts div {
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.facts dt {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.facts dd {
+  margin: 0;
+  font: 700 var(--fs-xl) / 1.2 var(--font-display);
+}
+
+.depth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pips {
+  display: flex;
+  gap: 4px;
+}
+.pip {
+  width: 14px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.pip--on {
+  background: var(--accent);
+}
+
+.rates {
+  display: grid;
+  gap: 12px;
+}
+.rates h3 {
+  margin: 0;
+}
+.rate-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: var(--fs-sm);
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: grow 600ms var(--ease-out) both;
+}
+@keyframes grow {
+  from {
+    width: 0;
+  }
+}
+
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(7, 22px);
+  grid-auto-flow: column;
+  gap: 6px;
+  margin: 14px 0 12px;
+}
+.day {
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+.day--on {
+  background: var(--accent);
+}
+.day--future {
+  background: none;
+  border: 2px dashed var(--line);
+}
+.day--today {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.activity-note {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.progress-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 28px 20px;
+  text-align: center;
+}
+.progress-empty p {
+  margin: 0 0 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-fill {
+    animation: none;
+  }
+}

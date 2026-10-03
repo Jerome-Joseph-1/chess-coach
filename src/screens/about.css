@@ -1,0 +1,45 @@
+.about-intro {
+  margin: 0 0 24px;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+.about-heading {
+  margin-bottom: 12px;
+  font-size: var(--fs-lg);
+}
+.credits {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+.credit {
+  padding: 14px 16px;
+}
+.credit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.credit-head a {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+.credit .chip {
+  min-height: 28px;
+  animation: none;
+}
+.credit p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.about-pilot {
+  font-size: var(--fs-sm);
+}

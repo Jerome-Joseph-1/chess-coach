@@ -1,0 +1,77 @@
+.levelup {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: calc(24px + var(--safe-top)) 24px calc(24px + var(--safe-bottom));
+  background: var(--bg);
+  animation: levelup-in var(--t-sheet) var(--ease-out);
+}
+.levelup-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+.levelup-badge {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  margin-bottom: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 6px 0 var(--accent-lip);
+  font: 700 56px / 1 var(--font-display);
+  animation: levelup-pop 620ms var(--ease-spring) 120ms both;
+}
+.levelup-kicker {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: var(--fs-sm);
+}
+.levelup-name {
+  font-size: var(--fs-2xl);
+  line-height: 1.1;
+}
+.levelup-blurb {
+  max-width: 28ch;
+  margin: 8px 0 0;
+  font-size: var(--fs-lg);
+  line-height: 1.35;
+}
+
+@keyframes levelup-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes levelup-pop {
+  0% {
+    transform: scale(0.3) rotate(-12deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12) rotate(3deg);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .levelup,
+  .levelup-badge {
+    animation: none;
+  }
+}

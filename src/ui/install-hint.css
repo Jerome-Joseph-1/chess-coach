@@ -1,0 +1,32 @@
+.install-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 18px;
+  margin-bottom: 16px;
+}
+.install-hint p {
+  flex: 1;
+  margin: 0;
+  font-weight: 600;
+}
+.install-glyph {
+  display: inline-block;
+  vertical-align: -4px;
+  color: var(--accent);
+}
+.install-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.install-close:active {
+  background: var(--surface-2);
+}

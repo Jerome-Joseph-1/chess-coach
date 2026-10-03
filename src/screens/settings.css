@@ -1,0 +1,119 @@
+.settings-group {
+  display: grid;
+  gap: 14px;
+}
+.settings-group h2 {
+  font-size: var(--fs-lg);
+}
+.settings-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.settings-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.settings-status:empty {
+  margin-top: -14px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.toggle-text {
+  display: grid;
+}
+.toggle-label {
+  font-weight: 700;
+}
+.toggle-hint {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.toggle-track {
+  flex: none;
+  width: 52px;
+  height: 32px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background var(--t-tap);
+}
+.toggle-knob {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--muted);
+  transition: transform var(--t-move) var(--ease-spring);
+}
+.toggle[aria-checked='true'] .toggle-track {
+  background: var(--good);
+}
+.toggle[aria-checked='true'] .toggle-knob {
+  transform: translateX(20px);
+}
+.toggle:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--r-sm);
+}
+
+.btn-secondary.danger {
+  color: var(--bad);
+  box-shadow: 0 0 0 2px var(--bad) inset, 0 4px 0 var(--bad-soft);
+}
+.btn-secondary.danger:active:not(:disabled) {
+  box-shadow: 0 0 0 2px var(--bad) inset, 0 1px 0 var(--bad-soft);
+}
+.confirm {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--bad-soft);
+  animation: pop 320ms var(--ease-spring);
+}
+.confirm h3 {
+  font-size: var(--fs-md);
+}
+.confirm p {
+  margin: 0;
+}
+
+.settings-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--tap);
+  padding: 14px 18px;
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm {
+    animation: none;
+  }
+  .toggle-knob,
+  .toggle-track {
+    transition: none;
+  }
+}

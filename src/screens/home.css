@@ -1,0 +1,98 @@
+.home-head {
+  margin: 4px 0 20px;
+}
+.home-head h1 {
+  font-size: var(--fs-2xl);
+  line-height: 1.1;
+}
+.home-head p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.welcome {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 2px solid var(--good);
+  border-radius: var(--r-lg);
+  background: var(--good-soft);
+  animation: pop 480ms var(--ease-spring) both;
+}
+.welcome p {
+  margin: 0;
+}
+.welcome-star {
+  color: var(--star);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.opening-card {
+  display: grid;
+  gap: 14px;
+}
+.opening-card h2 {
+  font-size: var(--fs-xl);
+}
+.opening-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+.side-disc {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+.side-disc--w {
+  background: var(--surface);
+}
+.side-disc--b {
+  background: var(--ink);
+}
+.opening-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.opening-stats {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.offline {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+.offline-track {
+  width: 100%;
+}
+.offline-done {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--tap);
+  color: var(--good);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome {
+    animation: none;
+  }
+}

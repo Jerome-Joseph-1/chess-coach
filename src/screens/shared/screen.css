@@ -1,0 +1,167 @@
+.screen {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 20px 16px 28px;
+}
+/* Room for the fixed tab bar; #app already pads the bottom safe area. */
+.screen--tabs {
+  padding-bottom: calc(49px + 28px);
+}
+.screen-title {
+  font-size: var(--fs-xl);
+  margin: 4px 0 18px;
+}
+.screen-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+.stack {
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: 0 4px 0 var(--line);
+  padding: 18px;
+}
+.muted {
+  color: var(--muted);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  animation: pop 420ms var(--ease-spring) both;
+}
+.chip-dot {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: var(--fs-xs);
+}
+.chip--good {
+  background: var(--good-soft);
+  color: var(--good);
+}
+button.chip {
+  min-height: var(--tap);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button.chip:active {
+  transform: scale(0.96);
+}
+
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+}
+.segmented button {
+  min-height: var(--tap);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--t-tap) var(--ease-out);
+}
+.segmented button:active {
+  transform: translateY(2px);
+}
+.segmented button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 3px 0 var(--accent-lip);
+  animation: pop 320ms var(--ease-spring);
+}
+.segmented button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width var(--t-sheet) var(--ease-out);
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip,
+  .segmented button[aria-pressed='true'] {
+    animation: none;
+  }
+  .progress-fill {
+    transition: none;
+  }
+}
