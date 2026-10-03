@@ -54,8 +54,8 @@ describe.each(fixtureGames)('chooseMoments on $id', (game) => {
     expect([...a]).toEqual([...b]);
   });
 
-  it('turns every critical turn into a pause or a silent check at depth 1', () => {
-    const critical = game.turns.filter((t) => t.label === 'critical').length;
+  it('turns every run of critical turns into one pause or silent check at depth 1', () => {
+    const critical = game.turns.filter((t, i) => t.label === 'critical' && game.turns[i - 1]?.label !== 'critical').length;
     const moments = chooseMoments(game.turns, 1, { seed: hashSeed(game.id) });
     expect(countOf(moments, 'silent') + countOf(moments, 'pause')).toBe(critical);
   });
@@ -89,6 +89,15 @@ describe('chooseMoments rules', () => {
       [5, 'playout'],
       [8, 'pause'],
     ]);
+  });
+
+  it('asks only about the first of back-to-back critical turns', () => {
+    const turns = ['gray', 'critical', 'critical', 'critical', 'gray', 'critical'].map((label, i) => turnAt(i, label as Label));
+    const moments = chooseMoments(turns, 1, { seed: 1 });
+    expect(moments.get(1)).toBe('pause');
+    expect(moments.has(2)).toBe(false);
+    expect(moments.has(3)).toBe(false);
+    expect(moments.get(5)).toBe('pause');
   });
 
   it('swallows a critical turn inside a play-out', () => {

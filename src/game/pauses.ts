@@ -56,14 +56,19 @@ function indexesWhere(turns: Turn[], test: (turn: Turn, index: number) => boolea
   return turns.flatMap((turn, i) => (test(turn, i) ? [i] : []));
 }
 
-function pickSilent(turns: Turn[], rand: () => number): Set<number> {
-  const critical = indexesWhere(turns, (t) => t.label === 'critical');
+/** Back-to-back critical turns are one idea playing out, so only the first of each run becomes a moment. */
+function criticalStarts(turns: Turn[]): number[] {
+  return indexesWhere(turns, (t, i) => t.label === 'critical' && !(turns[i - 1]?.label === 'critical' && turns[i - 1].ply === t.ply - 2));
+}
+
+function pickSilent(critical: number[], rand: () => number): Set<number> {
   const count = roundHalfEven(critical.length * SILENT_SHARE);
   return new Set(shuffled(critical, rand).slice(0, count));
 }
 
 function markCritical(
   turns: Turn[],
+  starts: Set<number>,
   span: number,
   silent: Set<number>,
   maxPauses: number,
@@ -76,7 +81,7 @@ function markCritical(
       moments.set(i, 'playout');
       return;
     }
-    if (turn.label !== 'critical') return;
+    if (!starts.has(i)) return;
     if (silent.has(i)) {
       moments.set(i, 'silent');
       return;
@@ -112,8 +117,9 @@ export function chooseMoments(turns: Turn[], depth: Depth, opts: MomentOptions =
   const { quick = false, seed = 1 } = opts;
   const rand = mulberry32(seed);
   const moments = new Map<number, MomentType>();
-  const silent = quick ? new Set<number>() : pickSilent(turns, rand);
-  markCritical(turns, playoutSpan(depth), silent, quick ? QUICK_MAX_PAUSES : Infinity, moments);
+  const starts = criticalStarts(turns);
+  const silent = quick ? new Set<number>() : pickSilent(starts, rand);
+  markCritical(turns, new Set(starts), playoutSpan(depth), silent, quick ? QUICK_MAX_PAUSES : Infinity, moments);
   addNothings(turns, moments, rand, quick);
   return moments;
 }
