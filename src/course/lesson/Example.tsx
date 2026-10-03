@@ -194,7 +194,7 @@ export function Example({ board, position, onLayout, onDone }: ExampleProps) {
       return (
         <div class="dock-row">
           {back}
-          <DockButton look="primary" wide label={COPY.next} onClick={onDone} />
+          <DockButton look="primary" wide nudge label={COPY.next} onClick={onDone} />
         </div>
       );
     }
@@ -204,7 +204,7 @@ export function Example({ board, position, onLayout, onDone }: ExampleProps) {
         {beat.ask ? (
           <DockButton look="secondary" wide icon="eye" label="Show me" onClick={showMe} />
         ) : (
-          <DockButton look="primary" wide label="Next" onClick={() => goTo(at + 1)} />
+          <DockButton look="primary" wide nudge label="Next" onClick={() => goTo(at + 1)} />
         )}
       </div>
     );

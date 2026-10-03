@@ -27,6 +27,8 @@ export interface RevealStepProps {
   onStep: (at: number) => void;
   /** Back from the engine's look to the line. */
   onLine: () => void;
+  /** Told once the line has played through. */
+  onFinished?: () => void;
 }
 
 /**
@@ -66,7 +68,10 @@ export function RevealStep(props: RevealStepProps) {
         startAt={resumeAt}
         replayable={props.replayable}
         onStep={props.onStep}
-        onFinished={() => setLineDone(true)}
+        onFinished={() => {
+          setLineDone(true);
+          props.onFinished?.();
+        }}
       />
       <ResultBubble result={props.result} text={props.headline} pattern={props.lesson?.pattern} note={props.note} />
       {props.lesson && (lineDone || !props.sequence.steps.length) && (

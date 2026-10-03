@@ -11,7 +11,7 @@ import type {
   SetIndex,
   Turn,
 } from '../content/types';
-import { readingMs, type OpeningNote } from '../opening';
+import type { OpeningNote } from '../opening';
 import type { PauseResult } from '../pause/PauseSheet';
 import type { Celebration, Point } from '../ui/rewards';
 import { outcomeText } from './outcome';
@@ -91,6 +91,8 @@ export interface SessionView {
   status: string;
   /** The opening the moves shown have reached, and the coach's note on them while it is new to the user. */
   note: { name: string | null; text: string | null } | null;
+  /** Autoplay stopped on a new note so the user can read it; Continue plays on. */
+  held: boolean;
 }
 
 class Stopped extends Error {}
@@ -154,6 +156,7 @@ export class GameSession {
       returning: false,
       status: '',
       note: null,
+      held: false,
     };
   }
 
@@ -185,7 +188,7 @@ export class GameSession {
   play(): void {
     if (this.view.phase.kind !== 'ready') return;
     this.practiced = false;
-    this.update({ phase: { kind: 'playing' } });
+    this.update({ phase: { kind: 'playing' }, held: false });
     // A loop still finishing its last move carries on by itself.
     if (this.autoplayQueued) return;
     this.autoplayQueued = true;
@@ -502,14 +505,14 @@ export class GameSession {
     this.board.setLastMove(this.lastUciAt(ply));
   }
 
-  /** One move per beat, however long the animation takes: quicker through a long stretch, slower into a stop and a new note. */
+  /** One move per beat, however long the animation takes: quicker through a long stretch, slower into a stop. */
   private async playPaced(): Promise<void> {
     const note = this.readNoteAt(this.ply + 1);
-    const pace = beat(this.streak, this.movesUntilStop());
-    const wait = note ? Math.max(pace, readingMs(note.text)) : pace;
-    // After a note the ramp starts again, so the next moves do not rush past it.
-    this.streak = note ? 0 : this.streak + 1;
-    await this.until(Promise.all([this.playForward(), this.deps.wait(wait)]));
+    const pace = note ? null : this.deps.wait(beat(this.streak, this.movesUntilStop()));
+    this.streak++;
+    await this.until(Promise.all([this.playForward(), pace]));
+    // A new note waits for the user rather than a timer: reading speeds differ too much.
+    if (note && this.isPlaying()) this.update({ phase: { kind: 'ready' }, held: true });
   }
 
   /** Moves left to play before the next key position or the end of the game, the next one included. */

@@ -23,7 +23,7 @@ function Page({ label, action, children }: PageProps) {
       {action && (
         <Dock>
           <div class="dock-row">
-            <DockButton look="primary" wide label={action.label} onClick={action.onClick} />
+            <DockButton look="primary" wide nudge label={action.label} onClick={action.onClick} />
           </div>
         </Dock>
       )}

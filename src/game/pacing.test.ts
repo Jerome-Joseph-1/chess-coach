@@ -10,12 +10,12 @@ describe('autoplay pace', () => {
   });
 
   it('slows down over the last three moves before a stop', () => {
-    expect([beat(10, 3), beat(11, 2), beat(12, 1)]).toEqual([400, 550, 700]);
+    expect([beat(10, 3), beat(11, 2), beat(12, 1)]).toEqual([350, 450, 600]);
   });
 
   it('never goes quicker than the slowest of the ramp and the approach', () => {
-    expect(beat(0, 1)).toBe(700);
-    expect(beat(1, 3)).toBe(520);
+    expect(beat(0, 1)).toBe(600);
+    expect(beat(1, 3)).toBe(375);
   });
 
   it('takes about five seconds for fifteen moves instead of nine', () => {

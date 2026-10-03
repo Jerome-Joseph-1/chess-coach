@@ -8,7 +8,6 @@ import { parseUci } from './position';
 import { beat } from './pacing';
 import { GameSession, RESUME_MS, type SessionDeps } from './session';
 import { epd } from '../opening/epd';
-import { readingMs } from '../opening';
 
 vi.mock('./pauses', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./pauses')>();
@@ -810,7 +809,7 @@ describe('opening notes', () => {
     expect(started.deps.noteFor).toHaveBeenCalledWith(positionAfter(fixtureGame(GAME_1), 0), 'Bc4');
   });
 
-  it('shows a note autoplay reaches, counts it and holds the move long enough to read it', async () => {
+  it('stops on a note autoplay reaches, counts it, and plays on from there with Continue', async () => {
     momentsAt({ 3: 'pause' });
     const started = await startReady({ notes: { 2: 'two' } });
     const release = gateBeats(started);
@@ -818,12 +817,20 @@ describe('opening notes', () => {
     await flush();
     expect(started.session.getView().note).toBeNull();
     await release();
+    await flush();
     expect(movesPlayed(started)).toBe(2);
     expect(started.session.getView().note).toEqual(full('two'));
     expect(started.deps.markNoteSeen.mock.calls).toEqual([['two']]);
+    // The note's move waits for nothing: autoplay stops and the user reads at their own pace.
+    expect(started.session.getView().phase).toEqual({ kind: 'ready' });
+    expect(started.session.getView().held).toBe(true);
+    expect(waits(started)).toEqual([beat(0, 3)]);
+
+    started.session.play();
+    await flush();
+    expect(started.session.getView().held).toBe(false);
     await beatsUntilPause(started, release);
-    // The note's move waits for the reading time, and the ramp starts again after it.
-    expect(waits(started)).toEqual([beat(0, 3), Math.max(beat(1, 2), readingMs(noteText('two'))), beat(0, 1)]);
+    expect(waits(started)).toEqual([beat(0, 3), beat(0, 1)]);
   });
 
   it('shows only the name once the note has been read twice, without holding the move', async () => {

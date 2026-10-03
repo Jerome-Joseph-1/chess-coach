@@ -39,14 +39,16 @@ export interface RevealActionsProps {
   /** Opens the engine's look at the move on show; left out where there is no line to ask about. */
   onWhy?: () => void;
   whyDisabled?: boolean;
+  /** The line has played through: Continue is what comes next. */
+  nudge?: boolean;
 }
 
 /** Continue is the white pill; "Why this move?" sits beside it as the grey one. */
-export function RevealActions({ onContinue, onWhy, whyDisabled = false }: RevealActionsProps) {
+export function RevealActions({ onContinue, onWhy, whyDisabled = false, nudge = false }: RevealActionsProps) {
   return (
     <div class="dock-row">
       {onWhy && <DockButton look="secondary" icon="search" label={COPY.whyMove} disabled={whyDisabled} onClick={onWhy} />}
-      <DockButton look="primary" wide label={COPY.next} onClick={onContinue} />
+      <DockButton look="primary" wide nudge={nudge} label={COPY.next} onClick={onContinue} />
     </div>
   );
 }

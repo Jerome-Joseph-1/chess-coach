@@ -119,6 +119,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
   const [state, setState] = useState(() => initialState(ctx));
   const [why, setWhy] = useState<number | null>(null);
   const [lineAt, setLineAt] = useState(0);
+  const [lineDone, setLineDone] = useState(false);
   const [leaving, setLeaving] = useState(false);
   /** The board is showing what a wrong move loses: no moves and no hints until it is put back. */
   const [punishing, setPunishing] = useState(false);
@@ -344,6 +345,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
         replayable={watchable}
         onStep={setLineAt}
         onLine={() => setWhy(null)}
+        onFinished={() => setLineDone(true)}
       />
     );
   }
@@ -351,7 +353,8 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
   function actions() {
     if (view === 'reveal') {
       const onWhy = watchable && why === null ? () => setWhy(lineAt) : undefined;
-      return <RevealActions onContinue={carryOn} onWhy={onWhy} whyDisabled={lineAt === 0} />;
+      const done = type === 'nothing' || lineDone || !reveal?.sequence.steps.length;
+      return <RevealActions onContinue={carryOn} onWhy={onWhy} whyDisabled={lineAt === 0} nudge={done && why === null} />;
     }
     const ladder = hintLadder(state);
     return (

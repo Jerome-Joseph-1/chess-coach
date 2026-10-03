@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ComponentChildren } from 'preact';
 import '../ui/button.css';
+import './nudge.css';
 import { CrossFade } from './CrossFade';
 import { Icon, type IconName } from './steps/icons';
 
@@ -21,9 +22,11 @@ export interface DockButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
   fade?: boolean;
   /** Grow to share the row. */
   wide?: boolean;
+  /** This is what the user needs to press next: it gets a pulsing ring. */
+  nudge?: boolean;
 }
 
-export function DockButton({ look, label, icon, fade = false, wide = false, class: cls, ...rest }: DockButtonProps) {
+export function DockButton({ look, label, icon, fade = false, wide = false, nudge = false, class: cls, ...rest }: DockButtonProps) {
   const looks = { primary: 'btn btn-primary', secondary: 'btn btn-secondary', quiet: 'dock-quiet' };
   const content = (
     <>
@@ -32,7 +35,11 @@ export function DockButton({ look, label, icon, fade = false, wide = false, clas
     </>
   );
   return (
-    <button type="button" class={`dock-btn ${looks[look]}${wide ? ' is-wide' : ''}${cls ? ` ${cls}` : ''}`} {...rest}>
+    <button
+      type="button"
+      class={`dock-btn ${looks[look]}${wide ? ' is-wide' : ''}${nudge && !rest.disabled ? ' is-nudge' : ''}${cls ? ` ${cls}` : ''}`}
+      {...rest}
+    >
       {fade ? <CrossFade value={`${icon}:${label}`}>{content}</CrossFade> : content}
     </button>
   );

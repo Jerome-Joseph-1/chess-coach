@@ -55,9 +55,9 @@ export function CoachLine({ text, name = null, note = false }: Partial<CoachSays
   );
 }
 
-function mainLabel({ phase, returning }: SessionView): string {
+function mainLabel({ phase, returning, held }: SessionView): string {
   if (phase.kind === 'playing') return 'Pause';
-  return returning ? 'Continue' : 'Play';
+  return returning || held ? 'Continue' : 'Play';
 }
 
 export interface ControlsProps {
@@ -98,6 +98,7 @@ export function Controls({ view, session, onAnalyse }: ControlsProps) {
             icon={playing ? 'pause' : 'play'}
             label={mainLabel(view)}
             disabled={busy}
+            nudge={!playing && !busy}
             onClick={() => (playing ? session.pausePlayback() : session.play())}
           />
           <RoundButton icon="chevron-right" label="Next move" disabled={!controls.forward} onClick={() => session.stepForward()} />

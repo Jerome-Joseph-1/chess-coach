@@ -228,7 +228,7 @@ function Ending({ eyebrow, text, action, onAction }: EndingProps) {
       </div>
       <Dock>
         <div class="dock-row">
-          <DockButton look="primary" wide label={action} onClick={onAction} />
+          <DockButton look="primary" wide nudge label={action} onClick={onAction} />
         </div>
       </Dock>
     </div>
