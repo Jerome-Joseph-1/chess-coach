@@ -85,6 +85,13 @@ export function scriptedUci(game: Game, turnIndex: number): string {
   return uciOfSan(turn.fen, game.moves[turn.ply]);
 }
 
+/** The opponent's scripted answer to the user's scripted move at this turn. */
+export function replyUci(game: Game, turnIndex: number): string {
+  const turn = game.turns[turnIndex];
+  const afterScripted = fenAfter(turn.fen, [scriptedUci(game, turnIndex)]);
+  return uciOfSan(afterScripted, game.moves[turn.ply + 1]);
+}
+
 /** Turn indexes asked after the solve step. A play-out of 5 stops before a quiet turn. */
 export function holdTurns({ game, turnIndex, depth }: FlowContext): number[] {
   const turns: number[] = [];

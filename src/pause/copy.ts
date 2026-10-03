@@ -26,7 +26,7 @@ export const COPY = {
   practice: 'Practice round. Your first try counts.',
   playItForMe: 'Play it for me',
   missTitle: 'You missed something',
-  yourBoard: 'Back to position',
+  backToPosition: 'Back to position',
 } as const;
 
 const PIECES: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
