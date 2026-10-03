@@ -128,7 +128,7 @@ test('no button in the sheet has an icon or an emoji in its label', async ({ pag
   await atStage(page, 3);
   await reachFirstPause(page);
   const labels = () => page.locator('.pause-sheet button').allTextContents();
-  const plain = /^[A-Za-z' ,.]*$/;
+  const plain = /^[A-Za-z' ,.?]*$/;
 
   expect((await labels()).every((text) => plain.test(text))).toBe(true);
   await page.getByRole('button', { name: "Yes, something's going on" }).click();

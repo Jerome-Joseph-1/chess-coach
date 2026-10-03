@@ -170,6 +170,15 @@
   transform: scale(0.94);
 }
 
+/* "Why this move?" under the caption; it keeps its place before the first move so nothing jumps. */
+.stepper-why {
+  display: flex;
+  justify-content: center;
+}
+.stepper-why.is-waiting {
+  visibility: hidden;
+}
+
 /* Line stepper: previous, the caption of the move on show, next. */
 .stepper {
   display: flex;

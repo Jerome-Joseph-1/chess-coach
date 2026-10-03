@@ -3,6 +3,8 @@ import type { Side } from '../content/types';
 export type Tone = 'focus' | 'good' | 'bad' | 'hint';
 export type BadgeKind = 'good' | 'bad';
 export type ArrowTone = 'best' | 'threat' | 'mistake';
+/** An evaluation from White's point of view: centipawns, mate in n (negative when Black mates), or a finished game. */
+export type BarScore = { cp: number } | { mate: number } | { winner: Side };
 
 /** Imperative handle to the board. Implemented by Board.tsx, used by the game session and the pause sheet. */
 export interface BoardController {
@@ -33,4 +35,6 @@ export interface BoardController {
   /** Draw a move arrow; it stays until clearArrows. The player's own right-click drawings are separate. */
   arrow(from: string, to: string, tone: ArrowTone): void;
   clearArrows(): void;
+  /** A thin evaluation bar along the left edge of the board; null hides it. */
+  evalBar(score: BarScore | null): void;
 }

@@ -1,0 +1,67 @@
+/* Analysis: the caption row, up to three engine lines, then the quiet ways out. */
+.analysis-rows {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  /* Room for three rows from the start, so nothing jumps when the engine answers. */
+  min-height: calc(3 * 44px + 2 * 6px);
+  margin-top: 8px;
+}
+.analysis-row {
+  display: grid;
+  grid-template-columns: minmax(3.6em, auto) minmax(3.2em, auto) 1fr;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+  /* The edge matches the row's arrow on the board: green for the move measured against, orange for the others. */
+  box-shadow:
+    inset 3px 0 0 var(--row-edge, #ffa028),
+    inset 0 0 0 1px var(--hairline);
+  color: var(--text-strong);
+  font: var(--text-callout);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 100ms ease-out;
+}
+.analysis-row.is-ref {
+  --row-edge: #81b64c;
+}
+.analysis-row.is-picked {
+  background: var(--surface-3);
+}
+.analysis-row:active {
+  transform: scale(0.985);
+}
+.analysis-san {
+  font-weight: 600;
+}
+.analysis-score {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.analysis-detail {
+  min-width: 0;
+  color: var(--text-muted);
+  font: var(--text-caption);
+}
+.analysis-status {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  margin: 0;
+  color: var(--text-muted);
+  font: var(--text-callout);
+}
+.analysis-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 4px;
+}

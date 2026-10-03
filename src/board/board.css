@@ -212,6 +212,60 @@
   }
 }
 
+/* Evaluation bar: a thin strip on the left edge, White's share filling from White's side. */
+.eval-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3.5%;
+  background: #3a3734;
+  pointer-events: none;
+  /* The score inside is sized from the bar's own width. */
+  container-type: size;
+}
+.eval-bar[hidden] {
+  display: none;
+}
+.eval-bar-white {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 50%;
+  background: #f4f4f2;
+  transition: height 280ms ease-out;
+}
+.eval-bar.is-flipped .eval-bar-white {
+  top: 0;
+  bottom: auto;
+}
+/* The score runs up the bar at the leader's end, dark on White's fill and light on Black's. */
+.eval-bar-label {
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  width: 100%;
+  color: #3a3734;
+  font: 700 clamp(7px, 85cqw, 11px) / 1 var(--font);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+.eval-bar-label.is-top {
+  top: 4px;
+  bottom: auto;
+}
+.eval-bar.is-black-ahead .eval-bar-label {
+  color: #f4f4f2;
+}
+/* The bar covers the rank numbers' spot, so they step aside while it shows. */
+.board-host.has-eval-bar .cm-chessboard .coordinate.rank {
+  transform: translateX(3.5%);
+}
+
 /* The piece under the finger lifts and casts a soft shadow; on drop it settles. */
 .cm-chessboard-draggable-piece {
   z-index: 50;
@@ -243,6 +297,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .eval-bar-white {
+    transition: none;
+  }
   .badge,
   .cm-chessboard-draggable-piece,
   .cm-chessboard g.piece-settle {

@@ -25,8 +25,14 @@ const CREDITS: Credit[] = [
   {
     name: 'Stockfish',
     licence: 'GPL-3.0',
-    note: 'Chess engine that checked the positions. Used offline to prepare the games, not part of the app.',
-    href: 'https://stockfishchess.org',
+    note: 'The chess engine. It checked the positions when the games were prepared, and it runs on your phone when you ask why a move is played.',
+    href: 'https://github.com/official-stockfish/Stockfish',
+  },
+  {
+    name: 'Stockfish.js',
+    licence: 'GPL-3.0',
+    note: 'The WebAssembly build of Stockfish 19 (lite, single-threaded) that runs in the app, by Nathan Rugg for Chess.com.',
+    href: 'https://github.com/nmrugg/stockfish.js',
   },
   {
     name: 'chess.js',
@@ -57,6 +63,12 @@ const CREDITS: Credit[] = [
     licence: 'MIT',
     note: 'The interface.',
     href: 'https://preactjs.com',
+  },
+  {
+    name: 'Chess Coach',
+    licence: 'GPL-3.0',
+    note: 'The source code of this app. It is free software under the same licence as Stockfish, which it ships.',
+    href: 'https://github.com/Jerome-Joseph-1/chess-coach',
   },
 ];
 

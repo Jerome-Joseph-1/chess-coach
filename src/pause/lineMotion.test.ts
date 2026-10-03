@@ -268,6 +268,31 @@ describe('autoplay', () => {
     expect(now()).toBe(fenAt(withMistake, withMistake.steps.length));
   });
 
+  it('jumps straight to a given step without playing the moves before it', async () => {
+    const fake = fakeBoard(turn.fen);
+    const steps: number[] = [];
+    const motion = new LineMotion(fake.board, (n) => steps.push(n), () => undefined);
+    motion.setSequence(best, 3);
+    await settle();
+    expect(fake.calls.filter((c) => c !== 'clear')).toEqual([`set ${fenAt(best, 3)}`]);
+    expect(steps).toEqual([3]);
+    motion.goTo(4);
+    await settle();
+    expect(fake.now()).toBe(fenAt(best, 4));
+  });
+
+  it('clears its arrow at once when stopped and leaves the board alone after that', async () => {
+    const { motion, calls } = setup();
+    await settle();
+    motion.goTo(1);
+    await vi.advanceTimersByTimeAsync(ARROW_MS / 2);
+    calls.length = 0;
+    motion.stop();
+    expect(calls).toEqual(['clear']);
+    await settle();
+    expect(calls).toEqual(['clear']);
+  });
+
   it('does nothing once stopped', async () => {
     const { motion, playing } = setup();
     motion.stop();

@@ -26,8 +26,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        globIgnores: ['content/**'],
-        navigateFallbackDenylist: [/\/content\//],
+        // The engine loads only when asked for, so it is cached on first use instead of with the install.
+        globIgnores: ['content/**', 'engine/**'],
+        navigateFallbackDenylist: [/\/content\//, /\/engine\//],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
@@ -38,6 +39,11 @@ export default defineConfig({
             urlPattern: ({ url }) => url.pathname.includes('/content/'),
             handler: 'StaleWhileRevalidate',
             options: { cacheName: 'content' },
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.includes('/engine/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'engine', expiration: { maxEntries: 4 } },
           },
         ],
       },

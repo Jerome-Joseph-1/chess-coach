@@ -37,7 +37,8 @@ export class LineMotion {
   private at = 0;
   /** Position last handed to the board; null until the first call. */
   private shown: string | null = null;
-  private rewind = false;
+  /** Step to jump to before anything else; null when there is no jump pending. */
+  private rewind: number | null = null;
   private stopped = false;
   private running: Promise<void> | null = null;
   private playing = false;
@@ -50,11 +51,11 @@ export class LineMotion {
     private onPlaying: (playing: boolean) => void,
   ) {}
 
-  /** Switch to another sequence: the board goes to its start. */
-  setSequence(sequence: Sequence): void {
+  /** Switch to another sequence: the board goes to its start, or straight to step `at`. */
+  setSequence(sequence: Sequence, at = 0): void {
     this.pause();
     this.sequence = sequence;
-    this.rewind = true;
+    this.rewind = Math.max(0, Math.min(sequence.steps.length, at));
     this.start();
   }
 
@@ -87,10 +88,11 @@ export class LineMotion {
     this.play(leadMs);
   }
 
-  /** Drop queued steps and autoplay; the board is left wherever it is. */
+  /** Drop queued steps, autoplay and the arrow on show; the board is left wherever it is, for whoever takes it over. */
   stop(): void {
     this.stopped = true;
     this.pause();
+    this.board.clearArrows();
   }
 
   /** Resolves once the board has caught up with every queued step. */
@@ -142,11 +144,11 @@ export class LineMotion {
 
   /** One action toward the target; false when there is nothing left to do. */
   private async act(sequence: Sequence): Promise<boolean> {
-    if (this.rewind) {
-      this.rewind = false;
-      this.at = 0;
-      this.target = 0;
-      await this.show(fenAt(sequence, 0), true);
+    if (this.rewind !== null) {
+      this.at = this.rewind;
+      this.target = this.rewind;
+      this.rewind = null;
+      await this.show(fenAt(sequence, this.at), true);
     } else if (this.target > this.at && sequence.steps[this.at]) {
       await this.stepForward(sequence);
     } else if (this.target < this.at) {
@@ -164,11 +166,13 @@ export class LineMotion {
     await this.show(before, true);
     this.board.arrow(...squaresOf(uci), tone);
     await sleep(ARROW_MS);
+    if (this.stopped) return;
     if (!this.stillHeadingForward(sequence)) {
       this.board.clearArrows();
       return;
     }
     await this.board.playMove(uci);
+    if (this.stopped) return;
     this.board.clearArrows();
     if (this.sequence !== sequence) {
       this.shown = null; // the sequence changed mid-move; the pending rewind puts the board right
@@ -180,6 +184,6 @@ export class LineMotion {
 
   /** False when a tap during the arrow turned the walk around, or the sequence or the stepper changed. */
   private stillHeadingForward(sequence: Sequence): boolean {
-    return !this.stopped && this.sequence === sequence && !this.rewind && this.target > this.at;
+    return !this.stopped && this.sequence === sequence && this.rewind === null && this.target > this.at;
   }
 }

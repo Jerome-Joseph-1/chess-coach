@@ -82,6 +82,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
   const ctx = useMemo<FlowContext>(() => ({ game, turnIndex, type, depth }), [game, turnIndex, type, depth]);
   const [state, setState] = useState(() => initialState(ctx));
   const [replays, setReplays] = useState(0);
+  const [exploring, setExploring] = useState(false);
   const latest = useRef(state);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
@@ -241,7 +242,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
 
   function footer() {
     if (view === 'reveal') {
-      const watchable = type === 'pause' && reveal !== null && reveal.sequence.steps.length > 0;
+      const watchable = type === 'pause' && reveal !== null && reveal.sequence.steps.length > 0 && !exploring;
       const replay = watchable ? () => setReplays((n) => n + 1) : undefined;
       return <RevealActions onContinue={() => send({ type: 'continue' })} onReplay={replay} />;
     }
@@ -275,6 +276,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
         note={reveal.note}
         frozen={state.phase === 'done'}
         replays={replays}
+        onExplore={setExploring}
       />
     );
   }

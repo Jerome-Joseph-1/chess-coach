@@ -24,6 +24,8 @@ export const COPY = {
   next: 'Continue',
   watchAgain: 'Watch again',
   lineIntro: 'Watch how it plays out.',
+  whyMove: 'Why this move?',
+  backToLine: 'Back to the line',
 } as const;
 
 export function stepLabel(step: number, total: number): string {

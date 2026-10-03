@@ -27,15 +27,15 @@ export function fenAt(sequence: Sequence, at: number): string {
   return at === 0 ? sequence.steps[0].before : sequence.steps[at - 1].after;
 }
 
-/** "8." before a White move, "8…" before a Black one. */
-function moveNumber(step: SequenceStep): string {
-  const number = Number(step.before.split(' ')[5]) || 1;
-  return step.side === 'w' ? `${number}.` : `${number}…`;
+/** "8. bxa5" for a White move, "8… bxa5" for a Black one, numbered from the position before it. */
+export function numberedSan(fenBefore: string, san: string): string {
+  const [, turn, , , , number] = fenBefore.split(' ');
+  return `${Number(number) || 1}${turn === 'b' ? '…' : '.'} ${san}`;
 }
 
 /** "8. bxa5 — you take the knight": the move, then what it does when there is something to say. */
 export function captionOf(step: SequenceStep, userSide: Side): string {
-  const move = `${moveNumber(step)} ${step.san}`;
+  const move = numberedSan(step.before, step.san);
   const text = step.note ?? captionFor(step.before, step.uci, userSide);
   return text ? `${move} — ${text}` : move;
 }

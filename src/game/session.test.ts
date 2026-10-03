@@ -48,6 +48,7 @@ class FakeBoard implements BoardController {
   badge() {}
   arrow() {}
   clearArrows() {}
+  evalBar() {}
 }
 
 function makeGame(id: string, moves: string[], extra: Partial<Game> = {}): Game {

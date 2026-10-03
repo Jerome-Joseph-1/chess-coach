@@ -407,8 +407,9 @@ test.describe('Today on an iPhone 14', () => {
 
 test('About lists the data and licences', async ({ page }) => {
   await page.goto('./#/about');
-  for (const name of ['Lichess games', 'Maia-2', 'Stockfish', 'chess.js', 'cm-chessboard', 'Chess pieces', 'canvas-confetti', 'Preact']) {
-    await expect(page.getByRole('link', { name })).toBeVisible();
+  const names = ['Lichess games', 'Maia-2', 'Stockfish', 'Stockfish.js', 'chess.js', 'cm-chessboard', 'Chess pieces', 'canvas-confetti', 'Preact', 'Chess Coach'];
+  for (const name of names) {
+    await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
   }
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();

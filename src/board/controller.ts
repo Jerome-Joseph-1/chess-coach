@@ -10,11 +10,12 @@ import type { Side } from '../content/types';
 import { parseUci, toUci } from '../game/position';
 import { playSound, type MoveSound } from '../ui/sound';
 import { Annotations } from './annotations';
+import { EvalBar } from './evalBar';
 import { gridCell } from './geometry';
 import { soundBetween, soundForMove } from './moveSound';
 import { legalMoves, pickMove } from './moves';
 import { SquareOverlay } from './overlay';
-import type { ArrowTone, BadgeKind, BoardController, Tone } from './types';
+import type { ArrowTone, BadgeKind, BarScore, BoardController, Tone } from './types';
 
 type MoveHandler = (uci: string) => boolean | Promise<boolean>;
 
@@ -54,6 +55,7 @@ export class CmBoardController implements BoardController {
   private busy = 0;
   private validating = false;
   private destroyed = false;
+  private bar: EvalBar | null = null;
 
   constructor(
     private host: HTMLElement,
@@ -95,6 +97,7 @@ export class CmBoardController implements BoardController {
     if (this.destroyed || this.cm.getOrientation() === side) return;
     await this.cm.setOrientation(side, false);
     this.overlay.setFlipped(side === 'b');
+    this.bar?.setFlipped(side === 'b');
   }
 
   fen(): string {
@@ -172,12 +175,19 @@ export class CmBoardController implements BoardController {
     if (!this.destroyed) this.removeArrows();
   }
 
+  evalBar(score: BarScore | null): void {
+    if (this.destroyed || (!score && !this.bar)) return;
+    this.bar ??= new EvalBar(this.host, this.cm.getOrientation() === 'b');
+    this.bar.show(score);
+  }
+
   destroy(): void {
     if (this.destroyed) return;
     this.disableInput();
     this.destroyed = true;
     this.annotations.destroy();
     this.overlay.destroy();
+    this.bar?.destroy();
     this.cm.destroy();
   }
 
