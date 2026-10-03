@@ -71,8 +71,8 @@
 .pips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding-top: 10px;
+  gap: 8px;
+  padding-top: 8px;
 }
 .pip {
   position: relative;
@@ -134,9 +134,9 @@ a.moment {
   flex: none;
   align-items: center;
   height: 36px;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 1px solid var(--hairline);
-  border-radius: 18px;
+  border-radius: 999px;
   background: var(--surface-2);
   color: var(--text-strong);
   font: var(--text-caption);

@@ -238,7 +238,7 @@ a.row:active {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
-  padding: 0 10px;
+  padding: 0 8px;
   border-radius: 999px;
   background: var(--surface-3);
   color: var(--text);
@@ -254,7 +254,7 @@ a.row:active {
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--seg-edge);
-  border-radius: 22px;
+  border-radius: 999px;
   background: var(--seg-track);
 }
 .segmented-thumb {
@@ -263,7 +263,7 @@ a.row:active {
   bottom: 4px;
   left: 4px;
   width: calc((100% - 8px - (var(--n) - 1) * 4px) / var(--n));
-  border-radius: 18px;
+  border-radius: 999px;
   background: var(--seg-thumb);
   box-shadow: 0 0 0 1px var(--seg-thumb-edge);
   transform: translateX(calc(var(--i) * (100% + 4px)));
@@ -279,10 +279,11 @@ a.row:active {
   min-height: 34px;
   padding: 7px 8px;
   border: 0;
-  border-radius: 18px;
+  border-radius: 999px;
   background: none;
   color: var(--text-muted);
-  font: 500 14px/20px var(--font);
+  font: var(--text-caption);
+  font-weight: 500;
   letter-spacing: -0.002em;
   white-space: nowrap;
   cursor: pointer;
@@ -343,7 +344,7 @@ a.row:active {
 .welcome {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   margin: 0;
   color: var(--text);
   font: var(--text-caption);
@@ -420,14 +421,14 @@ a.row:active {
 .bar {
   position: relative;
   height: 4px;
-  border-radius: 2px;
+  border-radius: 999px;
   background: var(--surface-3);
   overflow: hidden;
 }
 .bar-fill {
   position: absolute;
   inset: 0;
-  border-radius: 2px;
+  border-radius: 999px;
   background: var(--level-fill, var(--text-strong));
   transform: translateX(calc((var(--r, 0) - 1) * 100%));
   animation: bar-fill var(--d-slow) var(--spring) var(--delay, 0ms) both;

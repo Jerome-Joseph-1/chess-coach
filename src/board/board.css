@@ -16,7 +16,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 8px;
+  border-radius: var(--r-board);
   overflow: hidden;
   outline: 1px solid var(--hairline);
   outline-offset: -1px;

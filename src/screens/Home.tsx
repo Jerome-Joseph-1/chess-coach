@@ -12,7 +12,7 @@ import './shared/screen.css';
 import './home.css';
 
 function weekLine(week: RateCount): string {
-  return week.total === 0 ? 'Play a game to see your progress here.' : `${week.right} of ${week.total} key positions handled well this week`;
+  return week.total === 0 ? 'Play a game to see your progress here.' : `${week.right} of ${week.total} key positions handled well this week.`;
 }
 
 export function Home() {

@@ -31,6 +31,10 @@
   --text-label: 500 12px/16px var(--font);
   --text-code: 500 13px/18px var(--font-mono);
 
+  /* The bubble's tail corner, a chip, the board, a row, a card, a sheet; pills and discs are 999px and 50%. */
+  --r-tail: 4px;
+  --r-chip: 6px;
+  --r-board: 8px;
   --r-row: 14px;
   --r-card: 20px;
   --r-sheet: 24px;

@@ -11,7 +11,7 @@
 .up-next-top {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
 }
 .up-next-text {
@@ -62,7 +62,7 @@
   flex: none;
   width: 80px;
   height: 80px;
-  border-radius: 8px;
+  border-radius: var(--r-board);
 }
 .mini-board .sq-light {
   fill: var(--sq-light);
@@ -98,7 +98,6 @@
   flex: none;
   color: var(--text-muted);
   font: var(--text-code);
-  font-size: 12px;
 }
 .stage-bar {
   display: grid;
@@ -136,7 +135,6 @@
 
 .pattern-row {
   min-height: 60px;
-  padding-block: 10px;
 }
 .pattern-row .row-main {
   gap: 2px;
@@ -144,7 +142,7 @@
 .pattern-score {
   display: grid;
   justify-items: end;
-  gap: 6px;
+  gap: 4px;
 }
 .pattern-score .bar {
   width: 72px;

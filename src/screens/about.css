@@ -6,7 +6,7 @@
 .credit {
   display: grid;
   gap: 4px;
-  padding: 14px 16px;
+  padding: 12px 16px;
 }
 .credit-head {
   display: flex;

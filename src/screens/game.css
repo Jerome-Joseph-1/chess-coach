@@ -162,7 +162,7 @@
   top: 8px;
   left: 0;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--r-chip);
   background: var(--surface-3);
   opacity: 0;
   transition:

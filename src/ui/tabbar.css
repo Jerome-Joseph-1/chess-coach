@@ -52,7 +52,7 @@
   min-height: 48px;
   padding-top: 4px;
   color: var(--text-muted);
-  font: 500 11px/14px var(--font);
+  font: var(--text-label);
   letter-spacing: 0.01em;
   text-decoration: none;
   touch-action: manipulation;

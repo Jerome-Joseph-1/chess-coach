@@ -76,7 +76,7 @@
 }
 .day {
   aspect-ratio: 1;
-  border-radius: 6px;
+  border-radius: var(--r-chip);
   background: var(--surface-3);
 }
 .day--on {

@@ -110,7 +110,7 @@
   border-radius: var(--r-row);
   background: var(--surface-2);
   box-shadow: inset 0 0 0 1px var(--hairline);
-  font-size: 24px;
+  font: var(--text-callout);
   cursor: pointer;
   touch-action: manipulation;
   transition: transform var(--t-quick) var(--spring);
