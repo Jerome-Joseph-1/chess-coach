@@ -3,6 +3,8 @@ import type { Level, OpeningId } from '../content/types';
 export interface GameProps {
   opening: OpeningId;
   level: Level;
+  /** Replay a past pause as a review: the game jumps to just before this ply. */
+  review?: { gameId: string; ply: number };
 }
 
 export function Game({ opening, level }: GameProps) {

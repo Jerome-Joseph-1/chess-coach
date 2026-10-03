@@ -9,10 +9,21 @@ import { Recap } from './screens/Recap';
 import { Review } from './screens/Review';
 import { Settings } from './screens/Settings';
 
+function parseReview(query: string): { gameId: string; ply: number } | undefined {
+  const value = new URLSearchParams(query).get('review');
+  const [gameId, ply] = value?.split(':') ?? [];
+  return gameId && ply ? { gameId, ply: Number(ply) } : undefined;
+}
+
 export function App() {
-  const path = useRoute();
+  const route = useRoute();
+  const [path, query = ''] = route.split('?');
   const play = path.match(/^\/play\/([a-z-]+)\/(\d+)$/);
-  if (play) return <Game key={path} opening={play[1] as OpeningId} level={Number(play[2]) as Level} />;
+  if (play) {
+    return (
+      <Game key={route} opening={play[1] as OpeningId} level={Number(play[2]) as Level} review={parseReview(query)} />
+    );
+  }
   switch (path) {
     case '/recap':
       return <Recap />;
