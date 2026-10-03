@@ -1,0 +1,32 @@
+{
+  "v": 1,
+  "opening": "italian",
+  "level": 1400,
+  "units": [
+    {
+      "id": "free-piece",
+      "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0001", "ply": 19, "findShare": 0.747 }],
+      "drills": [{ "set": "italian-1400", "gameId": "italian-1400-0001", "ply": 3, "findShare": 0.455 }]
+    },
+    {
+      "id": "pin",
+      "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0002", "ply": 35, "findShare": 0.451 }],
+      "drills": []
+    },
+    {
+      "id": "remove-defender",
+      "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0001", "ply": 7, "findShare": 0.658 }],
+      "drills": []
+    },
+    {
+      "id": "trapped",
+      "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0001", "ply": 15, "findShare": 0.141 }],
+      "drills": []
+    },
+    {
+      "id": "traps",
+      "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0002", "ply": 3, "findShare": 0.522 }],
+      "drills": []
+    }
+  ]
+}
