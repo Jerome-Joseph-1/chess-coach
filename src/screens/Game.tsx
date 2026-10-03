@@ -39,7 +39,6 @@ function sessionDeps(board: BoardController): SessionDeps {
     recordGame,
     celebrate,
     toast,
-    navigate,
     wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     random: Math.random,
     now: Date.now,
@@ -190,16 +189,23 @@ function Slot({ view, board, session }: SlotProps) {
   if (phase.kind === 'ready' || phase.kind === 'playing') {
     return <PlayButton playing={phase.kind === 'playing'} session={session} />;
   }
+  if (phase.kind === 'done') {
+    return (
+      <div class="game-done">
+        <Status text={phase.outcome} />
+        <Button variant="primary" size="lg" onClick={() => navigate('/recap')}>
+          Finish
+        </Button>
+      </div>
+    );
+  }
   return <Status text={view.status} />;
 }
 
 function PlayButton({ playing, session }: { playing: boolean; session: GameSession }) {
   return (
-    <Button variant="primary" size="lg" class="game-play" onClick={() => (playing ? session.pausePlayback() : session.play())}>
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
-        {playing ? <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" /> : <path d="M8 5.5v13l11-6.5z" />}
-      </svg>
-      {playing ? 'Pause' : 'Play to the next key position'}
+    <Button variant={playing ? 'secondary' : 'primary'} size="lg" class="game-play" onClick={() => (playing ? session.pausePlayback() : session.play())}>
+      {playing ? 'Pause' : 'Play'}
     </Button>
   );
 }

@@ -82,7 +82,6 @@ function startSession(options: { games?: Game[]; review?: { gameId: string; ply:
     recordGame: vi.fn<SessionDeps['recordGame']>(),
     celebrate: vi.fn(),
     toast: vi.fn(),
-    navigate: vi.fn(),
     wait: vi.fn<SessionDeps['wait']>(async () => {}),
     random: vi.fn(() => 0.5),
     now: vi.fn(() => 1234),
@@ -410,7 +409,7 @@ describe('a pause', () => {
 });
 
 describe('the end of a game', () => {
-  it('records the summary and opens the recap after the last key position', async () => {
+  it('records the summary and waits for Finish after the last move', async () => {
     momentsAt({ 3: 'pause' });
     const game = makeGame('short', ['Nf6', 'd4', 'Nxe4', 'dxe5']);
     const started = await playToPause({ games: [game] });
@@ -421,8 +420,7 @@ describe('the end of a game', () => {
     const summary = started.deps.recordGame.mock.calls[0][0];
     expect(summary).toMatchObject({ opening: 'italian', level: 1400, gameId: 'short', at: 1234 });
     expect(summary.moments).toHaveLength(1);
-    expect(started.deps.navigate).toHaveBeenCalledWith('/recap');
-    expect(started.session.getView().phase.kind).toBe('done');
+    expect(started.session.getView().phase).toEqual({ kind: 'done', outcome: expect.stringMatching(/^That is the end of this game\./) });
   });
 
   it('ends after a game with no key position has played out', async () => {
@@ -431,7 +429,7 @@ describe('the end of a game', () => {
     started.session.play();
     await flush();
     expect(started.deps.recordGame).toHaveBeenCalledWith(expect.objectContaining({ gameId: 'short', moments: [] }));
-    expect(started.deps.navigate).toHaveBeenCalledWith('/recap');
+    expect(started.session.getView().phase.kind).toBe('done');
   });
 
   it('does not end a game that is only paused', async () => {
@@ -443,7 +441,7 @@ describe('the end of a game', () => {
     started.session.pausePlayback();
     await beat();
     expect(started.deps.recordGame).not.toHaveBeenCalled();
-    expect(started.deps.navigate).not.toHaveBeenCalled();
+    expect(started.session.getView().phase.kind).not.toBe('done');
   });
 });
 
@@ -487,7 +485,7 @@ describe('reviewing a moment', () => {
     const summary = started.deps.recordGame.mock.calls[0][0];
     expect(summary.moments).toHaveLength(1);
     expect(summary.moments[0].review).toBe(true);
-    expect(started.deps.navigate).toHaveBeenCalledWith('/recap');
+    expect(started.session.getView().phase.kind).toBe('done');
     expect(started.board.calls).toHaveLength(playsBefore);
   });
 

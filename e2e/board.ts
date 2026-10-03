@@ -24,7 +24,7 @@ export async function tapSquares(page: Page, from: string, to: string) {
   await page.touchscreen.tap(at(to).x, at(to).y);
 }
 
-export const playButton = (page: Page) => page.getByRole('button', { name: 'Play to the next key position' });
+export const playButton = (page: Page) => page.getByRole('button', { name: 'Play', exact: true });
 export const pauseButton = (page: Page) => page.getByRole('button', { name: 'Pause', exact: true });
 export const moveList = (page: Page) => page.locator('.game-moves li');
 

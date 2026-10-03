@@ -92,11 +92,11 @@ function PilotCard({ item, note, onChange }: { item: PilotItem; note: PilotNote;
       {threat && <Line title="If you pass" text={sanLine(flipTurn(turn.fen), threat)} />}
       <p class="muted pilot-id">{item.key}</p>
       <div class="pilot-votes" role="group" aria-label="Is the label right?">
-        <button type="button" class="pilot-vote pilot-vote--up" aria-pressed={note.vote === 'up'} aria-label="Label is right" onClick={() => vote('up')}>
-          👍
+        <button type="button" class="pilot-vote pilot-vote--up" aria-pressed={note.vote === 'up'} onClick={() => vote('up')}>
+          Fair
         </button>
-        <button type="button" class="pilot-vote pilot-vote--down" aria-pressed={note.vote === 'down'} aria-label="Label is wrong" onClick={() => vote('down')}>
-          👎
+        <button type="button" class="pilot-vote pilot-vote--down" aria-pressed={note.vote === 'down'} onClick={() => vote('down')}>
+          Unfair
         </button>
       </div>
       <textarea

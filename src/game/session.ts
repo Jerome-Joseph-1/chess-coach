@@ -14,6 +14,7 @@ import type {
 } from '../content/types';
 import type { PauseResult } from '../pause/PauseSheet';
 import type { Celebration, Point } from '../ui/rewards';
+import { outcomeText } from './outcome';
 import { chooseMoments, hashSeed } from './pauses';
 import { placement, playSan } from './position';
 
@@ -33,7 +34,6 @@ export interface SessionDeps {
   recordGame(summary: GameSummary): void;
   celebrate(kind: Celebration, origin?: Point): void;
   toast(text: string): void;
-  navigate(path: string): void;
   wait(ms: number): Promise<void>;
   random(): number;
   now(): number;
@@ -49,7 +49,8 @@ export type Phase =
   /** Both sides' scripted moves are being played. */
   | { kind: 'playing' }
   | { kind: 'pause'; turnIndex: number; type: 'pause' | 'nothing' }
-  | { kind: 'done' };
+  /** The moves have run out; the user leaves with Finish. */
+  | { kind: 'done'; outcome: string };
 
 /** One dot per pause the user will be asked about. */
 export type DotState = 'todo' | 'now' | 'good' | 'bad';
@@ -338,7 +339,7 @@ export class GameSession {
       at: this.deps.now(),
     };
     this.deps.recordGame(summary);
-    this.update({ phase: { kind: 'done' }, status: '' });
-    this.deps.navigate('/recap');
+    const outcome = this.review ? 'That was the position you missed before.' : outcomeText(this.chess, this.game);
+    this.update({ phase: { kind: 'done', outcome }, status: '' });
   }
 }

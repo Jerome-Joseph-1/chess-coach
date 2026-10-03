@@ -13,6 +13,9 @@
   min-height: var(--screen);
   margin: 0 auto;
 }
+.game:has(.game-done) {
+  --room: 124px;
+}
 .game.is-paused {
   --room: 304px;
   --chrome: calc(var(--top-bar) + var(--player-bar));
@@ -161,4 +164,10 @@
   color: var(--text);
   font: var(--text-callout);
   text-align: center;
+}
+
+.game-done {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }

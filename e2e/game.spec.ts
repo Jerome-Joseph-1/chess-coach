@@ -109,9 +109,14 @@ test('after a key position the game plays on by itself to the next one', async (
   await expect(page.locator('.game-pill')).toHaveText(/^Key position 2 of \d+$/);
 });
 
-test('a short quiet game runs to the recap', async ({ page }) => {
+test('a short quiet game plays to its end and waits for Finish', async ({ page }) => {
   await playQuietGame(page, 6);
   await playButton(page).click();
 
-  await expect(page).toHaveURL(/#\/recap$/, { timeout: RUN_MS });
+  const finish = page.getByRole('button', { name: 'Finish' });
+  await expect(finish).toBeVisible({ timeout: RUN_MS });
+  await expect(page.getByText(/^That is the end of this game\./)).toBeVisible();
+  await expect(page).not.toHaveURL(/#\/recap$/);
+  await finish.click();
+  await expect(page).toHaveURL(/#\/recap$/);
 });
