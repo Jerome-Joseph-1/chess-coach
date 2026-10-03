@@ -68,7 +68,7 @@ export function momentTone(m: MomentResult): MomentTone {
 export function momentSub(m: MomentResult): string {
   const tone = momentTone(m);
   if (tone === 'missed') return 'Missed it · saved for review';
-  if (tone === 'hinted') return 'Found it with a hint · saved for review';
+  if (tone === 'hinted') return 'With a hint · saved for review';
   if (tone === 'quiet') return 'Right, it was quiet';
   if (m.type === 'silent') return 'Found it without a hint';
   return FOUND[m.outcomes.at(-1)?.step ?? 'spot'];
