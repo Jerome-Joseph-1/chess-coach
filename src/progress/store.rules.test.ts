@@ -23,8 +23,8 @@ describe('depth through the store', () => {
   it('moves down below 10 of 20 and starts a new window', async () => {
     const store = await openStore();
     play(store, mix(15), 1);
-    expect(store.getDepth('italian', 1400)).toBe(2);
-    const results = play(store, mix(9), 2);
+    expect(store.getDepth('italian', 1400)).toBe(4);
+    const results = play(store, mix(9), 4);
     expect(results.at(-1)).toEqual({ depthChanged: 1 });
     expect(results.slice(0, -1).every((r) => r.depthChanged === undefined)).toBe(true);
     expect(store.getDepth('italian', 1400)).toBe(1);
@@ -40,7 +40,7 @@ describe('depth through the store', () => {
   it('keeps a depth per opening and level', async () => {
     const store = await openStore();
     play(store, mix(20), 1, 1700);
-    expect(store.getDepth('italian', 1700)).toBe(2);
+    expect(store.getDepth('italian', 1700)).toBe(4);
     expect(store.getDepth('italian', 1400)).toBe(1);
     expect(store.getDepth('caro-kann', 1700)).toBe(1);
   });
@@ -50,7 +50,7 @@ describe('depth through the store', () => {
     play(store, Array(10).fill(true), 1);
     store = await openStore();
     const rest = play(store, [...Array(5).fill(true), ...Array(5).fill(false)], 1, 1400, 10);
-    expect(rest.at(-1)).toEqual({ depthChanged: 2 });
+    expect(rest.at(-1)).toEqual({ depthChanged: 4 });
   });
 
   it('keeps the manual override across a reload and goes back to automatic when it is cleared', async () => {
@@ -61,7 +61,7 @@ describe('depth through the store', () => {
     expect(store.getDepth('italian', 1400)).toBe(5);
     expect(store.getDepth('caro-kann', 1100)).toBe(5);
     store.saveSettings({ ...store.getSettings(), depthOverride: undefined });
-    expect(store.getDepth('italian', 1400)).toBe(2);
+    expect(store.getDepth('italian', 1400)).toBe(4);
   });
 
   it('drops an out-of-range override', async () => {
@@ -135,10 +135,10 @@ describe('stage unlocked by a game', () => {
     let store = await openStore();
     play(store, mix(15), 1);
     store.recordGame(summary(noon()));
-    expect(store.getLastGameUnlock()).toBe(2);
+    expect(store.getLastGameUnlock()).toBe(4);
 
     store = await openStore();
-    expect(store.getLastGameUnlock()).toBe(2);
+    expect(store.getLastGameUnlock()).toBe(4);
     store.clearLastGameUnlock();
     expect(store.getLastGameUnlock()).toBeNull();
     store = await openStore();
@@ -151,7 +151,7 @@ describe('stage unlocked by a game', () => {
     store.recordGame(summary(noon(0)));
     store.clearLastGameUnlock();
 
-    play(store, mix(9), 2);
+    play(store, mix(9), 4);
     store.recordGame(summary(noon(0), [], 'italian-1400-0002'));
     expect(store.getDepth('italian', 1400)).toBe(1);
     expect(store.getLastGameUnlock()).toBeNull();

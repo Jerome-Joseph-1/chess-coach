@@ -145,11 +145,11 @@ describe('depth', () => {
 
   it('moves up after 15 of 20 and remembers it', async () => {
     let store = await openStore();
-    expect(await playPauses(store, 15)).toEqual({ depthChanged: 2 });
-    expect(store.getDepth('italian', 1400)).toBe(2);
+    expect(await playPauses(store, 15)).toEqual({ depthChanged: 4 });
+    expect(store.getDepth('italian', 1400)).toBe(4);
     expect(store.getDepth('italian', 1700)).toBe(1);
     store = await openStore();
-    expect(store.getDepth('italian', 1400)).toBe(2);
+    expect(store.getDepth('italian', 1400)).toBe(4);
   });
 
   it('returns the manual override and leaves the automatic depth alone', async () => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks';
 import type { Depth } from '../content/types';
-import { DEPTH_BLURBS, DEPTH_NAMES, DEPTHS } from '../progress/depth';
+import { DEPTH_BLURBS, DEPTH_NAMES, STAGES, stageNumber } from '../progress/depth';
 import { Button } from './Button';
 import './level-up.css';
 
@@ -27,8 +27,8 @@ export function LevelUp({ depth, onClose }: LevelUpProps) {
     <div ref={root} class="levelup" role="dialog" aria-modal="true" aria-labelledby="levelup-title">
       <div class="levelup-body">
         <span class="levelup-dots" aria-hidden="true">
-          {DEPTHS.map((n) => (
-            <i key={n} class={n <= depth ? 'on' : ''} style={{ '--k': n }} />
+          {STAGES.map((stage, i) => (
+            <i key={stage} class={i < stageNumber(depth) ? 'on' : ''} style={{ '--k': i + 1 }} />
           ))}
         </span>
         <h2 id="levelup-title" class="levelup-title">

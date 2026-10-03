@@ -30,8 +30,8 @@ describe('depth rules', () => {
 
   it('moves up at 15 of 20 and resets the window', () => {
     const { state, changed } = feed(newDepthState(), mix(15));
-    expect(changed).toBe(2);
-    expect(state).toEqual({ depth: 2, window: [] });
+    expect(changed).toBe(4);
+    expect(state).toEqual({ depth: 4, window: [] });
   });
 
   it('stays put at 14 of 20', () => {
@@ -41,8 +41,9 @@ describe('depth rules', () => {
   });
 
   it('moves down below 10 of 20 and stays at 10', () => {
-    expect(feed({ depth: 3, window: [] }, mix(9), 3).state.depth).toBe(2);
-    expect(feed({ depth: 3, window: [] }, mix(10), 3).state.depth).toBe(3);
+    expect(feed({ depth: 5, window: [] }, mix(9), 5).state.depth).toBe(4);
+    expect(feed({ depth: 5, window: [] }, mix(10), 5).state.depth).toBe(5);
+    expect(feed({ depth: 4, window: [] }, mix(9), 4).state.depth).toBe(1);
   });
 
   it('never goes below 1 or above 5', () => {
@@ -52,7 +53,7 @@ describe('depth rules', () => {
 
   it('only looks at the last 20 pauses', () => {
     const { changed } = feed(newDepthState(), [...mix(0, 10), ...mix(15)]);
-    expect(changed).toBe(2);
+    expect(changed).toBe(4);
   });
 
   it('counts a replayed moment once, by its latest result', () => {
@@ -87,11 +88,11 @@ describe('stage wording', () => {
 
   it('writes the stage line', () => {
     expect(DEPTHS.map(stageLine)).toEqual([
-      'Stage 1 of 5: Spot it, then play it',
-      'Stage 2 of 5: Spot it, then play it',
-      'Stage 3 of 5: Spot it, then play it',
-      'Stage 4 of 5: Play the follow-up too',
-      'Stage 5 of 5: Play it all the way',
+      'Stage 1 of 3: Spot it, then play it',
+      'Stage 1 of 3: Spot it, then play it',
+      'Stage 1 of 3: Spot it, then play it',
+      'Stage 2 of 3: Play the follow-up too',
+      'Stage 3 of 3: Play it all the way',
     ]);
   });
 });

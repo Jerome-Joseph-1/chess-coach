@@ -1,7 +1,7 @@
 import { useRef, useState } from 'preact/hooks';
 import type { Depth, Settings as SettingsData } from '../content/types';
 import { dayKey } from '../progress/days';
-import { DEPTHS, DEPTH_BLURBS, stageLine } from '../progress/depth';
+import { DEPTH_BLURBS, STAGES, stageLine } from '../progress/depth';
 import { exportProgress, getSettings, importProgress, resetProgress, saveSettings, type StoredSettings } from '../progress/store';
 import { Button } from '../ui/Button';
 import { TabBar } from '../ui/TabBar';
@@ -26,7 +26,7 @@ const BOARD_OPTIONS: { value: SettingsData['board']; label: string }[] = [
 ];
 const STAGE_OPTIONS: { value: StageChoice; label: string }[] = [
   { value: 'auto', label: 'Auto' },
-  ...DEPTHS.map((value) => ({ value, label: String(value) })),
+  ...STAGES.map((value, i) => ({ value, label: String(i + 1) })),
 ];
 
 function applyTheme(theme: SettingsData['theme']): void {
