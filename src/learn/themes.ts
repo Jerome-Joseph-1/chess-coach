@@ -1,6 +1,6 @@
 import { Chess, type Color, type Move, type PieceSymbol, type Square } from 'chess.js';
 import type { Game, Kind, Turn } from '../content/types';
-import { isBetween, kingOf, otherColor, passTurn, pieceOn, playLine, uciOf, type PieceAt } from './board';
+import { VALUE, capturesOn, isBetween, isLoose, kingOf, otherColor, passTurn, pieceOn, playLine, uciOf, type PieceAt } from './board';
 import { tacticIn, wonInPlace, type Tactic, type TacticId } from './tactics';
 import { capturedSquare } from './trade';
 
@@ -63,6 +63,11 @@ export function themeFor(game: Game, turnIndex: number): Theme {
   return themes.find((theme) => !isGeneral(theme)) ?? themes[0] ?? fallback;
 }
 
+/** Whether the theme is about the user's own win, rather than a threat, a trap or a quiet move. */
+export function isWin(theme: Theme): boolean {
+  return !['hanging-own', 'threat-other', 'bait', 'quiet'].includes(theme.id);
+}
+
 /** A theme that names no pattern: a plain material win, or a threat or bait without a named tactic. */
 function isGeneral(theme: Theme): boolean {
   return theme.id === 'material-win' || theme.pattern === 'material-win' || !theme.tactic;
@@ -77,15 +82,61 @@ function winTheme(turn: Turn, side: Color): Theme | null {
 function defendTheme(turn: Turn, side: Color): Theme | null {
   const passed = passTurn(turn.fen);
   if (!passed || !turn.lines.threat?.length) return null;
-  const tactic = tacticIn(passed, turn.lines.threat, otherColor(side));
-  if (!tactic) return { id: 'threat-other', tactic: null, pieces: [], moves: turn.lines.threat.slice(0, 1) };
+  return threatTheme(passed, turn.lines.threat, side);
+}
+
+/** What the opponent threatens with `line` from `passed`, the position with them to move. */
+function threatTheme(passed: string, line: readonly string[], side: Color): Theme {
+  const found = tacticIn(passed, line, otherColor(side));
+  if (!found) return { id: 'threat-other', tactic: null, pieces: [], moves: line.slice(0, 1) };
+  // A piece that already hangs is the danger, whatever else the threat line does with it.
+  return dangerTheme(found.id === 'checkmate' ? found : (plainCapture(passed, found.won, side) ?? found));
+}
+
+/** The theme of the opponent's tactic against the user: a piece left hanging, or another threat. */
+function dangerTheme(tactic: Tactic): Theme {
   const id = tactic.id === 'free-piece' ? 'hanging-own' : 'threat-other';
   return { id, tactic, pattern: tactic.id, pieces: tacticPieces(tactic), moves: keyMoves(tactic) };
 }
 
+/** The plain capture of the user's piece `won`, as a free piece, when it already hangs where it stands. */
+function plainCapture(passed: string, won: PieceAt | null, side: Color): Tactic | null {
+  if (!won || won.color !== side || !isLoose(passed, won.square)) return null;
+  const [cheapest] = capturesOn(new Chess(passed), won.square).sort((a, b) => VALUE[a.piece] - VALUE[b.piece]);
+  const capture = cheapest ? tacticIn(passed, [uciOf(cheapest)], otherColor(side)) : null;
+  return capture?.id === 'free-piece' ? capture : null;
+}
+
+/**
+ * The trap the most common losing move falls into. When what it loses was already lost before the move, a piece
+ * that already hung or a mate already threatened, the position is about that danger instead.
+ */
 function baitTheme(turn: Turn, side: Color): Theme | null {
   const line = turn.lines.mistake ?? (turn.mistakeMove ? [turn.mistakeMove] : []);
-  return line.length ? punishment(turn.fen, line[0], line.slice(1), side) : null;
+  const theme = line.length ? punishment(turn.fen, line[0], line.slice(1), side) : null;
+  const passed = passTurn(turn.fen);
+  if (!theme?.tactic || !passed) return theme;
+  const hung = hungBefore(turn.fen, theme);
+  if (hung) {
+    const capture = plainCapture(passed, hung, side);
+    return capture ? dangerTheme(capture) : null;
+  }
+  return mateWasThreatened(passed, theme.tactic) ? threatTheme(passed, [uciOf(theme.tactic.moves[0])], side) : theme;
+}
+
+/** The user's piece a trap wins, where it stood before the tempting move, if it already hung there. */
+function hungBefore(fen: string, theme: Theme): PieceAt | null {
+  const won = theme.tactic?.won;
+  const lure = theme.bait!.move;
+  if (!won || won.color !== lure.color) return null;
+  const square = won.square === lure.to ? lure.from : won.square;
+  return isLoose(fen, square) ? pieceOn(new Chess(fen), square) : null;
+}
+
+/** The mate a trap allows was there before the tempting move, which only fails to stop it. */
+function mateWasThreatened(passed: string, t: Tactic): boolean {
+  if (t.id !== 'checkmate' || t.key !== 0) return false;
+  return Boolean(playLine(passed, [uciOf(t.moves[0])])[0]?.san.endsWith('#'));
 }
 
 /** How the opponent punishes the user's move `uci` from `fen` with `line`, their reply first; null when `uci` is illegal. */

@@ -10,18 +10,8 @@
     },
     {
       "id": "pin",
-      "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0002", "ply": 35, "findShare": 0.451 }],
-      "drills": []
-    },
-    {
-      "id": "remove-defender",
-      "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0001", "ply": 7, "findShare": 0.658 }],
-      "drills": []
-    },
-    {
-      "id": "trapped",
       "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0001", "ply": 15, "findShare": 0.141 }],
-      "drills": []
+      "drills": [{ "set": "italian-1400", "gameId": "italian-1400-0002", "ply": 35, "findShare": 0.451 }]
     },
     {
       "id": "traps",

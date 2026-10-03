@@ -141,6 +141,27 @@ export function piecesAlong(chess: Chess, from: Square, direction: [number, numb
   return found;
 }
 
+/** A piece lined up behind another on the same line, ready to take on the square after it. */
+export interface Backer extends PieceAt {
+  front: Square;
+}
+
+/** Pieces of `color` that stand behind an attacker of `square` on its line and would take next, like a queen behind a bishop. */
+export function backers(chess: Chess, square: Square, color: Color): Backer[] {
+  return chess.attackers(square, color).flatMap((from) => {
+    const direction = directionTo(square, from);
+    if (!direction) return [];
+    const behind: Backer[] = [];
+    let front = from;
+    for (;;) {
+      const [next] = piecesAlong(chess, front, direction);
+      if (!next || next.color !== color || !slidesAlong(next.type, direction)) return behind;
+      behind.push({ ...next, front });
+      front = next.square;
+    }
+  });
+}
+
 /** The pin holding the piece on `square`: an enemy slider in front, a bigger piece of its own behind. */
 export function pinOn(chess: Chess, square: Square): Pin | null {
   const pinned = pieceOn(chess, square);

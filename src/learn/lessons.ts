@@ -71,6 +71,7 @@ function nameOf(theme: Theme): string {
     case 'hanging-own':
       return t?.won?.type === 'p' ? 'Pawn in danger' : 'Piece in danger';
     case 'threat-other':
+      if (t?.id === 'pin' && t.how === 'defender') return 'Pinned defender';
       return (theme.pattern && STOP[theme.pattern]) ?? "Opponent's threat";
     case 'bait':
       if (theme.bait?.kind === 'grab') return theme.bait.move.captured === 'p' ? 'Poisoned pawn' : 'Poisoned piece';

@@ -55,7 +55,7 @@ type Pattern =
   | { id: 'fork'; forker: PieceAt; targets: PieceAt[] }
   | { id: 'skewer'; attacker: PieceAt; front: PieceAt; back: PieceAt }
   | { id: 'discovered-attack'; mover: PieceAt; slider: PieceAt; target: PieceAt }
-  | { id: 'pin'; pin: Pin; how: 'created' | 'attacked' | 'defender' | 'exposed' }
+  | { id: 'pin'; pin: Pin; how: 'created' | 'opened' | 'attacked' | 'defender' | 'exposed' }
   | { id: 'trapped-piece'; trapped: PieceAt; attacker: PieceAt; escapes: number }
   | { id: 'remove-defender'; defender: PieceAt; guarded: PieceAt; how: 'capture' | 'chase' | 'deflect' }
   | { id: 'mate-threat'; mate: Move }
@@ -249,8 +249,15 @@ function discoveryWithoutCapture(moves: Move[], side: Color): Pattern | null {
 const pinnedGuard: Detector = ({ moves, side, key, targetSquares }, t) => {
   const guard = t === key || t === 0 ? guardPin(moves[t], side) : null;
   if (!guard || (t !== key && guard.behind.square !== targetSquares[key])) return null;
+  if (t === key && !takingBackUndoes(moves, t, side)) return null;
   return { id: 'pin', pin: guard, how: 'defender' };
 };
+
+/** Whether taking back the capture at `t` would cancel what the line has won so far, so only the pin makes it pay. */
+function takingBackUndoes(moves: Move[], t: number, side: Color): boolean {
+  const capture = moves[t];
+  return tradeOf(moves.slice(0, t + 1), side).net <= VALUE[capture.promotion ?? capture.piece];
+}
 
 /** The pin on the guards of a captured piece, when every guard is pinned to its king or to something bigger. */
 function guardPin(move: Move, side: Color): Pin | null {
@@ -293,6 +300,8 @@ const pinnedTarget: Detector = ({ moves, side, key, targetSquares }, t) => {
   const escape = moves.slice(t + 1, key).find((m) => m.from === square);
   if (escape && (escape.to !== found.pinner.square || moves.indexOf(escape) + 1 !== key)) return null;
   if (found.pinner.square === move.to) return { id: 'pin', pin: found, how: 'created' };
+  // The move steps off the line between the pinner and the piece, and so makes the pin.
+  if (isBetween(found.pinner.square, move.from, square)) return { id: 'pin', pin: found, how: 'opened' };
   const wasPinned = pinOn(new Chess(move.before), square)?.pinner.square === found.pinner.square;
   const attacks = after.attackers(square, side).includes(move.to);
   return wasPinned && attacks ? { id: 'pin', pin: found, how: 'attacked' } : null;
@@ -305,6 +314,8 @@ const trapped: Detector = ({ moves, side, key, targetSquares }, t) => {
   const after = new Chess(move.after);
   const piece = pieceOn(after, square);
   if (!piece || piece.type === 'p' || piece.type === 'k' || after.inCheck()) return null;
+  // A piece held by a pin has squares; the pin is what stops it.
+  if (pinOn(after, square)) return null;
   if (exchangeGain(new Chess(move.before), square) > 0) return null;
   const probe = passTurn(move.after);
   if (!probe || exchangeGain(new Chess(probe), square) === 0) return null;
@@ -337,6 +348,8 @@ const removeDefender: Detector = ({ moves, side, key, targetSquares }, t) => {
   // The piece must already be under attack and held only by its guards.
   if (!before.attackers(square, side).length) return null;
   if (exchangeGain(before, square) > 0 || captureGain(moves[key]) <= 0) return null;
+  // A capture that wins because it uncovers check is a discovery, not a missing guard.
+  if (discoversCheck(moves[key])) return null;
   const guardsAtKey = new Chess(moves[key].before).attackers(square, otherColor(side));
   const guarded = pieceOn(before, square)!;
   const guards = before.attackers(square, otherColor(side));
@@ -348,9 +361,18 @@ const removeDefender: Detector = ({ moves, side, key, targetSquares }, t) => {
   const stillGuards = (fen: string) => new Chess(fen).attackers(square, otherColor(side)).includes(reply.to);
   if (stillGuards(reply.after) || guardsAtKey.includes(reply.to)) return null;
   const how = reply.to === move.to ? 'deflect' : 'chase';
-  if (how === 'chase' && !new Chess(move.after).attackers(moved, side).includes(move.to)) return null;
+  // A chaser the opponent could simply take is a sacrifice, not a chase.
+  if (how === 'chase' && (!new Chess(move.after).attackers(moved, side).includes(move.to) || isLoose(move.after, move.to))) return null;
   return { id: 'remove-defender', defender: pieceOn(before, moved)!, guarded, how };
 };
+
+/** Whether the move gives check with a piece other than the one that moved. */
+function discoversCheck(move: Move): boolean {
+  const after = new Chess(move.after);
+  if (!after.inCheck()) return false;
+  const king = kingOf(after, after.turn());
+  return after.attackers(king.square, move.color).some((square) => square !== move.to);
+}
 
 const mateThreat: Detector = ({ moves, key }, t) => {
   const move = moves[t];

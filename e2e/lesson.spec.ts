@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { continueButton, rememberCard, tapSquares } from './board';
 
 // The test course: free pieces teach with game 0001 at ply 19 (Rxe6+) and practise at ply 3 (dxe5);
-// remove the defender has an example (Qxd8+) and no practice positions.
+// traps have an example (the Nxe5 trap, answered by h3) and no practice positions.
 test.use({ serviceWorkers: 'block' });
 
 const bubble = (page: Page) => page.locator('.coach-bubble').first();
@@ -82,16 +82,18 @@ test('a wrong move on an asking step goes back, and Show me plays the move', asy
 
 test('a unit without practice positions goes from the example straight to the summary', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('./#/lesson/italian/remove-defender');
+  await page.goto('./#/lesson/italian/traps');
   await showExample(page).click();
-  await expect(bubble(page)).toContainText('only the knight on c6 guards it');
+  await expect(bubble(page)).toContainText('Nxe5 is tempting');
   await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(bubble(page)).toContainText('Your move: play it.');
   await page.getByRole('button', { name: 'Show me' }).click();
-  await expect(rememberCard(page)).toBeVisible();
+  await expect(rememberCard(page)).toBeVisible({ timeout: 10_000 });
   await continueButton(page).click();
 
   await expect(page.getByText('You will meet this pattern again in your next games.')).toBeVisible();
-  const saved = await storedLesson(page, 'remove-defender');
+  const saved = await storedLesson(page, 'traps');
   expect(saved).toMatchObject({ learnedAt: expect.any(Number), doneAt: expect.any(Number), drills: [] });
 });
 

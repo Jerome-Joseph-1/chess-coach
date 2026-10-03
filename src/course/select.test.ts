@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import fixtureCourse from '../../public/content/italian-1400/course.json';
 import type { Game } from '../content/types';
-import { learnGame } from '../learn/fixtures';
+import { learnGame, realTurn } from '../learn/fixtures';
+import { themeFor } from '../learn/themes';
 import queenForKnight from '../pause/fixtures/queen-for-knight.json';
 import { italian1, italian2 } from '../pause/testGames';
 import { FakeStorage } from '../progress/testkit';
 import {
   CLEAN,
   buildCourse,
+  canSidestep,
   candidatesOf,
   levelsByDistance,
   loadPosition,
@@ -25,7 +27,7 @@ import { positionKey, type CourseFile, type PositionRef, type UnitId } from './t
 
 function candidate(set: string, n: number, findShare: number, clarity = CLEAN, unit: UnitId = 'fork'): Candidate {
   const ref = { set, gameId: `${set}-${String(n).padStart(4, '0')}`, ply: 9, findShare };
-  return { ref, unit, position: `${set}/${n}`, clarity };
+  return { ref, unit, position: `${set}/${n}`, clarity, sound: true, tier: 0, contested: false, picture: `${set}/${n}` };
 }
 
 const games = (cs: Candidate[]) => cs.map((c) => c.ref.gameId);
@@ -60,6 +62,35 @@ describe('candidatesOf', () => {
   it('names the position without its move counters', () => {
     const [first] = candidatesOf('italian-1400', italian1);
     expect(first.position).toBe(italian1.turns[1].fen.split(' ').slice(0, 4).join(' '));
+  });
+});
+
+describe('which examples hold up', () => {
+  const only = (key: Parameters<typeof realTurn>[0]) => candidatesOf('caro-kann-1400', realTurn(key))[0];
+
+  it('takes a win the engine backs and the line shows, ranking a counted capture after a piece nobody guards', () => {
+    expect(only('caro-kann-1400-0046#9')).toMatchObject({ unit: 'free-piece', sound: true, tier: 1 });
+  });
+
+  it('rejects a win the engine does not back', () => {
+    expect(realTurn('caro-kann-1700-0023#9').turns[0].bestWin).toBeLessThan(75);
+    expect(only('caro-kann-1700-0023#9')).toMatchObject({ unit: 'trapped', sound: false });
+  });
+
+  it('rejects a win whose line, once the captures are over, nets less than it claims', () => {
+    // fxe3 Nxf8 Bxd2: a knight and a bishop for a rook.
+    expect(only('caro-kann-1700-0008#18')).toMatchObject({ unit: 'remove-defender', sound: false });
+  });
+
+  it('rejects a target that can simply trade itself off for the piece that would win it', () => {
+    expect(only('italian-1700-0061#17').sound).toBe(false);
+    expect(canSidestep(themeFor(realTurn('italian-1700-0061#17'), 0).tactic)).toBe(true);
+    expect(canSidestep(themeFor(realTurn('caro-kann-1700-0003#21'), 0).tactic)).toBe(false);
+  });
+
+  it('marks a position where another move is about as good as contested', () => {
+    expect(only('caro-kann-1400-0030#17').contested).toBe(true);
+    expect(only('caro-kann-1100-0248#18').contested).toBe(false);
   });
 });
 
@@ -106,6 +137,26 @@ describe('pickExamples', () => {
   it('shows a position reached in two games once', () => {
     const twice = { ...candidate('italian-1400', 2, 0.8), position: 'italian-1400/1' };
     expect(pickExamples([[candidate('italian-1400', 1, 0.8), twice]])).toHaveLength(1);
+  });
+
+  it('takes one example per game and per picture', () => {
+    const first = candidate('italian-1400', 1, 0.9);
+    const sameGame = { ...candidate('italian-1400', 2, 0.8), ref: { ...first.ref, ply: 21 } };
+    const samePicture = { ...candidate('italian-1400', 3, 0.7), picture: first.picture };
+    const other = candidate('italian-1400', 4, 0.6);
+    expect(games(pickExamples([[first, sameGame, samePicture, other]]))).toEqual(['italian-1400-0001', 'italian-1400-0004']);
+  });
+
+  it('leaves out examples that do not hold up', () => {
+    const unsound = { ...candidate('italian-1400', 1, 0.9), sound: false };
+    expect(games(pickExamples([[unsound, candidate('italian-1400', 2, 0.5, 3)]]))).toEqual(['italian-1400-0002']);
+  });
+
+  it('puts textbook cases first, then the ones with a clear answer, even from another level', () => {
+    const threat = { ...candidate('italian-1400', 1, 0.9, CLEAN, 'checkmate'), tier: 9 };
+    const contested = { ...candidate('italian-1400', 2, 0.8, CLEAN, 'checkmate'), contested: true };
+    const mate = candidate('italian-1100', 1, 0.3, CLEAN, 'checkmate');
+    expect(games(pickExamples([[threat, contested], [mate]]))).toEqual(['italian-1100-0001', 'italian-1400-0002', 'italian-1400-0001']);
   });
 });
 

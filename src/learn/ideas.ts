@@ -1,6 +1,7 @@
-import { Chess, type Color } from 'chess.js';
+import { Chess, type Color, type Move } from 'chess.js';
 import { NAME } from '../board/captions';
-import { isBetween, isLoose, otherColor, pieceOn, playLine, type PieceAt } from './board';
+import { VALUE, isBetween, isLoose, otherColor, pieceOn, playLine, type PieceAt } from './board';
+import { appeal } from './purpose';
 import { wonInPlace, type Tactic, type TacticId } from './tactics';
 import type { Theme } from './themes';
 import { capitalize, colorName, listOf, onSquare, refer, sequence, tradeText } from './words';
@@ -142,9 +143,11 @@ function pinIdea(t: Of<'pin'>, { them, lead, move, ref }: Say): string {
   const toBehind = behind.type === 'k' ? 'the king' : ref(behind);
   const pin = `${ref(pinned)} is pinned to ${toBehind} by ${ref(pinner)}`;
   switch (t.how) {
-    case 'created': {
+    case 'created':
+    case 'opened': {
       const why = behind.type === 'k' ? `${them} can't save it` : `if it moves, ${toBehind} is lost`;
-      return `${lead}${move} pins ${ref(pinned)} to ${toBehind}, and ${why}.`;
+      const pins = t.how === 'opened' ? `opens the line from ${ref(pinner)}, pinning` : 'pins';
+      return `${lead}${move} ${pins} ${ref(pinned)} to ${toBehind}, and ${why}.`;
     }
     case 'exposed': {
       const wins = `${san(t, t.key)} wins the ${NAME[behind.type]}`;
@@ -258,15 +261,20 @@ function hangingIdea(t: Tactic, user: Color, position: Position): string {
     cheaper: 'a cheaper piece',
     outnumbered: "and it isn't defended enough",
   }[reason];
-  return `${capitalize(refer(mine, user))} is attacked by ${refer(attacker, user)}, ${why}${saveClause(mine, position)}.`;
+  return `${capitalize(refer(mine, user))} is attacked by ${refer(attacker, user)}, ${why}${saveClause(mine, capture, position)}.`;
 }
 
-/** What the best move does for the threatened piece, when it clearly moves it or adds a guard. */
-function saveClause(mine: PieceAt, { fen, best }: Position): string {
+/** What the best move does for the threatened piece: takes the attacker, trades it off, moves it or adds a guard. */
+function saveClause(mine: PieceAt, capture: Move, { fen, best }: Position): string {
   if (!best) return '';
-  if (best.slice(0, 2) === mine.square) return ', so it needs to move';
   const [move] = playLine(fen, [best]);
-  if (!move || move.san.includes('+')) return '';
+  if (!move) return '';
+  if (move.captured && move.to === capture.from) return ', so take the attacker';
+  if (move.from === mine.square) {
+    const trades = move.captured && VALUE[move.captured] >= VALUE[mine.type] && isLoose(move.after, move.to);
+    return trades ? ', so trade it off' : ', so it needs to move';
+  }
+  if (move.san.includes('+')) return '';
   const guards = (at: string) => new Chess(at).attackers(mine.square, mine.color).length;
   const guarded = guards(move.after) > guards(move.before) && !isLoose(move.after, mine.square);
   return guarded ? ', so it needs protecting' : '';
@@ -292,7 +300,7 @@ function threatIdea(t: Tactic, user: Color): string {
     case 'pin': {
       const { pinned, behind } = t.pin;
       const pin = `${capitalize(ref(pinned))} is pinned to ${ref(behind)}`;
-      if (t.how === 'created') return `${threatens}, pinning ${ref(pinned)} to ${ref(behind)}.`;
+      if (t.how === 'created' || t.how === 'opened') return `${threatens}, pinning ${ref(pinned)} to ${ref(behind)}.`;
       if (t.how === 'attacked') return `${pin}, and ${opp} threatens to attack it with ${move}.`;
       if (t.how === 'exposed') return `${pin}, and ${opp} threatens to exploit it with ${move}.`;
       return `${threatens}: ${ref(pinned)} can't safely take back because it's pinned to ${ref(behind)}.`;
@@ -304,8 +312,11 @@ function threatIdea(t: Tactic, user: Color): string {
       return `${threatens}, which opens the line from ${ref(t.slider)} to ${ref(t.target)}.`;
     case 'trapped-piece':
       return `${capitalize(ref(t.trapped))} is short of squares: ${opp} threatens ${move}, and it would have nowhere safe to go.`;
-    case 'remove-defender':
-      return `${threatens}, which removes a defender of ${ref(t.guarded)}.`;
+    case 'remove-defender': {
+      const guard = ref(t.defender);
+      if (t.how === 'deflect') return `${threatens}: if ${guard} takes back, it stops guarding ${ref(t.guarded)}.`;
+      return `${threatens}, ${t.how === 'chase' ? 'chasing away' : 'taking'} ${guard}, which guards ${ref(t.guarded)}.`;
+    }
     case 'mate-threat':
       return `${threatens}, with the idea of mate on ${t.mate.to}.`;
     default:
@@ -317,7 +328,10 @@ function baitIdea(theme: Theme, user: Color): string {
   const { bait, tactic: t } = theme;
   if (!bait) return GENERAL.trap;
   const move = bait.move.san;
-  if (!t) return `${move} looks natural, but it loses material.`;
+  // What draws the eye to the move: "attacks the bishop on g5", else that it looks natural.
+  const [lure] = appeal(bait.move, user);
+  const looks = `${move} ${lure ?? 'looks natural'}`;
+  if (!t) return `${looks}, but it loses material.`;
   const reply = replyText(t, user);
   switch (bait.kind) {
     case 'allows-mate':
@@ -334,7 +348,7 @@ function baitIdea(theme: Theme, user: Color): string {
       return t.key === 0 ? `${opens}, so ${san(t, 0)} wins it.` : `${opens}, and ${reply}.`;
     }
     case 'walks-into': {
-      if (t.id !== 'free-piece') return `${move} looks natural, but ${reply}.`;
+      if (t.id !== 'free-piece') return `${looks}, but ${reply}.`;
       const attacker = pieceOn(new Chess(t.moves[0].before), t.moves[0].from)!;
       const piece = `your ${NAME[bait.move.promotion ?? bait.move.piece]}`;
       return `${move} puts ${piece} where ${refer(attacker, user)} can take it, and ${san(t)} wins it.`;
@@ -344,7 +358,7 @@ function baitIdea(theme: Theme, user: Color): string {
       return t.key === 0 ? `${unguards}, so ${san(t, 0)} wins it.` : `${unguards}, and ${reply}.`;
     }
     default:
-      return `${move} looks natural, but ${reply}.`;
+      return `${looks}, but ${reply}.`;
   }
 }
 
@@ -362,7 +376,7 @@ export function replyText(t: Tactic, user: Color): string {
       return `${move} attacks ${others} at once`;
     }
     case 'pin':
-      if (t.how === 'created') return `${move} pins ${ref(t.pin.pinned)} to ${ref(t.pin.behind)}`;
+      if (t.how === 'created' || t.how === 'opened') return `${move} pins ${ref(t.pin.pinned)} to ${ref(t.pin.behind)}`;
       if (t.how === 'attacked') return `${move} attacks ${ref(t.pin.pinned)}, which is pinned to ${ref(t.pin.behind)}`;
       if (t.how === 'exposed') return `${move} exploits the pin on ${ref(t.pin.pinned)}, and ${san(t, t.key)} wins ${ref(t.pin.behind)}`;
       return `${move} wins material because ${ref(t.pin.pinned)} is pinned and can't take back`;

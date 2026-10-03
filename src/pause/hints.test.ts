@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Depth } from '../content/types';
 import { lessonFor } from '../learn';
+import { learnGame } from '../learn/fixtures';
 import { flowReducer, initialState, scriptedUci, type FlowContext, type FlowEvent, type FlowState } from './flow';
 import { hintButtonLabel, hintLadder, pieceInTrouble } from './hints';
 import { italian1 } from './testGames';
@@ -48,9 +49,15 @@ describe('the piece in trouble', () => {
     expect(pieceInTrouble(italian1, free)).toEqual({ squares: ['e5'], text: "It's Black's pawn on e5." });
   });
 
+  it('points at the pinned piece', () => {
+    const pinned = italian1.turns.findIndex((_, i) => lessonFor(italian1, i).theme.id === 'pin');
+    expect(pieceInTrouble(italian1, pinned)).toEqual({ squares: ['e6'], text: "It's Black's knight on e6." });
+  });
+
   it('points at the trapped piece', () => {
-    const trapped = italian1.turns.findIndex((_, i) => lessonFor(italian1, i).theme.id === 'trapped-piece');
-    expect(pieceInTrouble(italian1, trapped)).toEqual({ squares: ['e6'], text: "It's Black's knight on e6." });
+    const game = learnGame('italian-1400-0003');
+    expect(lessonFor(game, 3).theme.id).toBe('trapped-piece');
+    expect(pieceInTrouble(game, 3)).toEqual({ squares: ['a5'], text: "It's Black's knight on a5." });
   });
 
   it('is left out where the lesson names no piece on the board', () => {

@@ -145,7 +145,7 @@ test.describe('Today', () => {
     await expect(rows.nth(0)).toContainText('Free pieces');
     await expect(rows.nth(0)).toContainText('Strong');
     await expect(rows.nth(0)).toContainText('4 of 4');
-    await expect(rows.nth(1)).toContainText('Trapped piece');
+    await expect(rows.nth(1)).toContainText('Pins');
     await expect(rows.nth(1)).toContainText('Needs work');
     await expect(rows.nth(1)).toContainText('1 of 3');
     await expect(rows.nth(2)).toContainText('Remove the defender');
@@ -329,7 +329,7 @@ test.describe('Recap', () => {
 
     const list = page.getByRole('list', { name: 'Key positions' });
     await expect(list.getByText('Move 5 · Free piece')).toBeVisible();
-    await expect(list.getByText('Move 11 · Trapped piece')).toBeVisible();
+    await expect(list.getByText('Move 11 · Pin')).toBeVisible();
     await expect(list.getByText('Move 15 · Nothing here')).toBeVisible();
     await expect(list.getByText('Spotted it', { exact: true })).toBeVisible();
     await expect(list.getByText('Found it without a hint')).toBeVisible();

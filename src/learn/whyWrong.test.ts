@@ -45,7 +45,7 @@ describe('the common mistake', () => {
     });
     expect(whyWrong(caroKann, 6, 'f6d5', 0)).toMatchObject({
       kind: 'bait',
-      text: 'Nd5 looks natural, but Nxf7 attacks your queen on d8 and your rook on h8 at once.',
+      text: 'Nd5 attacks the bishop on f4 and the knight on c3, but Nxf7 attacks your queen on d8 and your rook on h8 at once.',
       targets: ['d8', 'h8'],
     });
   });

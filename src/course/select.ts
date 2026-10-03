@@ -1,7 +1,12 @@
+import { Chess, type Color, type Move } from 'chess.js';
 import { LEVELS, OPENINGS } from '../content/catalog';
 import { loadGame } from '../content/loader';
 import type { Game, Level, OpeningId, Turn } from '../content/types';
-import { themeFor, type Theme } from '../learn';
+import { themeFor, type Tactic, type Theme } from '../learn';
+import { VALUE, pieceOn } from '../learn/board';
+import { isWin } from '../learn/themes';
+import { tradeOf } from '../learn/trade';
+import { shownLine } from '../learn/walkthrough';
 import { getLessons, playedGameIds } from '../progress/store';
 import {
   DRILLS_PER_LESSON,
@@ -16,6 +21,14 @@ import { unitOfTheme } from './units';
 
 const MAX_EXAMPLES = 3;
 const MAX_DRILLS = 16;
+/** The user's win% after the best move that a winning example needs. */
+const WIN_SHARE = 75;
+/** Net pawns a winning example must show it wins, unless it mates. */
+const MIN_GAIN = 2;
+/** Share of players at the level who play a trap's tempting move, below which nobody is tempted. */
+const LURE_SHARE = 0.1;
+/** Win% by which the best move must beat every other analysed move to be the clear answer. */
+const CLEAR_MARGIN = 2;
 
 /** A key position that teaches a unit. */
 export interface Candidate {
@@ -25,6 +38,14 @@ export interface Candidate {
   position: string;
   /** How many of the example rules it passes, most important first; a clean example passes them all. */
   clarity: number;
+  /** The engine and the line it shows back the example: it wins what it says, or the defence holds. */
+  sound: boolean;
+  /** Textbook cases first within a unit: a mate before a mate threat, a piece nobody guards before a counted one. */
+  tier: number;
+  /** Another move is about as good, so the move the example asks for is not the clear answer. */
+  contested: boolean;
+  /** The pattern and the squares it plays on, so a unit doesn't show the same picture twice. */
+  picture: string;
 }
 
 /** What makes a key position a clear worked example. */
@@ -62,14 +83,15 @@ export function clarityOf(facts: ExampleFacts): number {
   return failed < 0 ? CLEAN : failed;
 }
 
-export function exampleFacts(turn: Turn, theme: Theme): ExampleFacts {
+/** The facts of an example; a win's `gain` counts only the moves the example shows. */
+export function exampleFacts(turn: Turn, theme: Theme, shown: Move[], side: Color): ExampleFacts {
   const { tactic } = theme;
   return {
     namesPattern: tactic !== null && theme.id !== 'material-win' && theme.pattern !== 'material-win',
     now: tactic?.at === 0,
     inCheck: turn.inCheck,
     movesToKey: tactic ? Math.floor(tactic.key / 2) + 1 : Infinity,
-    gain: tactic?.trade.net ?? 0,
+    gain: isWin(theme) ? tradeOf(shown, side).net : (tactic?.trade.net ?? 0),
     mate: tactic?.id === 'checkmate' || tactic?.id === 'mate-threat',
     kinds: turn.kinds.length,
     material: turn.material,
@@ -89,8 +111,76 @@ export function candidatesOf(set: string, game: Game): Candidate[] {
     const unit = unitOfTheme(theme);
     if (!unit) return [];
     const ref: PositionRef = { set, gameId: game.id, ply: turn.ply, findShare: turn.findShare };
-    return [{ ref, unit, position: boardOf(turn.fen), clarity: clarityOf(exampleFacts(turn, theme)) }];
+    const shown = shownLine(turn, theme, game.side);
+    return [
+      {
+        ref,
+        unit,
+        position: boardOf(turn.fen),
+        clarity: clarityOf(exampleFacts(turn, theme, shown, game.side)),
+        sound: isSound(turn, theme, shown, game.side),
+        tier: tierOf(theme),
+        contested: isContested(turn),
+        picture: `${unit} ${theme.pieces.map((p) => `${p.role}:${p.type}${p.square}`).sort().join(' ')}`,
+      },
+    ];
   });
+}
+
+/** Whether the example holds up: a win is backed by the engine and wins in the line shown; a defence loses nothing there. */
+export function isSound(turn: Turn, theme: Theme, shown: Move[], side: Color): boolean {
+  const net = tradeOf(shown, side).net;
+  switch (theme.id) {
+    case 'hanging-own':
+    case 'threat-other':
+      return net >= 0;
+    case 'bait':
+      return net >= 0 && isTempting(turn, theme);
+    default: {
+      const mates = shown.some((m) => m.color === side && m.san.endsWith('#'));
+      return turn.bestWin >= WIN_SHARE && (mates || net >= MIN_GAIN) && !canSidestep(theme.tactic);
+    }
+  }
+}
+
+/** Players at the level really play the tempting move, it is not a queen simply put en prise, and it costs a piece or mate. */
+function isTempting(turn: Turn, theme: Theme): boolean {
+  const lure = theme.bait?.move;
+  const t = theme.tactic;
+  if (!lure || !t) return false;
+  const share = turn.human.find((h) => h.uci === lure.from + lure.to + (lure.promotion ?? ''))?.share ?? 0;
+  const queenHung = lure.piece === 'q' && t.won?.square === lure.to && t.key === 0;
+  const costly = t.id === 'checkmate' || (t.won !== null && VALUE[t.won.type] >= VALUE.n);
+  return share >= LURE_SHARE && !queenHung && costly;
+}
+
+/** The piece to be won can take the piece that would win it, losing nothing, so the opponent just trades it off. */
+export function canSidestep(t: Tactic | null): boolean {
+  if (!t?.won || t.key <= t.at) return false;
+  const after = new Chess(t.moves[t.at].after);
+  const target = pieceOn(after, t.won.square);
+  const hunter = pieceOn(after, t.moves[t.key].from);
+  if (!target || target.color === t.side || hunter?.color !== t.side) return false;
+  const takes = after.moves({ square: target.square, verbose: true }).some((m) => m.to === hunter.square);
+  return takes && VALUE[hunter.type] >= VALUE[target.type];
+}
+
+/** Another analysed move comes within the clear margin of the best. */
+function isContested(turn: Turn): boolean {
+  const [, second] = Object.values(turn.grades).sort((a, b) => a - b);
+  return second !== undefined && second < CLEAR_MARGIN;
+}
+
+const MATE_THREAT_TIER = 9;
+const FREE_PIECE_TIERS = { undefended: 0, cheaper: 0, outnumbered: 1 };
+
+/** Lower first: mate in one, then mate in two, then a mate threat; an unguarded or bigger piece before a counted one. */
+function tierOf(theme: Theme): number {
+  const t = theme.tactic;
+  if (theme.id === 'checkmate' && t) return Math.ceil(t.key / 2);
+  if (theme.id === 'mate-threat') return MATE_THREAT_TIER;
+  if (theme.id === 'free-piece' && t?.id === 'free-piece') return FREE_PIECE_TIERS[t.reason];
+  return 0;
 }
 
 /** "italian-1400" read back into its opening and level; null for a name that is not a set. */
@@ -124,14 +214,28 @@ export function spread<T>(items: T[], count: number): T[] {
   return Array.from({ length: count }, (_, i) => items[Math.round((i * (items.length - 1)) / (count - 1))]);
 }
 
+/** Each position, game and picture once, in order. */
+function varied(candidates: Candidate[]): Candidate[] {
+  const seen = new Set<string>();
+  return candidates.filter((c) => {
+    const keys = [c.position, c.ref.gameId, c.picture];
+    if (keys.some((key) => seen.has(key))) return false;
+    keys.forEach((key) => seen.add(key));
+    return true;
+  });
+}
+
+const textbookFirst = (a: Candidate, b: Candidate) => a.tier - b.tier || Number(a.contested) - Number(b.contested);
+
 /**
- * Up to three worked examples among the clearest positions any pool holds: the set's own pool first,
- * then the other levels nearest first, each easiest first. `pools` hold one unit's candidates.
+ * Up to three worked examples among the clearest sound positions any pool holds: textbook cases with a clear answer
+ * first, then the set's own pool before the other levels, nearest first, each easiest first. `pools` hold one unit's candidates.
  */
 export function pickExamples(pools: Candidate[][]): Candidate[] {
-  const best = Math.max(0, ...pools.flat().map((c) => c.clarity));
-  const clearest = pools.flatMap((pool) => pool.filter((c) => c.clarity === best).sort(easiestFirst));
-  return uniquePositions(clearest).slice(0, MAX_EXAMPLES);
+  const sound = pools.map((pool) => pool.filter((c) => c.sound));
+  const best = Math.max(0, ...sound.flat().map((c) => c.clarity));
+  const clearest = sound.flatMap((pool) => pool.filter((c) => c.clarity === best).sort(easiestFirst));
+  return varied(clearest.sort(textbookFirst)).slice(0, MAX_EXAMPLES);
 }
 
 /**

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// The test course teaches five units over the two test games: free pieces, pins, remove the defender, trapped pieces, traps.
+// The test course teaches three units over the two test games: free pieces, pins, traps.
 const DAY = 86_400_000;
 const KEY = 'cc.progress.v1';
 
@@ -29,13 +29,13 @@ test.describe('Course', () => {
     await expect(page.getByRole('heading', { name: 'Course', level: 1 })).toBeVisible();
     await expect(tabs.getByRole('link', { name: 'Course' })).toHaveAttribute('aria-current', 'page');
     const lessons = page.getByRole('region', { name: 'Lessons' });
-    await expect(lessons.getByText('0 of 5 done')).toBeVisible();
+    await expect(lessons.getByText('0 of 3 done')).toBeVisible();
     const rows = lessons.getByRole('listitem');
-    await expect(rows).toHaveCount(5);
+    await expect(rows).toHaveCount(3);
     await expect(rows.nth(0)).toContainText('Free pieces');
     await expect(rows.nth(0)).toContainText('A piece nobody guards: take it.');
     await expect(rows.nth(0)).toContainText('Next');
-    for (const [i, title] of ['Pins', 'Remove the defender', 'Trapped pieces', 'Traps'].entries()) {
+    for (const [i, title] of ['Pins', 'Traps'].entries()) {
       await expect(rows.nth(i + 1)).toContainText(title);
       await expect(rows.nth(i + 1)).toContainText('Later');
     }
@@ -54,7 +54,7 @@ test.describe('Course', () => {
     await page.goto('./#/course');
     await expect(page.getByText('Next lesson after 2 more games.')).toBeVisible();
     const lessons = page.getByRole('region', { name: 'Lessons' });
-    await expect(lessons.getByText('1 of 5 done')).toBeVisible();
+    await expect(lessons.getByText('1 of 3 done')).toBeVisible();
     const rows = lessons.getByRole('listitem');
     await expect(rows.nth(0)).toContainText('Done');
     await expect(rows.nth(0)).toContainText('1 of 2 right');

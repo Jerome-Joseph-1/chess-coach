@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { italian1 } from '../pause/testGames';
 import { learnGame, realTurn } from './fixtures';
 import { lessonFor } from './lessons';
 import { themeFor, type Role } from './themes';
@@ -171,7 +172,7 @@ describe('threats', () => {
   it('names a piece of yours left hanging', () => {
     const found = lesson('caro-kann-1100-0014#5');
     expect(found.theme.id).toBe('hanging-own');
-    expect(found.idea).toBe('Your bishop on g4 is attacked by the bishop on e2, and nothing defends it, so it needs to move.');
+    expect(found.idea).toBe('Your bishop on g4 is attacked by the bishop on e2, and nothing defends it, so take the attacker.');
   });
 
   it('says a piece needs protecting when the best move adds a guard', () => {
@@ -252,8 +253,52 @@ describe('baits', () => {
       'Kf8 looks natural, but Nd7+ lures your queen on d8 away from guarding your rook on f6.',
     );
     expect(lesson('caro-kann-1400-0021#13').idea).toBe(
-      'h6 looks natural, but after Bxf6 Bxf6, e5 attacks your bishop on f6, which is pinned to your king.',
+      'h6 attacks the bishop on g5, but after Bxf6 Bxf6, e5 attacks your bishop on f6, which is pinned to your king.',
     );
+  });
+});
+
+describe('filed by the reason the move works', () => {
+  it('calls a capture that wins by discovered check a discovery, not a removed guard', () => {
+    expect(theme('caro-kann-1100-0228#8')).toMatchObject({ id: 'discovered-attack', tactic: { at: 2 } });
+  });
+
+  it('does not call a sacrifice the opponent could simply take a chase of the guard', () => {
+    expect(theme('italian-1100-0033#2').id).toBe('fork');
+  });
+
+  it('does not call a piece trapped when a pin is what holds it', () => {
+    expect(theme('italian-2000-0173#17').id).not.toBe('trapped-piece');
+  });
+
+  it('calls a pin a pin when the move opens the line onto the pinned piece', () => {
+    const found = lessonFor(italian1, 7);
+    expect(found.theme).toMatchObject({ id: 'pin', tactic: { how: 'opened' } });
+    expect(found.idea).toBe("Nd3 opens the line from your rook on e1, pinning the knight on e6 to the king, and Black can't save it.");
+  });
+
+  it('does not blame a pin when a pawn takes a bigger piece anyway', () => {
+    expect(lesson('italian-1100-0050#5').idea).toBe(
+      'Your bishop on g5 is attacked by the pawn on f6, a cheaper piece, so it needs to move.',
+    );
+  });
+
+  it('names a piece that already hangs rather than a bigger threat built on it', () => {
+    const found = lesson('caro-kann-1400-0030#17');
+    expect(found.name).toBe('Piece in danger');
+    expect(found.idea).toBe('Your knight on e3 is attacked by the rook on f3, and nothing defends it, so it needs to move.');
+  });
+
+  it('does not call it a trap when the piece the trap wins already hung', () => {
+    expect(lesson('caro-kann-2000-0140#24')).toMatchObject({ name: 'Piece in danger', theme: { id: 'hanging-own' } });
+  });
+
+  it('does not call it a trap when the mate was already threatened', () => {
+    expect(lesson('caro-kann-2000-0073#24')).toMatchObject({ name: 'Stop the mate', idea: 'White threatens checkmate with Qh7.' });
+  });
+
+  it('says a threat to lure a guard away is about taking back', () => {
+    expect(lesson('italian-2000-0133#7').idea).toBe('Black threatens Bxd4: if your queen on d2 takes back, it stops guarding your bishop on f4.');
   });
 });
 

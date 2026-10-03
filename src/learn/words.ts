@@ -47,6 +47,13 @@ export function tradeText(trade: Trade): string {
   return listOf(won) + lost;
 }
 
+/** What one side comes out ahead by, with a rook for a minor piece called "the exchange". */
+export function netText(trade: Trade): string {
+  const [won, lost] = [trade.won, trade.lost];
+  const exchange = won.length === 1 && won[0] === 'r' && lost.length === 1 && 'nb'.includes(lost[0]) && !trade.promoted.length;
+  return exchange ? 'the exchange' : tradeText(trade);
+}
+
 /** "Rxe8+ Qxe8" */
 export function sequence(moves: Move[]): string {
   return moves.map((m) => m.san).join(' ');
