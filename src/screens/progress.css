@@ -10,8 +10,14 @@
 .set-head p {
   margin: 0 0 12px;
 }
-.set-progress > .list {
+.set-progress > .list,
+.not-started {
   border-top: 1px solid var(--hairline);
+}
+.not-started {
+  margin: 0;
+  padding: 16px;
+  font: var(--text-callout);
 }
 .set-progress .stage-line {
   flex: 1;

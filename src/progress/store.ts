@@ -26,6 +26,8 @@ const WELCOME_GAP_DAYS = 2;
 // Loaded once and kept here, so a browser that refuses to store still works for the session.
 let settings: StoredSettings | null = null;
 let progress: Progress | null = null;
+// A stage reached during the current game; recordGame hands it to the recap.
+let reachedStage: Depth | null = null;
 
 export function getSettings(): StoredSettings {
   settings ??= readSettings(migrate(readJson(KEYS.settings), SETTINGS_VERSION));
@@ -85,6 +87,7 @@ export function recordMoment(r: MomentResult): { depthChanged?: Depth } {
   if (p.moments.length > MOMENT_CAP) p.moments.splice(0, p.moments.length - MOMENT_CAP);
   p.reviews = updateReviews(p.reviews, r);
   const depthChanged = trackDepth(p, r);
+  if (depthChanged) reachedStage = depthChanged > r.depth ? depthChanged : null;
   persist();
   return depthChanged ? { depthChanged } : {};
 }
@@ -105,6 +108,8 @@ export function recordGame(summary: GameSummary): void {
   p.games.push({ opening: summary.opening, level: summary.level, gameId: summary.gameId, at: summary.at });
   if (p.games.length > GAME_CAP) p.games.splice(0, p.games.length - GAME_CAP);
   p.lastGame = { summary, bonus };
+  if (reachedStage) p.lastGame.unlocked = reachedStage;
+  reachedStage = null;
   persist();
   if (p.games.length === 1) requestPersistentStorage();
 }
@@ -116,6 +121,18 @@ export function getLastGame(): GameSummary | null {
 /** The last recorded game was played with the welcome-back bonus. */
 export function getLastGameBonus(): boolean {
   return state().lastGame?.bonus ?? false;
+}
+
+/** The stage the last game unlocked, if the player has not seen it yet. */
+export function getLastGameUnlock(): Depth | null {
+  return state().lastGame?.unlocked ?? null;
+}
+
+export function clearLastGameUnlock(): void {
+  const { lastGame } = state();
+  if (!lastGame?.unlocked) return;
+  delete lastGame.unlocked;
+  persist();
 }
 
 export function playedGameIds(opening: OpeningId, level: Level): string[] {
@@ -161,6 +178,7 @@ export function importProgress(text: string): { ok: true } | { ok: false; error:
 
 export function resetProgress(): void {
   progress = emptyProgress();
+  reachedStage = null;
   removeKey(KEYS.progress);
 }
 

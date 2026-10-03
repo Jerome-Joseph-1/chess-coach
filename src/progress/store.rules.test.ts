@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Depth, Level } from '../content/types';
-import { FakeStorage, moment, noon, openStore, wrong, type Store } from './testkit';
+import { FakeStorage, moment, noon, openStore, summary, wrong, type Store } from './testkit';
 
 let storage: FakeStorage;
 
@@ -127,5 +127,44 @@ describe('weekly stats through the store', () => {
     const reloaded = await openStore();
     expect(reloaded.getWeekStats(noon(10)).parts.trap).toEqual({ right: 0, total: 1 });
     expect(reloaded.getWeekStats(noon(30)).total).toEqual({ right: 0, total: 0 });
+  });
+});
+
+describe('stage unlocked by a game', () => {
+  it('goes to the recap of the game that reached it, until it is seen', async () => {
+    let store = await openStore();
+    play(store, mix(15), 1);
+    store.recordGame(summary(noon()));
+    expect(store.getLastGameUnlock()).toBe(2);
+
+    store = await openStore();
+    expect(store.getLastGameUnlock()).toBe(2);
+    store.clearLastGameUnlock();
+    expect(store.getLastGameUnlock()).toBeNull();
+    store = await openStore();
+    expect(store.getLastGameUnlock()).toBeNull();
+  });
+
+  it('is not set by a game that stayed at its stage or moved down', async () => {
+    const store = await openStore();
+    play(store, mix(15), 1);
+    store.recordGame(summary(noon(0)));
+    store.clearLastGameUnlock();
+
+    play(store, mix(9), 2);
+    store.recordGame(summary(noon(0), [], 'italian-1400-0002'));
+    expect(store.getDepth('italian', 1400)).toBe(1);
+    expect(store.getLastGameUnlock()).toBeNull();
+
+    store.recordGame(summary(noon(0), [], 'italian-1400-0003'));
+    expect(store.getLastGameUnlock()).toBeNull();
+  });
+
+  it('is spent by the game that follows', async () => {
+    const store = await openStore();
+    play(store, mix(15), 1);
+    store.recordGame(summary(noon(0)));
+    store.recordGame(summary(noon(0), [], 'italian-1400-0002'));
+    expect(store.getLastGameUnlock()).toBeNull();
   });
 });

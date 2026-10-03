@@ -66,7 +66,9 @@ export function About() {
       <a class="screen-back" href="#/settings">
         <Back /> Settings
       </a>
-      <h1 class="screen-title">About</h1>
+      <header class="topbar">
+        <h1 class="screen-title">About</h1>
+      </header>
       <p class="about-intro">
         Chess Coach replays real games from the openings you play, at the rating of the opponents you pick, and stops at the positions that matter.
         Everything stays on your phone: no account, no tracking.

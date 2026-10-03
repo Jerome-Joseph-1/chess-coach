@@ -27,11 +27,15 @@ export function estimateMinutes(positions: number, stage: Depth, quick: boolean)
   return Math.max(1, Math.round(minutes));
 }
 
-export function nextGameLine(next: NextGame, positions: number | null, stage: Depth, quick: boolean): string {
-  const parts = [`Next: Game ${next.number}`];
-  if (positions !== null) {
-    if (positions > 0) parts.push(`${positions} key ${positions === 1 ? 'position' : 'positions'}`);
-    parts.push(`about ${estimateMinutes(positions, stage, quick)} min`);
-  }
-  return parts.join(' · ');
+export interface NextGameParts {
+  /** What the game is made of, e.g. "5 key positions". */
+  what: string;
+  time: string | null;
+}
+
+export function nextGameParts(next: NextGame, positions: number | null, stage: Depth, quick: boolean): NextGameParts {
+  if (positions === null) return { what: `Game ${next.number}`, time: null };
+  const time = `about ${estimateMinutes(positions, stage, quick)} min`;
+  if (positions === 0) return { what: 'No key positions', time };
+  return { what: `${positions} key ${positions === 1 ? 'position' : 'positions'}`, time };
 }

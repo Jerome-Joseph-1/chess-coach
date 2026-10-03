@@ -19,9 +19,18 @@ export const DEPTH_BLURBS: Record<Depth, string> = {
   5: "Play it out until it's settled",
 };
 
-/** How a depth is shown to the player, e.g. "Stage 3 of 5: Play". */
+/** What the player does at each stage, worded to follow "Stage 3 of 5:". */
+const STAGE_ACTIONS: Record<Depth, string> = {
+  1: 'Notice the moment',
+  2: 'Point to the piece',
+  3: 'Play the move',
+  4: 'Follow through',
+  5: 'Finish the line',
+};
+
+/** How a depth is shown to the player, e.g. "Stage 3 of 5: Play the move". */
 export function stageLine(depth: Depth): string {
-  return `Stage ${depth} of ${DEPTHS.length}: ${DEPTH_NAMES[depth]}`;
+  return `Stage ${depth} of ${DEPTHS.length}: ${STAGE_ACTIONS[depth]}`;
 }
 
 export const WINDOW_SIZE = 20;

@@ -1,13 +1,12 @@
-// @ts-ignore cm-chessboard ships no type declarations
 import { Chessboard } from 'cm-chessboard';
 import 'cm-chessboard/assets/chessboard.css';
-import pieceSprite from 'cm-chessboard/assets/pieces/standard.svg?url';
+import pieceSprite from 'cm-chessboard/assets/pieces/standard.svg?no-inline';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Side } from '../content/types';
 import { Button } from '../ui/Button';
 import { downloadJson } from './shared/download';
 import { Back } from './shared/icons';
-import { KIND_LABELS } from './shared/labels';
+import { STAT_LABELS } from './shared/labels';
 import {
   exportReviews,
   flipTurn,
@@ -41,7 +40,7 @@ function ReadOnlyBoard({ fen, orientation }: { fen: string; orientation: Side })
     const board = new Chessboard(host.current, {
       position: fen,
       orientation,
-      assetsCache: false,
+      assetsUrl: '',
       style: { pieces: { file: pieceSprite }, animationDuration: 0 },
     });
     return () => board.destroy();
@@ -65,7 +64,7 @@ function Line({ title, text }: { title: string; text: string }) {
 function PilotCard({ item, note, onChange }: { item: PilotItem; note: PilotNote; onChange: (patch: PilotNote) => void }) {
   const { turn } = item;
   const { best, mistake, threat } = turn.lines;
-  const kinds = turn.kinds.map((k) => KIND_LABELS[k]).join(', ');
+  const kinds = turn.kinds.map((k) => STAT_LABELS[k]).join(', ');
   const vote = (value: 'up' | 'down') => onChange({ vote: note.vote === value ? undefined : value });
   return (
     <article class="card pilot-card" id={`pilot-${item.key}`}>
@@ -138,10 +137,12 @@ export function Review() {
   const reviewed = items ? reviewedCount(items, notes) : 0;
   return (
     <main class="screen review">
-      <a class="screen-back" href="#/">
-        <Back /> Today
+      <a class="screen-back" href="#/about">
+        <Back /> About
       </a>
-      <h1 class="screen-title">Pilot review</h1>
+      <header class="topbar">
+        <h1 class="screen-title">Pilot review</h1>
+      </header>
       {failed && <p class="muted">The content could not be loaded.</p>}
       {!items && !failed && (
         <p class="muted" role="status">

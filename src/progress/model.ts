@@ -35,7 +35,14 @@ export interface Progress {
   days: string[];
   /** The welcome-back bonus is waiting for the next recorded game. */
   armed: boolean;
-  lastGame: { summary: GameSummary; bonus: boolean } | null;
+  lastGame: LastGame | null;
+}
+
+export interface LastGame {
+  summary: GameSummary;
+  bonus: boolean;
+  /** The stage this game unlocked, until the player has seen it. */
+  unlocked?: Depth;
 }
 
 export const DEFAULT_SETTINGS: StoredSettings = {
@@ -141,10 +148,14 @@ function parseSummary(raw: unknown): GameSummary | null {
   return { ...set, gameId: raw.gameId, moments: list(raw.moments, parseMoment), at: raw.at };
 }
 
-function parseLastGame(raw: unknown): Progress['lastGame'] {
+function parseLastGame(raw: unknown): LastGame | null {
   if (!isRecord(raw)) return null;
   const summary = parseSummary(raw.summary);
-  return summary ? { summary, bonus: raw.bonus === true } : null;
+  if (!summary) return null;
+  const lastGame: LastGame = { summary, bonus: raw.bonus === true };
+  const unlocked = pick<Depth | undefined>(DEPTHS, raw.unlocked, undefined);
+  if (unlocked) lastGame.unlocked = unlocked;
+  return lastGame;
 }
 
 function parsePlayedGame(raw: unknown): PlayedGame | null {

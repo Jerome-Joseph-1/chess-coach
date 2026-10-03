@@ -1,67 +1,39 @@
-.recap-head {
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  padding: 32px 0 8px;
-  text-align: center;
+.summary {
+  padding: 20px;
 }
-.recap-head h1 {
-  font: var(--text-display);
-  letter-spacing: -0.02em;
-}
-.recap-head .muted {
+.summary-number {
   margin: 0;
-}
-.recap-stars {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin: 20px 0 8px;
   color: var(--text-strong);
   font: var(--text-number);
-  font-size: 56px;
-  line-height: 56px;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
-.recap-star {
+.summary-of {
   color: var(--text-muted);
-  font-size: 32px;
 }
-.recap-stars-unit {
-  color: var(--text-muted);
-  font: var(--text-headline);
-  letter-spacing: 0;
+.summary .muted {
+  margin: 4px 0 0;
+  font: var(--text-caption);
 }
-
-.moment {
-  animation: rise var(--t-move) var(--spring) backwards;
+.result-bar {
+  display: flex;
+  gap: 4px;
+  margin-top: 20px;
+}
+.result-bar i {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  animation: seg-in var(--t-move) var(--spring) backwards;
   animation-delay: calc(var(--i, 0) * 50ms);
 }
-.moment-title {
-  color: var(--text-strong);
+.result-bar .right {
+  background: var(--success);
 }
-.moment-mark {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+.result-bar .missed {
+  background: var(--danger);
 }
-.moment-mark--right {
-  background: color-mix(in srgb, var(--success) 16%, transparent);
-  color: var(--success);
-}
-.moment-mark--missed {
-  background: color-mix(in srgb, var(--danger) 16%, transparent);
-  color: var(--danger);
-}
-.moment .link {
-  flex: none;
-  padding: 12px 0 12px 4px;
-  font: var(--text-caption);
-  font-weight: 500;
-  white-space: nowrap;
+.summary .welcome {
+  margin-top: 16px;
 }
 .recap-quiet {
   margin: 0;
@@ -69,14 +41,49 @@
   text-align: center;
 }
 
-.recap-actions {
-  position: sticky;
-  bottom: 0;
+.recap .list > li {
+  animation: rise var(--t-move) var(--spring) backwards;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+.moment {
+  min-height: 64px;
+}
+.moment-title {
+  color: var(--text-strong);
+}
+.mark {
   display: grid;
-  gap: 12px;
-  margin-top: 16px;
-  padding: 16px 0 calc(8px + var(--safe-bottom));
-  background: linear-gradient(to top, var(--bg) 70%, transparent);
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+.mark--right {
+  background: var(--success);
+  color: var(--bg);
+}
+.mark--missed {
+  background: var(--danger);
+  color: var(--bg);
+}
+.mark--quiet {
+  box-shadow: inset 0 0 0 1.5px var(--text-muted);
+  color: var(--text-muted);
+}
+/* The status colours are pale on white, so the small text mixes in some ink. */
+.moment-sub--right {
+  color: color-mix(in srgb, var(--success) 65%, var(--text-strong));
+}
+.moment-sub--missed {
+  color: color-mix(in srgb, var(--danger) 70%, var(--text-strong));
+}
+.moment-again {
+  flex: none;
+  color: var(--text-strong);
+  font: var(--text-caption);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .recap-empty {
@@ -93,8 +100,16 @@
   margin: 0 0 12px;
 }
 
+@keyframes seg-in {
+  from {
+    opacity: 0;
+    transform: scaleX(0.4);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .moment {
+  .result-bar i,
+  .recap .list > li {
     animation: none;
   }
 }

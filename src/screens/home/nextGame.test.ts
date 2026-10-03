@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Game, SetIndex, Turn } from '../../content/types';
-import { estimateMinutes, keyPositions, nextGameLine, pickNextGame } from './nextGame';
+import { estimateMinutes, keyPositions, nextGameParts, pickNextGame } from './nextGame';
 
 const set: SetIndex = {
   opening: 'italian',
@@ -45,16 +45,20 @@ describe('time estimate', () => {
   });
 });
 
-describe('info row', () => {
+describe('next game row', () => {
   const next = { id: 'm', number: 13 };
 
   it('reads like the Today card', () => {
-    expect(nextGameLine(next, 5, 3, false)).toBe('Next: Game 13 · 5 key positions · about 4 min');
+    expect(nextGameParts(next, 5, 3, false)).toEqual({ what: '5 key positions', time: 'about 4 min' });
   });
 
   it('handles one position, none, and a game that did not load', () => {
-    expect(nextGameLine(next, 1, 3, false)).toBe('Next: Game 13 · 1 key position · about 1 min');
-    expect(nextGameLine(next, 0, 3, false)).toBe('Next: Game 13 · about 1 min');
-    expect(nextGameLine(next, null, 3, false)).toBe('Next: Game 13');
+    expect(nextGameParts(next, 1, 3, false)).toEqual({ what: '1 key position', time: 'about 1 min' });
+    expect(nextGameParts(next, 0, 3, false)).toEqual({ what: 'No key positions', time: 'about 1 min' });
+    expect(nextGameParts(next, null, 3, false)).toEqual({ what: 'Game 13', time: null });
+  });
+
+  it('shortens the time in quick games', () => {
+    expect(nextGameParts(next, 5, 3, true).time).toBe('about 2 min');
   });
 });

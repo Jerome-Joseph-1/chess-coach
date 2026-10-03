@@ -4,8 +4,9 @@ import { dayKey } from '../progress/days';
 import { DEPTHS, DEPTH_BLURBS, stageLine } from '../progress/depth';
 import { exportProgress, getSettings, importProgress, resetProgress, saveSettings, type StoredSettings } from '../progress/store';
 import { Button } from '../ui/Button';
+import { TabBar } from '../ui/TabBar';
 import { downloadJson } from './shared/download';
-import { Back, Chevron } from './shared/icons';
+import { Chevron } from './shared/icons';
 import { Segmented } from './shared/Segmented';
 import './shared/screen.css';
 import './settings.css';
@@ -81,7 +82,7 @@ export function Settings() {
 
   const exportData = () => {
     downloadJson(`chess-coach-progress-${dayKey(Date.now())}.json`, exportProgress());
-    setStatus('Progress exported.');
+    setStatus('Backup saved.');
   };
 
   const importFile = async (e: Event) => {
@@ -93,7 +94,7 @@ export function Settings() {
     if (result.ok) {
       setSettings(getSettings());
       applyTheme(getSettings().theme);
-      setStatus('Progress imported.');
+      setStatus('Progress restored.');
     } else {
       setStatus(result.error);
     }
@@ -108,15 +109,14 @@ export function Settings() {
   const stageChoice: StageChoice = settings.depthOverride ?? 'auto';
 
   return (
-    <main class="screen">
-      <a class="screen-back" href="#/">
-        <Back /> Today
-      </a>
-      <h1 class="screen-title">Settings</h1>
+    <main class="screen screen--tabs">
+      <header class="topbar">
+        <h1 class="screen-title">Settings</h1>
+      </header>
 
       <section aria-labelledby="look-title">
         <h2 id="look-title" class="section-label">
-          Look and feel
+          Preferences
         </h2>
         <ul class="card list">
           <li class="row row-stack">
@@ -130,7 +130,7 @@ export function Settings() {
             <Switch label="Haptics" hint="A small tap on your phone" checked={settings.haptics} onChange={(haptics) => update({ haptics })} />
           </li>
           <li>
-            <Switch label="Quick mode" hint="Shorter pauses, less reading" checked={settings.quick} onChange={(quick) => update({ quick })} />
+            <Switch label="Quick games (about 3 key positions)" hint="A shorter game when you are short on time" checked={settings.quick} onChange={(quick) => update({ quick })} />
           </li>
         </ul>
       </section>
@@ -155,13 +155,13 @@ export function Settings() {
 
       <section aria-labelledby="data-title">
         <h2 id="data-title" class="section-label">
-          Your data
+          Your progress
         </h2>
         <ul class="card list">
           <li>
             <button type="button" class="row" onClick={exportData}>
               <span class="row-main">
-                <span>Export progress</span>
+                <span>Back up progress</span>
                 <span class="row-sub">Save a copy as a file</span>
               </span>
             </button>
@@ -169,8 +169,8 @@ export function Settings() {
           <li>
             <button type="button" class="row" onClick={() => fileInput.current?.click()}>
               <span class="row-main">
-                <span>Import progress</span>
-                <span class="row-sub">Restore a copy from a file</span>
+                <span>Restore from a file</span>
+                <span class="row-sub">Load a copy you saved before</span>
               </span>
             </button>
             <input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={importFile} />
@@ -197,6 +197,7 @@ export function Settings() {
         <span class="row-main">About and licences</span>
         <Chevron />
       </a>
+      <TabBar current="settings" />
     </main>
   );
 }

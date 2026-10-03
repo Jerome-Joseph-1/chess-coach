@@ -12,12 +12,12 @@ export function StageDots({ depth }: { depth: Depth }) {
   );
 }
 
-/** "Stage 3 of 5: Play" and five dots. */
+/** Five dots and "Stage 3 of 5: Play the move". */
 export function StageLine({ depth }: { depth: Depth }) {
   return (
     <p class="stage-line">
-      <span>{stageLine(depth)}</span>
       <StageDots depth={depth} />
+      <span>{stageLine(depth)}</span>
     </p>
   );
 }

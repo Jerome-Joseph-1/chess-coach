@@ -2,12 +2,11 @@ import { useState } from 'preact/hooks';
 import { LEVELS, OPENINGS, type Opening } from '../content/catalog';
 import type { Level } from '../content/types';
 import { dayKey, lastWeeks } from '../progress/days';
-import { STAT_KINDS, percent, type RateCount } from '../progress/stats';
+import { STAT_KINDS, percent, type RateCount, type SetStats } from '../progress/stats';
 import { dueReviews, getActiveDays, getDepth, getSetStats, getSettings, hasPlayed } from '../progress/store';
 import { navigate } from '../router';
 import { Button } from '../ui/Button';
 import { TabBar } from '../ui/TabBar';
-import { Chevron } from './shared/icons';
 import { OPENING_TITLES, STAT_LABELS, ratingLine, sideLine } from './shared/labels';
 import { Segmented } from './shared/Segmented';
 import { StageLine } from './shared/StageLine';
@@ -32,20 +31,10 @@ function RateRow({ label, count }: { label: string; count: RateCount }) {
   );
 }
 
-function SetProgress({ opening, initialLevel }: { opening: Opening; initialLevel: Level }) {
-  const [level, setLevel] = useState(initialLevel);
-  const stats = getSetStats(opening.id, level);
+function SetDetails({ opening, level, stats }: { opening: Opening; level: Level; stats: SetStats }) {
   const due = dueReviews(opening.id, level, Date.now()).length;
-  const titleId = `${opening.id}-progress`;
   return (
-    <section class="card set-progress" aria-labelledby={titleId}>
-      <div class="set-head">
-        <h2 id={titleId}>{OPENING_TITLES[opening.id]}</h2>
-        <p class="muted">
-          {sideLine(opening.id)} · {ratingLine(level)}
-        </p>
-        <Segmented label={`${OPENING_TITLES[opening.id]} level`} options={LEVEL_OPTIONS} value={level} onChange={setLevel} />
-      </div>
+    <>
       <ul class="list">
         <li class="row">
           <span>Games played</span>
@@ -68,6 +57,24 @@ function SetProgress({ opening, initialLevel }: { opening: Opening; initialLevel
           <RateRow key={`${level}-${kind}`} label={STAT_LABELS[kind]} count={stats.byKind[kind]} />
         ))}
       </ul>
+    </>
+  );
+}
+
+function SetProgress({ opening, initialLevel }: { opening: Opening; initialLevel: Level }) {
+  const [level, setLevel] = useState(initialLevel);
+  const stats = getSetStats(opening.id, level);
+  const titleId = `${opening.id}-progress`;
+  return (
+    <section class="card set-progress" aria-labelledby={titleId}>
+      <div class="set-head">
+        <h2 id={titleId}>{OPENING_TITLES[opening.id]}</h2>
+        <p class="muted">
+          {sideLine(opening.id)} · {ratingLine(level)}
+        </p>
+        <Segmented label={`${OPENING_TITLES[opening.id]} level`} options={LEVEL_OPTIONS} value={level} onChange={setLevel} />
+      </div>
+      {stats.games > 0 ? <SetDetails opening={opening} level={level} stats={stats} /> : <p class="not-started muted">Not started yet</p>}
     </section>
   );
 }
@@ -95,7 +102,7 @@ function EmptyProgress() {
   return (
     <section class="card progress-empty">
       <h2>Your progress shows up here</h2>
-      <p class="muted">Play a game and this page fills in: what you got right, your stage and what is ready to review.</p>
+      <p class="muted">Play a game and this page fills in: what you got right, your stage and what to review.</p>
       <Button onClick={() => navigate('/')}>Play a game</Button>
     </section>
   );
@@ -105,7 +112,9 @@ export function Progress() {
   const { levels } = getSettings();
   return (
     <main class="screen screen--tabs">
-      <h1 class="screen-title">You</h1>
+      <header class="topbar">
+        <h1 class="screen-title">Progress</h1>
+      </header>
       <div class="stack">
         {hasPlayed() ? (
           <>
@@ -117,12 +126,8 @@ export function Progress() {
         ) : (
           <EmptyProgress />
         )}
-        <a class="card row" href="#/settings">
-          <span class="row-main">Settings</span>
-          <Chevron />
-        </a>
       </div>
-      <TabBar current="you" />
+      <TabBar current="progress" />
     </main>
   );
 }

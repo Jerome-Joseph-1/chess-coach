@@ -1,20 +1,20 @@
-import pieceSprite from 'cm-chessboard/assets/pieces/standard.svg?url';
-import { LEVELS, OPENINGS } from '../../content/catalog';
+import pieceSprite from 'cm-chessboard/assets/pieces/standard.svg?no-inline';
+import { LEVELS, OPENINGS, openingById } from '../../content/catalog';
 import type { Level, OpeningId } from '../../content/types';
 import { percent } from '../../progress/stats';
 import { getSetStats } from '../../progress/store';
 import { Chevron } from '../shared/icons';
-import { OPENING_TITLES, sideLine } from '../shared/labels';
+import { OPENING_TITLES, gamesLine } from '../shared/labels';
 import { Segmented } from '../shared/Segmented';
 
 const LEVEL_OPTIONS = LEVELS.map((value) => ({ value, label: String(value) }));
 
 // The tile shows a piece of the colour you play.
-const TILE_PIECE: Record<OpeningId, string> = { italian: 'wb', 'caro-kann': 'bp' };
+const TILE_PIECE: Record<OpeningId, string> = { italian: 'wn', 'caro-kann': 'bp' };
 
 function PieceTile({ opening }: { opening: OpeningId }) {
   return (
-    <span class="piece-tile" aria-hidden="true">
+    <span class={`piece-tile piece-tile--${openingById(opening).side}`} aria-hidden="true">
       <svg width="30" height="30" viewBox="0 0 40 40">
         <use href={`${pieceSprite}#${TILE_PIECE[opening]}`} />
       </svg>
@@ -38,9 +38,7 @@ function OpeningItem({ id, level, current, onSelect, onLevel }: { id: OpeningId;
         <PieceTile opening={id} />
         <span class="row-main">
           <span>{OPENING_TITLES[id]}</span>
-          <span class="row-sub">
-            {sideLine(id)} · {stats.games} {stats.games === 1 ? 'game' : 'games'}
-          </span>
+          <span class="row-sub">{gamesLine(id, stats.games)}</span>
         </span>
         <span class="row-value">{rate === null ? 'Not started' : `${rate}% right`}</span>
         <Chevron />
@@ -54,8 +52,8 @@ function OpeningItem({ id, level, current, onSelect, onLevel }: { id: OpeningId;
 
 export function OpeningList({ levels, featured, onSelect, onLevel }: OpeningListProps) {
   return (
-    <section id="openings" aria-labelledby="openings-title">
-      <h2 id="openings-title" class="section-label">
+    <section aria-labelledby="openings-title">
+      <h2 id="openings-title" class="sr-only">
         Openings
       </h2>
       <ul class="card list">

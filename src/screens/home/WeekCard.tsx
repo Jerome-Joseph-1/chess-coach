@@ -1,6 +1,6 @@
-import { STAT_KINDS, type StatKind, type WeekStats } from '../../progress/stats';
-import { STAT_LABELS } from '../shared/labels';
+import type { WeekStats } from '../../progress/stats';
 import { RollingNumber } from '../shared/RollingNumber';
+import { legendItems } from './legend';
 
 function Empty() {
   return (
@@ -13,7 +13,7 @@ function Empty() {
 /** How the last seven days went: one number, one bar split by kind of position, and the numbers behind it. */
 export function WeekCard({ stats }: { stats: WeekStats }) {
   if (stats.total.total === 0) return <Empty />;
-  const kinds = STAT_KINDS.filter((kind: StatKind) => stats.parts[kind].total > 0);
+  const items = legendItems(stats);
   return (
     <section class="card week-card" aria-label="This week">
       <p class="week-number">
@@ -23,20 +23,17 @@ export function WeekCard({ stats }: { stats: WeekStats }) {
       </p>
       <p class="muted">key positions handled well this week</p>
       <div class="week-bar" aria-hidden="true">
-        {kinds.map((kind) => {
-          const { right, total } = stats.parts[kind];
-          return (
-            <span key={kind} class={`week-seg part--${kind}`} style={{ flexGrow: total, '--r': right / total }}>
-              <i />
-            </span>
-          );
-        })}
+        {items.map(({ kind, right, total }) => (
+          <span key={kind} class={`week-seg part--${kind}`} style={{ flexGrow: total, '--r': right / total }}>
+            <i />
+          </span>
+        ))}
       </div>
       <ul class="legend">
-        {kinds.map((kind) => (
+        {items.map(({ kind, text }) => (
           <li key={kind} class={`part--${kind}`}>
             <i class="swatch" />
-            {STAT_LABELS[kind]} {stats.parts[kind].right}/{stats.parts[kind].total}
+            {text}
           </li>
         ))}
       </ul>

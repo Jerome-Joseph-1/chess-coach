@@ -1,38 +1,77 @@
-import { useEffect } from 'preact/hooks';
-import type { GameSummary, MomentResult } from '../content/types';
+import type { ComponentChildren } from 'preact';
+import { useEffect, useState } from 'preact/hooks';
+import { loadGame } from '../content/loader';
+import type { GameSummary, MomentResult, Turn } from '../content/types';
 import { isRight } from '../progress/moments';
-import { getLastGame, getLastGameBonus } from '../progress/store';
+import { clearLastGameUnlock, getLastGame, getLastGameBonus, getLastGameUnlock } from '../progress/store';
 import { navigate } from '../router';
 import { Button } from '../ui/Button';
+import { LevelUp } from '../ui/LevelUp';
 import { celebrate } from '../ui/rewards';
-import { Check, Cross } from './shared/icons';
-import { OPENING_TITLES, momentLabel, outcomeText, playPath, ratingLine, reviewPath } from './shared/labels';
+import { handledWell, momentSub, momentTitle, momentTone, type MomentTone } from './recap/moments';
+import { Check, Chevron, Cross, Dash } from './shared/icons';
+import { playPath, reviewPath } from './shared/labels';
 import { RollingNumber } from './shared/RollingNumber';
 import './shared/screen.css';
 import './recap.css';
 
-// Let the stars roll in before the confetti.
+// Let the numbers roll in before the confetti.
 const CELEBRATE_DELAY_MS = 700;
 
 // Coming back to the recap later in the same session must not celebrate the same game twice.
 let celebratedGameAt: number | null = null;
 
-function MomentRow({ m, index }: { m: MomentResult; index: number }) {
-  const right = isRight(m);
-  return (
-    <li class="row moment" style={{ '--i': index }}>
-      <span class={`moment-mark ${right ? 'moment-mark--right' : 'moment-mark--missed'}`}>{right ? <Check size={16} /> : <Cross size={16} />}</span>
-      <span class="row-main">
-        <span class="moment-title">
-          Move {m.moveNo} · {momentLabel(m)}
-        </span>
-        <span class="row-sub">{outcomeText(m)}</span>
+const MARKS: Record<MomentTone, ComponentChildren> = {
+  right: <Check size={14} />,
+  missed: <Cross size={14} />,
+  quiet: <Dash size={14} />,
+};
+
+function MomentRow({ m, turn, index }: { m: MomentResult; turn?: Turn; index: number }) {
+  const tone = momentTone(m);
+  const contents = (
+    <>
+      <span class={`mark mark--${tone}`} aria-hidden="true">
+        {MARKS[tone]}
       </span>
-      <a class="link" href={`#${reviewPath(m)}`}>
-        See it again
-      </a>
+      <span class="row-main">
+        <span class="moment-title">{momentTitle(m, turn)}</span>
+        <span class={`row-sub moment-sub--${tone}`}>{momentSub(m)}</span>
+      </span>
+      {tone === 'missed' && (
+        <>
+          <span class="moment-again">See it again</span>
+          <Chevron />
+        </>
+      )}
+    </>
+  );
+  return (
+    <li style={{ '--i': index }}>
+      {tone === 'missed' ? (
+        <a class="row moment" href={`#${reviewPath(m)}`}>
+          {contents}
+        </a>
+      ) : (
+        <div class="row moment">{contents}</div>
+      )}
     </li>
   );
+}
+
+/** The game file names each position in plain words; without it the titles stay general. */
+function useTurns(game: GameSummary): Map<number, Turn> {
+  const [turns, setTurns] = useState(new Map<number, Turn>());
+  useEffect(() => {
+    let current = true;
+    loadGame(game.opening, game.level, game.gameId)
+      .then((data) => current && setTurns(new Map(data.turns.map((t) => [t.ply, t]))))
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [game.opening, game.level, game.gameId]);
+  return turns;
 }
 
 function usePerfectCelebration(game: GameSummary, perfect: boolean): void {
@@ -44,41 +83,63 @@ function usePerfectCelebration(game: GameSummary, perfect: boolean): void {
   }, [game.at, perfect]);
 }
 
+function Summary({ moments, bonus }: { moments: MomentResult[]; bonus: boolean }) {
+  if (moments.length === 0) {
+    return <p class="card recap-quiet muted">No key positions came up in this game.</p>;
+  }
+  const { right, total } = handledWell(moments);
+  return (
+    <section class="card summary" aria-label="Result">
+      <p class="summary-number">
+        <RollingNumber value={right} />
+        <span class="summary-of"> of </span>
+        <RollingNumber value={total} />
+      </p>
+      <p class="muted">key positions handled well</p>
+      <div class="result-bar" aria-hidden="true">
+        {moments.map((m, i) => (
+          <i key={`${m.gameId}:${m.ply}`} class={isRight(m) ? 'right' : 'missed'} style={{ '--i': i }} />
+        ))}
+      </div>
+      {bonus && (
+        <p class="welcome">
+          <span class="due-dot" aria-hidden="true" />
+          Welcome back: this game counts double
+        </p>
+      )}
+    </section>
+  );
+}
+
 function RecapBody({ game, bonus }: { game: GameSummary; bonus: boolean }) {
-  const base = game.moments.reduce((sum, m) => sum + m.stars, 0);
-  const stars = bonus ? base * 2 : base;
+  const turns = useTurns(game);
+  const [unlocked, setUnlocked] = useState(getLastGameUnlock);
   const perfect = game.moments.length > 0 && game.moments.every(isRight);
-  usePerfectCelebration(game, perfect);
+  usePerfectCelebration(game, perfect && !unlocked);
+
+  const closeLevelUp = () => {
+    clearLastGameUnlock();
+    setUnlocked(null);
+  };
 
   return (
     <main class="screen recap">
-      <header class="recap-head">
-        <h1>Game complete</h1>
-        <p class="muted">
-          {OPENING_TITLES[game.opening]} · {ratingLine(game.level)}
-        </p>
-        <p class="recap-stars">
-          <span class="recap-star" aria-hidden="true">
-            ★
-          </span>
-          <RollingNumber value={stars} />
-          <span class="recap-stars-unit">{stars === 1 ? 'star' : 'stars'}</span>
-        </p>
-        {bonus && <span class="tag">Welcome back: stars counted double</span>}
+      <header class="topbar">
+        <h1 class="screen-title">Game complete</h1>
+        <a class="round-button" href="#/" aria-label="Close">
+          <Cross />
+        </a>
       </header>
 
-      <h2 class="section-label">Key positions</h2>
-      {game.moments.length === 0 ? (
-        <p class="card recap-quiet muted">No key positions came up in this game.</p>
-      ) : (
-        <ol class="card list">
-          {game.moments.map((m, i) => (
-            <MomentRow key={`${m.gameId}:${m.ply}`} m={m} index={i} />
-          ))}
-        </ol>
-      )}
-
-      <div class="recap-actions">
+      <div class="stack">
+        <Summary moments={game.moments} bonus={bonus} />
+        {game.moments.length > 0 && (
+          <ol class="card list" aria-label="Key positions">
+            {game.moments.map((m, i) => (
+              <MomentRow key={`${m.gameId}:${m.ply}`} m={m} turn={turns.get(m.ply)} index={i} />
+            ))}
+          </ol>
+        )}
         <Button size="lg" onClick={() => navigate(playPath(game.opening, game.level))}>
           Play next game
         </Button>
@@ -86,6 +147,7 @@ function RecapBody({ game, bonus }: { game: GameSummary; bonus: boolean }) {
           Back to Today
         </Button>
       </div>
+      {unlocked && <LevelUp depth={unlocked} onClose={closeLevelUp} />}
     </main>
   );
 }

@@ -47,7 +47,7 @@ export function OfflineRow({ opening, level, disabled }: { opening: OpeningId; l
   if (state.kind === 'done') {
     return (
       <p class="offline offline-done" role="status">
-        <Check size={18} />
+        <Check size={16} />
         Available offline
       </p>
     );

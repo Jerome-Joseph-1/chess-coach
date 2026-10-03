@@ -86,7 +86,12 @@ describe('stage wording', () => {
   });
 
   it('writes the stage line', () => {
-    expect(stageLine(3)).toBe('Stage 3 of 5: Play');
-    expect(stageLine(4)).toBe('Stage 4 of 5: Follow through');
+    expect(DEPTHS.map(stageLine)).toEqual([
+      'Stage 1 of 5: Notice the moment',
+      'Stage 2 of 5: Point to the piece',
+      'Stage 3 of 5: Play the move',
+      'Stage 4 of 5: Follow through',
+      'Stage 5 of 5: Finish the line',
+    ]);
   });
 });
