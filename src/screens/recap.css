@@ -119,43 +119,6 @@
   text-align: center;
 }
 
-.recap-coach {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-.recap-coach-mark {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--coach);
-}
-.recap-coach-mark svg {
-  width: 26px;
-  height: 26px;
-}
-.recap-bubble {
-  display: grid;
-  flex: 1;
-  gap: 6px;
-  padding: 12px 14px 14px;
-  border-radius: 4px 18px 18px;
-  background: var(--surface-2);
-}
-.recap-bubble p {
-  margin: 0;
-  color: var(--text);
-  font: var(--text-body);
-  text-wrap: pretty;
-}
-.recap-bubble .eyebrow {
-  color: var(--text-muted);
-  font: var(--text-eyebrow);
-}
-
 .moment {
   min-height: 64px;
 }

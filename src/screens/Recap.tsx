@@ -1,7 +1,8 @@
-import pieceSprite from 'cm-chessboard/assets/pieces/standard.svg?no-inline';
 import { useEffect, useState } from 'preact/hooks';
 import { lessonFor } from '../learn';
 import type { GameSummary, MomentResult, Turn } from '../content/types';
+import { CoachBubble } from '../pause/Coach';
+import '../pause/pause.css';
 import { isRight } from '../progress/moments';
 import { clearLastGameUnlock, getLastGame, getLastGameBonus, getLastGameUnlock } from '../progress/store';
 import { navigate } from '../router';
@@ -137,20 +138,13 @@ function Summary({ moments, bonus }: { moments: MomentResult[]; bonus: boolean }
   );
 }
 
+/** The coach's word on the game, in the same mark and bubble as under the board. */
 function CoachNote({ moments }: { moments: MomentResult[] }) {
   const note = coachNote(moments);
   if (!note) return null;
   return (
-    <div class="recap-coach rise-in" style={{ animationDelay: `${rowDelay(-1)}ms` }}>
-      <span class="recap-coach-mark" aria-hidden="true">
-        <svg viewBox="0 0 40 40">
-          <use href={`${pieceSprite}#bn`} />
-        </svg>
-      </span>
-      <div class="recap-bubble">
-        <p class="eyebrow">Coach's note</p>
-        <p>{note}</p>
-      </div>
+    <div class="rise-in" style={{ animationDelay: `${rowDelay(-1)}ms` }}>
+      <CoachBubble tone="neutral" eyebrow="Coach's note" body={note} />
     </div>
   );
 }
