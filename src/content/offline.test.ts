@@ -21,6 +21,7 @@ let opened: string[];
 let inFlight: number;
 let peak: number;
 let failing: Set<string>;
+let served: Map<string, unknown>;
 
 function files(): Map<string, unknown> {
   const map = new Map<string, unknown>();
@@ -29,13 +30,27 @@ function files(): Map<string, unknown> {
   return map;
 }
 
+const BORROWED = '/chess-coach/content/italian-1100/games/italian-1100-0007.json';
+
+/** A course whose lessons use two of the set's games and one game of another level. */
+function serveCourse(): void {
+  const ref = (set: string, gameId: string) => ({ set, gameId, ply: 3, findShare: 0.5 });
+  const unit = {
+    id: 'fork',
+    examples: [ref('italian-1100', 'italian-1100-0007')],
+    drills: [ref('italian-1400', IDS[0]), ref('italian-1400', IDS[1]), ref('italian-1100', 'italian-1100-0007')],
+  };
+  served.set(`${BASE}/course.json`, { v: 1, opening: 'italian', level: 1400, units: [unit] });
+  served.set(BORROWED, { id: 'italian-1100-0007' });
+}
+
 beforeEach(() => {
   cache = new FakeCache();
   opened = [];
   inFlight = 0;
   peak = 0;
   failing = new Set();
-  const served = files();
+  served = files();
   vi.stubGlobal('caches', {
     open: async (name: string) => {
       opened.push(name);
@@ -50,7 +65,8 @@ beforeEach(() => {
       await new Promise((resolve) => setTimeout(resolve, 1));
       inFlight -= 1;
       const body = served.get(url);
-      if (failing.has(url) || body === undefined) return new Response('nope', { status: 404 });
+      if (failing.has(url)) return new Response('down', { status: 503 });
+      if (body === undefined) return new Response('nope', { status: 404 });
       return new Response(JSON.stringify(body), { status: 200 });
     }),
   );
@@ -73,6 +89,27 @@ describe('downloadSet', () => {
     expect(seen[0]).toEqual([0, IDS.length]);
     expect(seen.at(-1)).toEqual([IDS.length, IDS.length]);
     expect(seen.map(([done]) => done)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it('also stores the course and the games of other levels its lessons use, each once', async () => {
+    serveCourse();
+    const seen: [number, number][] = [];
+    await downloadSet('italian', 1400, (done, total) => seen.push([done, total]));
+    expect(cache.entries.has(`${BASE}/course.json`)).toBe(true);
+    expect(cache.entries.has(BORROWED)).toBe(true);
+    expect(seen.at(-1)).toEqual([IDS.length + 1, IDS.length + 1]);
+  });
+
+  it('rejects when the course is there but cannot be fetched', async () => {
+    serveCourse();
+    failing.add(`${BASE}/course.json`);
+    await expect(downloadSet('italian', 1400, () => {})).rejects.toThrow();
+  });
+
+  it('rejects when a game of another level that a lesson uses cannot be fetched', async () => {
+    serveCourse();
+    failing.add(BORROWED);
+    await expect(downloadSet('italian', 1400, () => {})).rejects.toThrow();
   });
 
   it('downloads a few files at a time', async () => {
