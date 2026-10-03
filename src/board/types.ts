@@ -6,7 +6,10 @@ export type BadgeKind = 'good' | 'bad';
 export interface MovedPiece {
   uci: string;
   captured: { type: 'p' | 'n' | 'b' | 'r' | 'q'; color: Side } | null;
+  /** The side to move now stands in check. */
   check: boolean;
+  /** The board stepped back over this move: `captured` is the piece that came back. */
+  undo?: boolean;
 }
 export type ArrowTone = 'best' | 'threat' | 'mistake';
 /** An evaluation from White's point of view: centipawns, mate in n (negative when Black mates), or a finished game. */
@@ -36,14 +39,14 @@ export interface BoardController {
   squareCenter(square: string): { x: number; y: number };
   /** Dim the board except the given squares (empty array removes the dim). */
   dim(except: string[] | null): void;
-  /** A round check or cross on a square, like a puzzle verdict; null removes it. */
+  /** A round check or cross on a square, like a puzzle verdict; null removes it. A good one comes with a burst. */
   badge(square: string, kind: BadgeKind | null): void;
   /** Draw a move arrow; it stays until clearArrows. The player's own right-click drawings are separate. */
   arrow(from: string, to: string, tone: ArrowTone): void;
   clearArrows(): void;
-  /** A small burst of specks from a square, for a found move. */
+  /** A small burst of specks from a square, for a found move; a second one on the same square at once is ignored. */
   burst(square: string): void;
-  /** Listens to every move the board animates; returns the way to stop listening. */
+  /** Listens to every move the board animates, steps back included; returns the way to stop listening. */
   onMoved(listener: (move: MovedPiece) => void): () => void;
   /** A thin evaluation bar along the left edge of the board; null hides it. */
   evalBar(score: BarScore | null): void;

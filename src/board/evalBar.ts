@@ -1,4 +1,5 @@
 import { signedPawns } from '../engine/score';
+import { prefersReducedMotion, SLOW_MS, SPRING } from '../ui/motion';
 import type { BarScore } from './types';
 
 /** Lichess's curve from centipawns to winning chances: small edges stay visible, big ones stop short of full. */
@@ -30,6 +31,7 @@ export class EvalBar {
   private white = document.createElement('div');
   private label = document.createElement('span');
   private score: BarScore | null = null;
+  private share = 0.5;
 
   constructor(
     private host: HTMLElement,
@@ -62,17 +64,39 @@ export class EvalBar {
 
   private render(): void {
     const { score } = this;
+    const wasShown = !this.bar.hidden;
     this.bar.hidden = !score;
     this.host.classList.toggle('has-eval-bar', Boolean(score));
     this.bar.classList.toggle('is-flipped', this.flipped);
     if (!score) return;
     const share = whiteShare(score);
-    const whiteAhead = share >= 0.5;
-    this.white.style.height = `${share * 100}%`;
-    this.label.textContent = barLabel(score);
-    this.bar.classList.toggle('is-black-ahead', !whiteAhead);
+    const rising = share > this.share;
+    this.share = share;
+    // A transform, so the fill springs to its new height without relaying out the bar.
+    this.white.style.transform = `scaleY(${share})`;
+    this.setLabel(barLabel(score), wasShown ? rising : null);
+    this.bar.classList.toggle('is-black-ahead', share < 0.5);
     // White's end is the bottom unless the board is turned.
-    this.label.classList.toggle('is-top', whiteAhead === this.flipped);
+    this.label.classList.toggle('is-top', share >= 0.5 === this.flipped);
     this.bar.setAttribute('aria-label', `Evaluation: ${spoken(score)}`);
+  }
+
+  /** The new score rolls in the way the fill moved while the old one rolls out; `rising` null just swaps it. */
+  private setLabel(text: string, rising: boolean | null): void {
+    const old = this.label.textContent ?? '';
+    if (old === text) return;
+    this.label.textContent = text;
+    if (rising === null || !old || prefersReducedMotion()) return;
+    // White's fill grows up the bar, or down it when the board is turned.
+    const toward = rising === this.flipped ? 1 : -1;
+    const leaving = this.label.cloneNode(true) as HTMLElement;
+    leaving.className = this.label.className.replace('eval-bar-label', 'eval-bar-label-leaving');
+    leaving.textContent = old;
+    leaving.setAttribute('aria-hidden', 'true');
+    this.bar.append(leaving);
+    const timing = { duration: SLOW_MS, easing: SPRING };
+    this.label.animate([{ translate: `0 ${-toward * 60}%`, opacity: 0 }, { translate: '0 0', opacity: 1 }], timing);
+    const out = leaving.animate([{ translate: '0 0', opacity: 1 }, { translate: `0 ${toward * 60}%`, opacity: 0 }], { ...timing, fill: 'forwards' });
+    out.onfinish = out.oncancel = () => leaving.remove();
   }
 }

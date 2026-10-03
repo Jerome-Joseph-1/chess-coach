@@ -142,7 +142,7 @@
   opacity: 0.8;
 }
 
-/* Elements above the board: verdict badges and the drag target outline. */
+/* Elements above the board: verdict badges, bursts and the drag target outline. */
 .board-overlay {
   position: absolute;
   inset: 0;
@@ -164,7 +164,8 @@
   position: absolute;
   inset: 0;
   background: var(--flash);
-  animation: square-flash 300ms ease-out forwards;
+  opacity: 0;
+  animation: square-flash var(--d-slow) ease-out;
 }
 .overlay-badge--good {
   --flash: rgba(129, 182, 76, 0.55);
@@ -186,7 +187,7 @@
   border-radius: 50%;
   background: var(--badge);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  animation: badge-pop 160ms var(--spring) backwards;
+  animation: badge-pop var(--d-base) ease-out backwards;
 }
 .badge svg {
   width: 72%;
@@ -198,18 +199,36 @@
   stroke-linejoin: round;
 }
 @keyframes square-flash {
-  from {
+  30% {
     opacity: 1;
   }
-  to {
-    opacity: 0;
-  }
 }
+/* Overshoots on purpose: the verdict lands with a little snap. */
 @keyframes badge-pop {
   from {
     transform: scale(0.4);
     opacity: 0;
   }
+  60% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+@keyframes badge-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Specks of a found move; the script sends each one out and removes them. */
+.burst-speck {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  background: #8ccf4d;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+  transform: translate(-50%, -50%);
 }
 
 /* Evaluation bar: a thin strip on the left edge, White's share filling from White's side. */
@@ -219,6 +238,7 @@
   bottom: 0;
   left: 0;
   width: 3.5%;
+  overflow: hidden;
   background: #3a3734;
   pointer-events: none;
   /* The score inside is sized from the bar's own width. */
@@ -229,19 +249,18 @@
 }
 .eval-bar-white {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 50%;
+  inset: 0;
   background: #f4f4f2;
-  transition: height 280ms ease-out;
+  transform: scaleY(0.5);
+  transform-origin: bottom;
+  transition: transform var(--d-slow) var(--spring);
 }
 .eval-bar.is-flipped .eval-bar-white {
-  top: 0;
-  bottom: auto;
+  transform-origin: top;
 }
 /* The score runs up the bar at the leader's end, dark on White's fill and light on Black's. */
-.eval-bar-label {
+.eval-bar-label,
+.eval-bar-label-leaving {
   position: absolute;
   bottom: 4px;
   left: 0;
@@ -254,11 +273,13 @@
   writing-mode: vertical-rl;
   transform: rotate(180deg);
 }
-.eval-bar-label.is-top {
+.eval-bar-label.is-top,
+.eval-bar-label-leaving.is-top {
   top: 4px;
   bottom: auto;
 }
-.eval-bar.is-black-ahead .eval-bar-label {
+.eval-bar.is-black-ahead .eval-bar-label,
+.eval-bar.is-black-ahead .eval-bar-label-leaving {
   color: #f4f4f2;
 }
 /* The bar covers the rank numbers' spot, so they step aside while it shows. */
@@ -266,12 +287,17 @@
   transform: translateX(3.5%);
 }
 
-/* The piece under the finger lifts and casts a soft shadow; on drop it settles. */
+/* A picked piece lifts with a soft shadow, on its square for a tap and under the finger for a drag. */
+.cm-chessboard g.piece-lift {
+  scale: 1.08;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.3));
+  animation: piece-lift var(--d-press) var(--spring) backwards;
+}
 .cm-chessboard-draggable-piece {
   z-index: 50;
-  transform: scale(1.15);
+  scale: 1.08;
   filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.35));
-  animation: piece-lift 120ms var(--spring) backwards;
+  animation: piece-lift var(--d-press) var(--spring) backwards;
 }
 @media (pointer: coarse) {
   /* keeps the piece in view above the finger */
@@ -279,20 +305,9 @@
     translate: 0 -30%;
   }
 }
-.cm-chessboard g.piece-settle {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: piece-settle 140ms var(--spring);
-}
 @keyframes piece-lift {
   from {
-    transform: scale(1);
-    filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
-  }
-}
-@keyframes piece-settle {
-  from {
-    scale: 1.12;
+    scale: 1;
   }
 }
 
@@ -300,9 +315,11 @@
   .eval-bar-white {
     transition: none;
   }
-  .badge,
-  .cm-chessboard-draggable-piece,
-  .cm-chessboard g.piece-settle {
+  .badge {
+    animation-name: badge-fade;
+  }
+  .cm-chessboard g.piece-lift,
+  .cm-chessboard-draggable-piece {
     animation: none;
   }
   .overlay-badge::before {

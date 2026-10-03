@@ -1,25 +1,38 @@
 import { Chess, type Move } from 'chess.js';
 import { Chessboard, INPUT_EVENT_TYPE, POINTER_EVENTS, type MoveInputEvent } from 'cm-chessboard';
-import { Arrows, type ArrowType } from 'cm-chessboard/src/extensions/arrows/Arrows.js';
-import { Markers, type MarkerType } from 'cm-chessboard/src/extensions/markers/Markers.js';
+import type { ArrowType } from 'cm-chessboard/src/extensions/arrows/Arrows.js';
+import type { MarkerType } from 'cm-chessboard/src/extensions/markers/Markers.js';
 import 'cm-chessboard/assets/chessboard.css';
 import arrowsSprite from 'cm-chessboard/assets/extensions/arrows/arrows.svg?no-inline';
 import markersSprite from 'cm-chessboard/assets/extensions/markers/markers.svg?no-inline';
 import piecesSprite from 'cm-chessboard/assets/pieces/standard.svg?no-inline';
 import type { Side } from '../content/types';
 import { parseUci, toUci } from '../game/position';
-import { playSound, type MoveSound } from '../ui/sound';
+import { SPRING } from '../ui/motion';
+import { playSound } from '../ui/sound';
 import { Annotations } from './annotations';
+import { ringDelays } from './effects';
 import { EvalBar } from './evalBar';
+import { BoardArrows, BoardMarkers, type Entrance } from './extensions';
 import { gridCell } from './geometry';
-import { soundBetween, soundForMove } from './moveSound';
-import { legalMoves, pickMove } from './moves';
+import { soundForMove } from './moveSound';
+import { capturedSquare, checkedKing, legalMoves, movedPiece, pickMove, stepBetween } from './moves';
 import { SquareOverlay } from './overlay';
+import { PieceEffects } from './pieceEffects';
 import type { ArrowTone, BadgeKind, BarScore, BoardController, MovedPiece, Tone } from './types';
 
 type MoveHandler = (uci: string) => boolean | Promise<boolean>;
+type MovedListener = (move: MovedPiece) => void;
 
 const MOVE_MS = 180;
+/** The legal-move marks of the farthest ring start by this, so the whole set is in within 200 ms. */
+const LAST_RING_MS = 80;
+const STAGGER_FALLBACK_MS = 50;
+const DOT_GROW: Entrance['timing'] = { duration: 120, easing: SPRING };
+const HINT_BREATHE: Entrance = {
+  keyframes: [{ scale: 1 }, { scale: 1.06 }, { scale: 1 }],
+  timing: { duration: 700, iterations: 2, easing: 'ease-in-out' },
+};
 
 const TONE_MARKERS: Record<Tone, MarkerType> = {
   focus: { class: 'marker-focus', slice: 'markerFrame' },
@@ -56,41 +69,46 @@ export class CmBoardController implements BoardController {
   private validating = false;
   private destroyed = false;
   private bar: EvalBar | null = null;
+  private movedListeners = new Set<MovedListener>();
+  /** When each legal-move mark of the held piece appears. */
+  private ringDelay = new Map<string, number>();
+  private staggerMs: number;
 
   constructor(
     private host: HTMLElement,
     private cm: Chessboard,
-    private markers: Markers,
-    private arrows: Arrows,
+    private markers: BoardMarkers,
+    private arrows: BoardArrows,
     private overlay: SquareOverlay,
     private annotations: Annotations,
+    private effects: PieceEffects,
     fen: string,
   ) {
     this.position = fullFen(fen);
+    this.staggerMs = parseFloat(getComputedStyle(host).getPropertyValue('--stagger')) || STAGGER_FALLBACK_MS;
+    markers.entrance = (type, square) => this.markerEntrance(type, square);
   }
 
   async setPosition(fen: string, animate = false): Promise<void> {
     await this.pending;
     if (this.destroyed) return;
-    // A step back undoes one move, so it sounds like the move it undoes.
-    const sound = animate ? (soundBetween(this.position, fen) ?? soundBetween(fullFen(fen), this.position)) : null;
-    this.position = fullFen(fen);
+    const target = fullFen(fen);
+    const step = animate ? stepBetween(this.position, target) : null;
+    this.position = target;
     this.annotations.clear();
     this.setLastMove(null);
-    await this.cm.setPosition(this.position, animate);
-    this.knock(sound);
+    if (step) await this.showMove(step.move, target, step.undo);
+    else await this.cm.setPosition(target, animate);
   }
 
   async playMove(uci: string): Promise<void> {
     await this.pending;
     if (this.destroyed) return;
-    const chess = new Chess(this.position);
-    const sound = soundForMove(chess.move(parseUci(uci)));
-    this.position = chess.fen();
+    const move = new Chess(this.position).move(parseUci(uci));
+    this.position = move.after;
     this.annotations.clear();
     this.setLastMove(uci);
-    await this.cm.setPosition(this.position, true);
-    this.knock(sound);
+    await this.showMove(move, move.after);
   }
 
   async setOrientation(side: Side): Promise<void> {
@@ -162,7 +180,10 @@ export class CmBoardController implements BoardController {
   }
 
   badge(square: string, kind: BadgeKind | null): void {
-    if (!this.destroyed) this.overlay.badge(square, kind);
+    if (this.destroyed) return;
+    this.overlay.badge(square, kind);
+    // A found move is celebrated where it lands; a burst asked for on top of this one is folded into it.
+    if (kind === 'good') this.overlay.burst(square);
   }
 
   arrow(from: string, to: string, tone: ArrowTone): void {
@@ -175,10 +196,13 @@ export class CmBoardController implements BoardController {
     if (!this.destroyed) this.removeArrows();
   }
 
-  burst(_square: string): void {}
+  burst(square: string): void {
+    if (!this.destroyed) this.overlay.burst(square);
+  }
 
-  onMoved(_listener: (move: MovedPiece) => void): () => void {
-    return () => {};
+  onMoved(listener: MovedListener): () => void {
+    this.movedListeners.add(listener);
+    return () => this.movedListeners.delete(listener);
   }
 
   evalBar(score: BarScore | null): void {
@@ -191,6 +215,7 @@ export class CmBoardController implements BoardController {
     if (this.destroyed) return;
     this.disableInput();
     this.destroyed = true;
+    this.movedListeners.clear();
     this.annotations.destroy();
     this.overlay.destroy();
     this.bar?.destroy();
@@ -216,23 +241,34 @@ export class CmBoardController implements BoardController {
   private startMove(square: string, side: Side): boolean {
     if (this.busy > 0) return false;
     const moves = legalMoves(this.position, side, square);
-    if (moves.length > 0) this.showMoveHints(square, moves);
-    return moves.length > 0;
+    if (moves.length === 0) return false;
+    this.showMoveHints(square, moves);
+    this.effects.lift(square);
+    return true;
   }
 
-  /** The picked piece's square and where it can go: dots on empty squares, rings on captures. */
+  /** The picked piece's square and where it can go: dots on empty squares, rings on captures, nearest first. */
   private showMoveHints(square: string, moves: Move[]): void {
+    // A promotion lists one move per piece; draw its square once.
+    const byTarget = new Map(moves.map((move) => [move.to, move]));
+    this.ringDelay = ringDelays(square, [...byTarget.keys()], this.staggerMs, LAST_RING_MS);
     this.batch(() => {
       this.markers.addMarker(SELECTED_MARKER, square);
-      // A promotion lists one move per piece; draw its square once.
-      const byTarget = new Map(moves.map((move) => [move.to, move]));
       for (const move of byTarget.values()) this.markers.addMarker(move.captured ? LEGAL_CAPTURE : LEGAL_DOT, move.to);
     });
   }
 
   private clearMoveHints(): void {
     this.overlay.hover(null);
+    this.effects.drop();
     this.batch(() => [SELECTED_MARKER, LEGAL_DOT, LEGAL_CAPTURE].forEach((type) => this.markers.removeMarkers(type)));
+  }
+
+  private markerEntrance(type: MarkerType, square: string): Entrance | null {
+    if (type === LEGAL_DOT || type === LEGAL_CAPTURE) {
+      return { keyframes: [{ scale: 0 }, { scale: 1 }], timing: { ...DOT_GROW, delay: this.ringDelay.get(square) ?? 0 } };
+    }
+    return type === TONE_MARKERS.hint ? HINT_BREATHE : null;
   }
 
   private tryMove(from: string, to: string | null | undefined, side: Side, onMove: MoveHandler): boolean {
@@ -243,22 +279,33 @@ export class CmBoardController implements BoardController {
     const before = this.position;
     const previousLastMove = this.lastMove;
     const uci = toUci(move);
-    const dropped = this.isDragging();
+    const enPassant = move.flags.includes('e');
     this.annotations.clear();
     this.position = move.after;
     this.setLastMove(uci);
-    // cm-chessboard moves the piece right after we return; this settles castling, en passant and promotion.
+    // cm-chessboard moves the piece, and takes what stands on the target square, right after we return.
+    if (move.captured && !enPassant) this.effects.capture(move.to);
+    // This settles castling, en passant and promotion, which cm-chessboard does not know about.
     this.enqueue(async () => {
+      if (enPassant) this.effects.capture(capturedSquare(move)!);
       await this.cm.setPosition(move.after, true);
-      if (dropped) this.settle(move.to);
+      this.effects.settle(move.to);
     });
 
     const refuse = () => {
       this.position = before;
       this.setLastMove(previousLastMove);
-      this.enqueue(() => this.cm.setPosition(before, true));
+      this.enqueue(async () => {
+        await this.cm.setPosition(before, true);
+        this.effects.swingBack(move.from, move.to);
+      });
     };
-    const decide = (keep: boolean) => (keep ? playSound(soundForMove(move)) : refuse());
+    const keep = () => {
+      playSound(soundForMove(move));
+      this.emitMoved(movedPiece(move));
+      this.enqueue(async () => this.markCheck(move.after));
+    };
+    const decide = (kept: boolean) => (kept ? keep() : refuse());
     this.validating = true;
     try {
       const verdict = onMove(uci);
@@ -278,18 +325,30 @@ export class CmBoardController implements BoardController {
     for (const type of Object.values(ARROW_TYPES)) this.arrows.removeArrows(type, from, to);
   }
 
-  /** cm-chessboard keeps a floating copy of the piece in the page while it is dragged. */
-  private isDragging(): boolean {
-    return document.querySelector('.cm-chessboard-draggable-piece') !== null;
+  /** Animates one move, or taking it back: the taken piece leaves as the mover arrives, then the knock and any check. */
+  private async showMove(move: Move, target: string, undo = false): Promise<void> {
+    const taken = undo ? null : capturedSquare(move);
+    if (taken) this.effects.capture(taken);
+    this.emitMoved(movedPiece(move, undo));
+    await this.cm.setPosition(target, true);
+    if (this.destroyed) return;
+    playSound(soundForMove(move));
+    this.markCheck(target);
   }
 
-  /** A dropped piece lands with a small bounce. */
-  private settle(square: string): void {
-    this.host.querySelector(`g[data-square='${square}']`)?.classList.add('piece-settle');
+  private markCheck(fen: string): void {
+    const king = checkedKing(fen);
+    if (king && !this.destroyed) this.effects.checkGlow(king);
   }
 
-  private knock(sound: MoveSound | null): void {
-    if (sound && !this.destroyed) playSound(sound);
+  private emitMoved(move: MovedPiece): void {
+    for (const listener of [...this.movedListeners]) {
+      try {
+        listener(move);
+      } catch (error) {
+        console.error(error);
+      }
+    }
   }
 
   private enqueue(task: () => Promise<void>): void {
@@ -328,13 +387,15 @@ export function createBoardController(host: HTMLElement, fen: string, orientatio
       pieces: { file: piecesSprite, tileSize: 40 },
     },
     extensions: [
-      { class: Markers, props: { sprite: markersSprite, autoMarkers: null } },
-      { class: Arrows, props: { sprite: arrowsSprite } },
+      { class: BoardMarkers, props: { sprite: markersSprite, autoMarkers: null } },
+      { class: BoardArrows, props: { sprite: arrowsSprite, drawIn: Object.values(ARROW_TYPES) } },
     ],
   });
-  const markers = cm.getExtension(Markers)!;
-  const arrows = cm.getExtension(Arrows)!;
+  const markers = cm.getExtension(BoardMarkers)!;
+  const arrows = cm.getExtension(BoardArrows)!;
+  const isFlipped = () => cm.getOrientation() === 'b';
   const overlay = new SquareOverlay(host, orientation === 'b');
-  const annotations = new Annotations(host, arrows, markers, () => cm.getOrientation() === 'b');
-  return new CmBoardController(host, cm, markers, arrows, overlay, annotations, fen);
+  const annotations = new Annotations(host, arrows, markers, isFlipped);
+  const effects = new PieceEffects(cm.view, isFlipped);
+  return new CmBoardController(host, cm, markers, arrows, overlay, annotations, effects, fen);
 }
