@@ -415,15 +415,19 @@
   align-content: center;
   gap: 2px;
 }
+/* The move never breaks; on the narrowest phones the pips drop under it. */
 .stepper-move {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 2px 8px;
 }
 .stepper-move b {
   color: var(--text-strong);
   font: var(--text-code);
   font-weight: 700;
+  white-space: nowrap;
 }
 .stepper-says {
   max-width: 100%;
