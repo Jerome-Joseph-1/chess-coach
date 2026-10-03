@@ -661,8 +661,8 @@
   opacity: 0.4;
   cursor: default;
 }
-/* On the narrowest phones the side actions drop their icons and some padding, so every label fits whole. */
-@container (max-width: 320px) {
+/* Where a side action and its icon would not fit in half the row, e.g. on an SE, it drops the icon and some padding. */
+@container (max-width: 352px) {
   .dock-btn:not(.is-wide) {
     padding: 0 12px;
   }
