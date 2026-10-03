@@ -1,0 +1,140 @@
+/*
+ * The lesson uses the game screen's frame: the nav bar, the board sized by what each step keeps under it,
+ * the coach under the board and one dock. Nothing sits between the nav bar and the board.
+ */
+.game.lesson {
+  --above: calc(var(--nav) + 8px);
+  /* A step of the worked example: the coach's bubble with what to do, then the dock. */
+  --below: 240px;
+}
+.game.lesson .game-board {
+  padding-top: 8px;
+}
+/* A practice question names its pattern and shows the hint ladder from the start, so it keeps more room. */
+.game.lesson[data-mode='ask'] {
+  --below: 268px;
+}
+/* The line and the takeaway, as on the answer: the board steps back to about 320pt. */
+.game.lesson[data-mode='line'],
+.game.lesson[data-mode='answer'] {
+  --below: 372px;
+  --board-max: 320px;
+}
+.game.lesson[data-mode='explore'] {
+  --below: 322px;
+}
+
+/* What a step asks the player to do on the board. */
+.lesson-ask {
+  margin: 2px 0 0;
+  color: var(--coach-text);
+  font: 600 15px/22px var(--font);
+}
+
+/* Pages without the board: the intro, the summary and notices. Their content scrolls over the dock. */
+.lesson-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.lesson-scroll {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 24px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 16px 24px;
+  mask-image: var(--scroll-fade);
+}
+.lesson-hero {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+.lesson-hero .eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+}
+.lesson-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 8px;
+  border-radius: 16px;
+  background: var(--coach-tint);
+  color: var(--coach-text);
+  animation: coach-pop var(--d-base) var(--spring) both;
+}
+.lesson-icon.is-done {
+  background: color-mix(in srgb, var(--success) 16%, var(--surface));
+  color: var(--success);
+}
+.lesson-title {
+  font: var(--text-title);
+  letter-spacing: -0.01em;
+}
+.lesson-score {
+  font: var(--text-number);
+  letter-spacing: -0.02em;
+}
+.lesson-intro {
+  margin: 0;
+  color: var(--text);
+  font: 400 17px/24px var(--font);
+  text-wrap: pretty;
+}
+.lesson-notice {
+  margin: 0;
+  color: var(--text-muted);
+  font: var(--text-body);
+}
+
+/* How to spot it: numbered steps on a card. */
+.lesson-spot {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+.lesson-spot h3 {
+  color: var(--text-muted);
+}
+.lesson-spot ol {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: spot;
+}
+.lesson-spot li {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 12px;
+  align-items: start;
+  color: var(--text-strong);
+  font: var(--text-body);
+  counter-increment: spot;
+}
+.lesson-spot li::before {
+  content: counter(spot);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  font: 600 12px/16px var(--font);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lesson-icon {
+    animation-name: fade-in;
+  }
+}
