@@ -11,6 +11,7 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  mask-image: var(--scroll-fade);
   animation: coach-rise var(--d-slow) var(--spring) both;
 }
 @keyframes coach-rise {

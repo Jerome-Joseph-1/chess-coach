@@ -50,6 +50,8 @@
   --ease-leave: cubic-bezier(0.4, 0, 1, 1);
   --stagger: 50ms;
   --rise: 10px;
+  /* Scrolled content fades out at the edges instead of being cut; unscrolled, only the 12px padding sits under it. */
+  --scroll-fade: linear-gradient(transparent, #000 12px, #000 calc(100% - 12px), transparent);
 
   /* The coach's voice: hints, lessons and its arrows. */
   --coach: var(--brand);
