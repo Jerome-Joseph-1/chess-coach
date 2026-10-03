@@ -5,7 +5,7 @@ on:
     inputs:
       games:
         description: Games per opening and level
-        default: '20'
+        default: '250'
       dump:
         description: Lichess month to build the opening index from
         default: '2026-08'
@@ -45,6 +45,7 @@ jobs:
     needs: index
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         opening: [italian, caro-kann]
         level: [1100, 1400, 1700, 2000]
@@ -81,20 +82,29 @@ jobs:
         run: |
           total=${{ inputs.games }}
           per=$(( (total + 3) / 4 ))
+          pids=()
           for i in 0 1 2 3; do
             first=$(( i * per + 1 ))
             count=$(( first + per - 1 > total ? total - first + 1 : per ))
-            [ "$count" -gt 0 ] && python generate.py --opening ${{ matrix.opening }} --level ${{ matrix.level }} \
-              --games "$count" --first "$first" --out out &
+            if [ "$count" -gt 0 ]; then
+              python generate.py --opening ${{ matrix.opening }} --level ${{ matrix.level }} \
+                --games "$count" --first "$first" --out out &
+              pids+=($!)
+            fi
           done
-          wait
-      - uses: actions/upload-artifact@v4
+          failed=0
+          for pid in "${pids[@]}"; do wait "$pid" || failed=1; done
+          exit $failed
+      # Keep what the other shards made even when one crashes.
+      - if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: games-${{ matrix.opening }}-${{ matrix.level }}
           path: pipeline/out
 
   publish:
     needs: generate
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
