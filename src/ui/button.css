@@ -1,0 +1,56 @@
+.btn {
+  min-height: var(--tap);
+  border: 0;
+  border-radius: var(--r-md);
+  padding: 0 18px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform var(--t-tap) var(--ease-out), box-shadow var(--t-tap) var(--ease-out), background var(--t-tap);
+  touch-action: manipulation;
+}
+.btn-lg {
+  min-height: 54px;
+  font-size: var(--fs-lg);
+  width: 100%;
+}
+/* The darker lip gives each button a physical press: it sinks when tapped. */
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 4px 0 var(--accent-lip);
+}
+.btn-good {
+  background: var(--good);
+  color: #fff;
+  box-shadow: 0 4px 0 var(--good-lip);
+}
+.btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 0 0 2px var(--line) inset, 0 4px 0 var(--line);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--accent);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(3px);
+}
+.btn-primary:active:not(:disabled) {
+  box-shadow: 0 1px 0 var(--accent-lip);
+}
+.btn-good:active:not(:disabled) {
+  box-shadow: 0 1px 0 var(--good-lip);
+}
+.btn-secondary:active:not(:disabled) {
+  box-shadow: 0 0 0 2px var(--line) inset, 0 1px 0 var(--line);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
