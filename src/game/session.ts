@@ -525,11 +525,16 @@ export class GameSession {
       this.finish();
       return;
     }
-    for (let ply = this.game.turns[turnIndex].ply; ply <= Math.max(this.ply, result.resumePly); ply++) this.quietPlies.add(ply);
+    this.keepQuiet(this.game.turns[turnIndex].ply, result.resumePly);
     this.update({ phase: { kind: 'playing' } });
     await this.catchUp(result.resumePly);
     // One short beat while the panel settles into the dock, then the game plays on.
     await this.until(this.deps.wait(RESUME_MS));
+  }
+
+  /** No note on an answered key position, nor on the moves its panel played on from there. */
+  private keepQuiet(from: number, to: number): void {
+    for (let ply = from; ply <= Math.max(from, to); ply++) this.quietPlies.add(ply);
   }
 
   private async askPause(turnIndex: number, type: PausedType, practice = false): Promise<PauseResult> {
