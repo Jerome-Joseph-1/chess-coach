@@ -112,3 +112,19 @@ test('continuing from the engine view hands the board back clean', async ({ page
   await expect(page.locator('.eval-bar')).toBeHidden();
   await expect(page.locator('.cm-chessboard .arrow-best, .cm-chessboard .arrow-mistake')).toHaveCount(0);
 });
+
+test('Analyse on the game screen opens the engine on the board and Done puts the game back', async ({ page }) => {
+  await page.goto('./#/play/italian/1400');
+  await expect(playButton(page)).toBeVisible();
+  const pieces = await page.locator('.cm-chessboard .piece').count();
+
+  await page.getByRole('button', { name: 'Analyse', exact: true }).click();
+  await expectRows(page, 3, ENGINE_LOAD_MS);
+  await expect(barLabel(page)).not.toBeEmpty();
+  await expectBoardUncovered(page);
+
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(playButton(page)).toBeVisible();
+  await expect(page.locator('.eval-bar')).toBeHidden();
+  await expect(page.locator('.cm-chessboard .piece')).toHaveCount(pieces);
+});

@@ -32,7 +32,7 @@ export const stepForwardButton = (page: Page) => page.getByRole('button', { name
 export const previousKeyButton = (page: Page) => page.getByRole('button', { name: 'Previous key position' });
 export const moveList = (page: Page) => page.locator('.game-moves li');
 /** The one line above the controls that says when the board shows an earlier move. */
-export const lookingBackLine = (page: Page) => page.locator('.game-looking');
+export const lookingBackLine = (page: Page) => page.locator('.game-looking p');
 
 /** Taps Continue on a key position's sheet and waits for the game to move on by itself. */
 export async function continueAfterPause(page: Page) {

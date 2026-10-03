@@ -20,13 +20,15 @@
   --room: 304px;
   --chrome: calc(var(--top-bar) + var(--player-bar));
 }
-.game:has(.pause-reveal .stepper) {
+.game:has(.pause-reveal .stepper),
+.game:has(.analysis) {
   --room: 366px;
   --chrome: var(--top-bar);
 }
 .game.is-paused .game-player.is-you,
 .game.is-paused .game-moves,
-.game:has(.pause-reveal .stepper) .game-player.is-opponent {
+.game:has(.pause-reveal .stepper) .game-player.is-opponent,
+.game:has(.analysis) .game-player.is-opponent {
   display: none;
 }
 
@@ -154,11 +156,28 @@
   padding: 16px 16px 20px;
 }
 .game-looking {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   min-height: 16px;
-  margin: 0;
   color: var(--text-muted);
   font: var(--text-label);
-  text-align: center;
+}
+.game-looking p {
+  margin: 0;
+}
+/* A quiet text button: the engine only comes in when the user asks. */
+.game-analyse {
+  min-height: 32px;
+  margin: -8px 0;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--text-strong);
+  font: var(--text-callout);
+  cursor: pointer;
+  touch-action: manipulation;
 }
 .game-controls {
   display: flex;

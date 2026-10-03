@@ -6,9 +6,11 @@ import type { BoardController } from '../board/types';
 import { openingById } from '../content/catalog';
 import { loadGame, loadSet } from '../content/loader';
 import type { Level, OpeningId, Side } from '../content/types';
+import { Analysis } from '../engine/Analysis';
 import { lostPieces, materialLead } from '../game/material';
 import { GameSession, type SessionDeps, type SessionView } from '../game/session';
 import { PauseSheet } from '../pause/PauseSheet';
+import { Sheet } from '../pause/Sheet';
 import { getDepth, getSettings, playedGameIds, recordGame, recordMoment } from '../progress/store';
 import { navigate } from '../router';
 import { Button } from '../ui/Button';
@@ -71,7 +73,8 @@ export function Game({ opening, level, review }: GameProps) {
 
   useEffect(() => () => session.current?.dispose(), []);
 
-  const paused = view?.phase.kind === 'pause';
+  const [analysing, setAnalysing] = useState(false);
+  const paused = view?.phase.kind === 'pause' || analysing;
 
   return (
     <main class={paused ? 'game is-paused' : 'game'}>
@@ -100,7 +103,12 @@ export function Game({ opening, level, review }: GameProps) {
       <MoveStrip moves={view?.history ?? []} shown={view?.shown ?? 0} />
 
       <section class="game-slot">
-        {view && board && session.current && <Slot view={view} board={board} session={session.current} />}
+        {view && board && session.current && analysing && (
+          <AnalysisSheet board={board} side={side} onClose={() => setAnalysing(false)} />
+        )}
+        {view && board && session.current && !analysing && (
+          <Slot view={view} board={board} session={session.current} onAnalyse={() => setAnalysing(true)} />
+        )}
         {!view && <Status text="Loading…" />}
       </section>
     </main>
@@ -161,9 +169,20 @@ interface SlotProps {
   view: SessionView;
   board: BoardController;
   session: GameSession;
+  onAnalyse: () => void;
 }
 
-function Slot({ view, board, session }: SlotProps) {
+/** The engine's look at the position on the board, opened only when the user asks. */
+function AnalysisSheet({ board, side, onClose }: { board: BoardController; side: Side; onClose: () => void }) {
+  const sheet = useRef<HTMLDivElement>(null);
+  return (
+    <Sheet innerRef={sheet} label="Analysis">
+      <Analysis board={board} fen={board.fen()} userSide={side} onClose={onClose} />
+    </Sheet>
+  );
+}
+
+function Slot({ view, board, session, onAnalyse }: SlotProps) {
   const { phase, game } = view;
   if (phase.kind === 'error') {
     return (
@@ -187,7 +206,7 @@ function Slot({ view, board, session }: SlotProps) {
       />
     );
   }
-  if (phase.kind === 'ready' || phase.kind === 'playing') return <Controls view={view} session={session} />;
+  if (phase.kind === 'ready' || phase.kind === 'playing') return <Controls view={view} session={session} onAnalyse={onAnalyse} />;
   if (phase.kind === 'done') {
     return (
       <div class="game-done">
@@ -210,14 +229,19 @@ function mainLabel({ phase, returning }: SessionView): string {
   return returning ? 'Continue' : 'Play';
 }
 
-function Controls({ view, session }: { view: SessionView; session: GameSession }) {
+function Controls({ view, session, onAnalyse }: { view: SessionView; session: GameSession; onAnalyse: () => void }) {
   const { controls } = view;
   const playing = view.phase.kind === 'playing';
   return (
     <>
-      <p class="game-looking" aria-live="polite">
-        {lookingBackLine(view)}
-      </p>
+      <div class="game-looking">
+        <p aria-live="polite">{lookingBackLine(view)}</p>
+        {!playing && (
+          <button type="button" class="game-analyse" onClick={onAnalyse}>
+            Analyse
+          </button>
+        )}
+      </div>
       <div class="game-controls">
         <StepButton label="Previous key position" disabled={!controls.previousKey} onClick={() => session.previousKeyPosition()}>
           <path d="M6 5v14M18 5l-9 7 9 7" />
