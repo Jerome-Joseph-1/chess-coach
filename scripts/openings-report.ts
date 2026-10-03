@@ -1,5 +1,5 @@
 // Measures how much of the games' openings the coach's notes cover, and lists the positions still without one.
-// Usage: npx vite-node scripts/openings-report.ts <content-dir> <report.md>
+// Usage: npx vite-node scripts/openings-report.ts <content-dir> <report.md>   (TOP=n lists more uncovered positions)
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Chess } from 'chess.js';
@@ -76,6 +76,7 @@ function section(opening: OpeningId, games: string[][]): string {
   return [
     `## ${opening} (${games.length} games, ${plies.length} plies up to move ${MAX_PLIES / 2})`,
     '',
+    `- Plies are counted from move 1, the set's fixed first moves included.`,
     `- Plies with a note: ${noted} (${percent(noted, plies.length)})`,
     `- Plies with a note or inside a variation with a plan: ${covered} (${percent(covered, plies.length)})`,
     `- Positions: ${positions.size}, with a note: ${rows.filter((r) => r.note).length}`,
