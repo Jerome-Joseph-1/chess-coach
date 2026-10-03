@@ -130,7 +130,7 @@ test('a wrong move is only an error and the piece goes back; the right one finis
     await expect(page.getByText('Not quite. Try again.')).toBeVisible();
     await expect(page.getByText('Your move', { exact: true })).toBeVisible();
   }
-  await expect(hintButton(page)).toHaveText('Hint · 1 of 3');
+  await expect(hintButton(page)).toHaveText('Hint: the idea');
   await expect(page.getByRole('button', { name: 'Show solution' })).toBeVisible();
 
   await tapSquares(page, 'd4', 'e5');
@@ -165,7 +165,7 @@ test('a move that loses material stays on the board while the reply shows what i
   await expect(page.getByText('You found the move')).toBeVisible();
 });
 
-test('hints climb Pattern, Piece, Move: the pattern, then the piece in trouble, then the move', async ({ page }) => {
+test('hints climb Idea, Piece, Move: the pattern, then the piece in trouble, then the move', async ({ page }) => {
   await atStage(page, 3);
   await reachFirstPause(page);
   await winButton(page).click();
@@ -175,19 +175,21 @@ test('hints climb Pattern, Piece, Move: the pattern, then the piece in trouble, 
   await expect(page.getByText('Is any enemy piece not defended enough?')).toBeVisible();
   await expect(page.locator('.pattern-label')).toHaveText('Free piece');
   await expect(page.locator('.hint-stop.is-used')).toHaveCount(1);
-  await expect(hintButton(page)).toHaveText('Hint · 2 of 3');
+  await expect(page.locator('.hint-stop.is-next')).toHaveText('Piece');
+  await expect(hintButton(page)).toHaveText('Hint: the piece');
 
   // The second hint points at the loose pawn on e5, not at the pawn on d4 that takes it.
   await hintButton(page).click();
   await expect(page.getByText("It's Black's pawn on e5.")).toBeVisible();
   await expect(page.locator('.cm-chessboard .marker-hint')).toHaveCount(1);
   expect(await squareOf(page, '.cm-chessboard .marker-hint')).toBe('e5');
-  await expect(hintButton(page)).toHaveText('Hint · 3 of 3');
+  await expect(hintButton(page)).toHaveText('Hint: the move');
 
   await hintButton(page).click();
   await expect(page.getByText("It's Black's pawn on e5. Play the move shown.")).toBeVisible();
   await expect(page.locator('.cm-chessboard .arrow-best')).toHaveCount(1);
   await expect(page.locator('.hint-stop.is-used')).toHaveCount(3);
+  await expect(hintButton(page)).toHaveText('No hints left');
   await expect(hintButton(page)).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Show solution' })).toBeEnabled();
   await tapSquares(page, 'd4', 'e5');
@@ -226,7 +228,7 @@ test('buttons say what they do in words, with at most a drawn icon and never an 
   await atStage(page, 3);
   await reachFirstPause(page);
   const labels = () => page.locator('.pause-sheet button:not([aria-hidden="true"] button)').allTextContents();
-  const plain = /^[A-Za-z' ,.?·\d]*$/;
+  const plain = /^[A-Za-z' ,.?:·\d]*$/;
 
   await expect(winButton(page)).toBeVisible();
   expect(await labels()).toEqual(ANSWERS);
@@ -234,7 +236,7 @@ test('buttons say what they do in words, with at most a drawn icon and never an 
   await expect(page.getByRole('button', { name: 'Show solution' })).toBeVisible();
   await expect(page.locator('.pause-sheet .xfade-out')).toHaveCount(0);
   // Show solution is the quiet action; Hint comes last and fills the row.
-  expect(await labels()).toEqual(['Show solution', 'Hint · 1 of 3']);
+  expect(await labels()).toEqual(['Show solution', 'Hint: the idea']);
   await page.getByRole('button', { name: 'Show solution' }).click();
   await expect(continueButton(page)).toBeVisible();
   expect((await labels()).every((text) => plain.test(text))).toBe(true);

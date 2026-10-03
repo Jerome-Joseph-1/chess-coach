@@ -16,7 +16,7 @@ export function TextLink({ label, onClick }: LinkProps) {
 }
 
 export interface PlayActionsProps {
-  /** "Hint · 1 of 3"; it stays on the last rung, faded, once every hint is used. */
+  /** What the next hint shows, e.g. "Hint: the idea"; faded once every hint is used. */
   hintLabel: string;
   hintsLeft: boolean;
   disabled: boolean;

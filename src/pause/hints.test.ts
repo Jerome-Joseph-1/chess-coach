@@ -18,22 +18,23 @@ const toSolve: FlowEvent[] = [{ type: 'spot', pick: 'win' }, { type: 'advance' }
 const toFollowUp: FlowEvent[] = [...toSolve, { type: 'move', uci: scriptedUci(italian1, TURN) }, { type: 'advance' }, { type: 'replied' }];
 
 describe('the hint ladder', () => {
-  it('climbs Pattern, Piece, Move on the play step, and the button names the next rung', () => {
-    expect(hintLadder(after(3, toSolve))).toEqual({ stops: ['Pattern', 'Piece', 'Move'], used: 0 });
-    expect(hintButtonLabel(hintLadder(after(3, toSolve)))).toBe('Hint · 1 of 3');
-    expect(hintButtonLabel(hintLadder(after(3, [...toSolve, hint])))).toBe('Hint · 2 of 3');
-    expect(hintButtonLabel(hintLadder(after(3, [...toSolve, hint, hint])))).toBe('Hint · 3 of 3');
+  it('climbs Idea, Piece, Move on the play step, and the button says what the next tap shows', () => {
+    expect(hintLadder(after(3, toSolve))).toEqual({ stops: ['Idea', 'Piece', 'Move'], used: 0 });
+    expect(hintButtonLabel(hintLadder(after(3, toSolve)))).toBe('Hint: the idea');
+    expect(hintButtonLabel(hintLadder(after(3, [...toSolve, hint])))).toBe('Hint: the piece');
+    expect(hintButtonLabel(hintLadder(after(3, [...toSolve, hint, hint])))).toBe('Hint: the move');
   });
 
-  it('stays on the last rung once every hint is used', () => {
+  it('says so once every hint is used', () => {
     const used = hintLadder(after(3, [...toSolve, hint, hint, hint]));
     expect(used.used).toBe(3);
-    expect(hintButtonLabel(used)).toBe('Hint · 3 of 3');
+    expect(hintButtonLabel(used)).toBe('No hints left');
   });
 
   it('starts at the piece on a follow-up move, which has no pattern of its own', () => {
     expect(hintLadder(after(5, toFollowUp))).toEqual({ stops: ['Piece', 'Move'], used: 0 });
-    expect(hintButtonLabel(hintLadder(after(5, [...toFollowUp, hint])))).toBe('Hint · 2 of 2');
+    expect(hintButtonLabel(hintLadder(after(5, toFollowUp)))).toBe('Hint: the piece');
+    expect(hintButtonLabel(hintLadder(after(5, [...toFollowUp, hint])))).toBe('Hint: the move');
   });
 });
 

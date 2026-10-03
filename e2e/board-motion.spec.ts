@@ -90,10 +90,10 @@ test('the hint arrow draws itself in, and fades out when the board moves on', as
   await reachYourMove(page);
   const drawIns = await watchArrowDrawIn(page);
   const leaving = await countAdded(page, '.arrow-leaving');
-  await page.getByRole('button', { name: 'Hint · 1 of 3' }).click();
-  await page.getByRole('button', { name: 'Hint · 2 of 3' }).click();
+  await page.getByRole('button', { name: 'Hint: the idea' }).click();
+  await page.getByRole('button', { name: 'Hint: the piece' }).click();
   await expect(page.locator('.cm-chessboard .marker-hint')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Hint · 3 of 3' }).click();
+  await page.getByRole('button', { name: 'Hint: the move' }).click();
 
   await expect(page.locator('.cm-chessboard .arrow-best')).toHaveCount(1);
   expect(await drawIns()).toEqual([true]);
@@ -108,9 +108,9 @@ test('with reduced motion there are no specks and arrows simply appear', async (
   await reachYourMove(page);
   const specks = await countAdded(page, '.burst-speck');
   const drawIns = await watchArrowDrawIn(page);
-  await page.getByRole('button', { name: 'Hint · 1 of 3' }).click();
-  await page.getByRole('button', { name: 'Hint · 2 of 3' }).click();
-  await page.getByRole('button', { name: 'Hint · 3 of 3' }).click();
+  await page.getByRole('button', { name: 'Hint: the idea' }).click();
+  await page.getByRole('button', { name: 'Hint: the piece' }).click();
+  await page.getByRole('button', { name: 'Hint: the move' }).click();
   await expect(page.locator('.cm-chessboard .arrow-best')).toHaveCount(1);
   expect(await drawIns()).toEqual([false]);
 

@@ -61,7 +61,8 @@ export const SPOT_QUESTION = "What's going on here?";
 export const choiceButton = (page: Page, label: string) => page.getByRole('button', { name: label, exact: true });
 /** The right answer at the fixture game's first key position, where dxe5 wins a pawn. */
 export const winButton = (page: Page) => choiceButton(page, 'Win material');
-export const hintButton = (page: Page) => page.getByRole('button', { name: /^Hint · \d of \d$/ });
+/** The hint button, which names what the next tap shows. */
+export const hintButton = (page: Page) => page.getByRole('button', { name: /^(Hint: the (idea|piece|move)|No hints left)$/ });
 export const moveList = (page: Page) => page.locator('.game-moves .game-move');
 /** The coach's line under the board, which also says when the board shows an earlier move. */
 export const coachLine = (page: Page) => page.locator('.coach-line p');

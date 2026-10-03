@@ -11,9 +11,10 @@ export interface HintLadder {
   used: number;
 }
 
-const FULL = ['Pattern', 'Piece', 'Move'];
+const FULL = ['Idea', 'Piece', 'Move'];
 /** Follow-up moves have no pattern of their own, so their ladder starts at the piece. */
 const FOLLOW_UP = ['Piece', 'Move'];
+const NO_HINTS_LEFT = 'No hints left';
 
 export function hintLadder(state: FlowState): HintLadder {
   // A reply always leads to a follow-up move.
@@ -21,9 +22,9 @@ export function hintLadder(state: FlowState): HintLadder {
   return { stops: FULL, used: state.hint };
 }
 
-/** "Hint · 1 of 3": the rung the next tap shows; the last one stays named once it is used. */
+/** What the next tap shows, e.g. "Hint: the piece". */
 export function hintButtonLabel({ stops, used }: HintLadder): string {
-  return `Hint · ${Math.min(used + 1, stops.length)} of ${stops.length}`;
+  return used < stops.length ? `Hint: the ${stops[used].toLowerCase()}` : NO_HINTS_LEFT;
 }
 
 export interface Trouble {
