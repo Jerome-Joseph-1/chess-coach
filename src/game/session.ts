@@ -26,6 +26,8 @@ const REPLAY_PLIES = 4;
 const REPLAY_MS = 250;
 /** A note is shown in full this many times; after that only the variation's name is shown. */
 const FULL_READS = 2;
+/** Autoplay stops for at most this many new plans in one game. */
+const MAX_NOTE_STOPS = 2;
 
 export interface SessionDeps {
   board: BoardController;
@@ -46,6 +48,8 @@ export interface SessionDeps {
   noteFor(fen: string, lastSan: string | null): OpeningNote | null;
   noteSeenCount(id: string): number;
   markNoteSeen(id: string): void;
+  /** The user asked autoplay to stop on every new note, not only on a new plan. */
+  stopsAtEveryNote(): boolean;
 }
 
 export type PausedType = 'pause' | 'nothing';
@@ -127,6 +131,8 @@ export class GameSession {
   private handledPlies = new Set<number>();
   /** Notes counted as read in this game: they stay in full whenever their position is shown again. */
   private readNotes = new Set<string>();
+  /** How often autoplay has stopped on a note in this game. */
+  private noteStops = 0;
   /** Answered key positions and the moves their panel played: the question was the lesson there, so no note. */
   private quietPlies = new Set<number>();
   private pauseResolver: ((result: PauseResult) => void) | null = null;
@@ -178,7 +184,7 @@ export class GameSession {
       if (!(await this.setup())) return;
       if (this.review) await this.askNextMoment();
       else {
-        this.readNoteAt(0);
+        this.readShownNote();
         this.update({ phase: { kind: 'ready' }, status: '' });
       }
     });
@@ -263,6 +269,7 @@ export class GameSession {
     this.enqueue(async () => {
       try {
         if (!this.finished) await task();
+        if (!this.isPlaying()) this.readShownNote();
       } finally {
         this.setMoving(false);
       }
@@ -305,27 +312,37 @@ export class GameSession {
 
   /** The note on the position shown: in full while it is new to the user, else only the variation's name. */
   private shownNote(): SessionView['note'] {
-    if (this.quietPlies.has(this.viewPly) || (this.viewPly === this.ply && this.nextMoment())) return null;
     const note = this.noteAt(this.viewPly);
     if (!note) return null;
-    const full = this.readNotes.has(note.id) || this.deps.noteSeenCount(note.id) < FULL_READS;
+    const full = this.readNotes.has(note.id) || this.isNew(note);
     return { name: note.name, text: full ? note.text : null };
   }
 
+  /** The note on the position after `ply` moves; none where a question, or the moves after its answer, teach instead. */
   private noteAt(ply: number): OpeningNote | null {
+    if (this.quietPlies.has(ply) || this.momentAt(ply)) return null;
     const { start, moves } = this.game;
     const lastSan = ply === 0 ? (start.at(-1) ?? null) : moves[ply - 1];
     return this.deps.noteFor(this.positionAt(ply), lastSan);
   }
 
-  /** Counts the note on the position after `ply` moves as read, when autoplay brings the user there while it is new. */
-  private readNoteAt(ply: number): OpeningNote | null {
-    if (this.momentAt(ply)) return null;
-    const note = this.noteAt(ply);
-    if (!note || this.readNotes.has(note.id) || this.deps.noteSeenCount(note.id) >= FULL_READS) return null;
+  private isNew(note: OpeningNote): boolean {
+    return !this.readNotes.has(note.id) && this.deps.noteSeenCount(note.id) < FULL_READS;
+  }
+
+  /** Counts the note shown as read: the board rests on it, so the user had time to read it. A note autoplay passes is not counted. */
+  private readShownNote(): void {
+    const note = this.noteAt(this.viewPly);
+    if (!note || !this.isNew(note)) return;
     this.readNotes.add(note.id);
     this.deps.markNoteSeen(note.id);
-    return note;
+  }
+
+  /** Autoplay stops for a plan the user has never seen, a few times a game; or for every new note, if they chose that. */
+  private holdsOn(note: OpeningNote | null): boolean {
+    if (!note || !this.isNew(note)) return false;
+    if (this.deps.stopsAtEveryNote()) return true;
+    return note.plan && this.deps.noteSeenCount(note.id) === 0 && this.noteStops < MAX_NOTE_STOPS;
   }
 
   private currentDots(): DotState[] {
@@ -470,6 +487,8 @@ export class GameSession {
       } else await this.playPaced();
     }
     if (this.ply >= this.steps.length && !this.finished) this.finish();
+    // Stopped by the user or for a note; a step the user asked for counts its own note.
+    else if (!this.finished && !this.moving) this.readShownNote();
   }
 
   /** The key position waiting at the live position, if it has not been answered yet. */
@@ -507,12 +526,15 @@ export class GameSession {
 
   /** One move per beat, however long the animation takes: quicker through a long stretch, slower into a stop. */
   private async playPaced(): Promise<void> {
-    const note = this.readNoteAt(this.ply + 1);
-    const pace = note ? null : this.deps.wait(beat(this.streak, this.movesUntilStop()));
+    const holds = this.holdsOn(this.noteAt(this.ply + 1));
+    const pace = holds ? null : this.deps.wait(beat(this.streak, this.movesUntilStop()));
     this.streak++;
     await this.until(Promise.all([this.playForward(), pace]));
-    // A new note waits for the user rather than a timer: reading speeds differ too much.
-    if (note && this.isPlaying()) this.update({ phase: { kind: 'ready' }, held: true });
+    // A held note waits for the user rather than a timer: reading speeds differ too much.
+    if (holds && this.isPlaying()) {
+      this.noteStops++;
+      this.update({ phase: { kind: 'ready' }, held: true });
+    }
   }
 
   /** Moves left to play before the next key position or the end of the game, the next one included. */

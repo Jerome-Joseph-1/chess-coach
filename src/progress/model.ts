@@ -56,6 +56,7 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   sound: true,
   haptics: true,
   quick: false,
+  everyNote: false,
   levels: { italian: 1400, 'caro-kann': 1400 },
 };
 
@@ -110,6 +111,7 @@ export function readSettings(raw: unknown): StoredSettings {
     sound: flag(r.sound, d.sound),
     haptics: flag(r.haptics, d.haptics),
     quick: flag(r.quick, d.quick),
+    everyNote: flag(r.everyNote, d.everyNote),
     levels: {
       italian: pick(LEVELS, levels.italian, d.levels.italian),
       'caro-kann': pick(LEVELS, levels['caro-kann'], d.levels['caro-kann']),

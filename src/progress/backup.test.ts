@@ -59,7 +59,7 @@ describe('backup validation', () => {
     const result = parseBackup(backupText({ v: 1 }, { theme: 'neon', board: 'purple', sound: false, depthOverride: 4, levels: { 'caro-kann': 2000, italian: 5 } }));
     if (!result.ok) throw new Error(result.error);
     expect(result.settings).toEqual({
-      theme: 'system', board: 'green', sound: false, haptics: true, quick: false, depthOverride: 4, levels: { italian: 1400, 'caro-kann': 2000 },
+      theme: 'system', board: 'green', sound: false, haptics: true, quick: false, everyNote: false, depthOverride: 4, levels: { italian: 1400, 'caro-kann': 2000 },
     });
   });
 });

@@ -16,6 +16,8 @@ export interface OpeningNote {
   /** The variation it belongs to, shown above the note, e.g. "Two Knights Defence". */
   name: string | null;
   text: string;
+  /** The plan where a family starts, rather than a note on one move. */
+  plan: boolean;
 }
 
 /** A family of lines and the plan behind it, e.g. the Two Knights Defence with 4.Ng5. */
@@ -85,12 +87,12 @@ function buildIndex(): NoteIndex {
   for (const family of new Set(Object.values(FAMILIES).flat())) {
     const [first] = family.lines;
     if (family.plan) {
-      const note = { id: family.id, name: family.name, text: family.plan };
+      const note = { id: family.id, name: family.name, text: family.plan, plan: true };
       for (const line of family.lines) plans.set(epd(play(split(line))), note);
     }
     for (const [after, text] of Object.entries(family.notes)) {
       const sans = [...split(first), ...split(after)];
-      moves.set(`${epd(play(sans))} ${sans.at(-1)}`, { id: moveNoteId(family, after), name: family.name, text });
+      moves.set(`${epd(play(sans))} ${sans.at(-1)}`, { id: moveNoteId(family, after), name: family.name, text, plan: false });
     }
   }
   return { plans, moves };

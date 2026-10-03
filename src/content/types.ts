@@ -126,5 +126,7 @@ export interface Settings {
   sound: boolean;
   haptics: boolean;
   quick: boolean;
+  /** Autoplay stops on every new opening note instead of only on a new plan. */
+  everyNote: boolean;
   levels: Record<OpeningId, Level>;
 }

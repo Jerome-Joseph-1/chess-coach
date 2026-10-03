@@ -91,11 +91,17 @@ describe('noteAt', () => {
       id: 'italian:e4 e5 Nf3 Nc6 Bc4',
       name: 'Italian Game',
       text: expect.stringContaining('f7'),
+      plan: false,
     });
   });
 
   it('shows the plan where a family starts', () => {
-    expect(noteAt([...ITALIAN, 'Nf6', 'Ng5'])).toEqual({ id: 'two-knights-ng5', name: 'Two Knights: 4.Ng5', text: expect.stringContaining('f7') });
+    expect(noteAt([...ITALIAN, 'Nf6', 'Ng5'])).toEqual({
+      id: 'two-knights-ng5',
+      name: 'Two Knights: 4.Ng5',
+      text: expect.stringContaining('f7'),
+      plan: true,
+    });
   });
 
   it('finds a plan reached by another move order', () => {

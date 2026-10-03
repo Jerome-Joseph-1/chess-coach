@@ -17,7 +17,7 @@ describe('settings', () => {
   it('starts with defaults', async () => {
     const store = await openStore();
     expect(store.getSettings()).toEqual({
-      theme: 'system', board: 'green', sound: true, haptics: true, quick: false, levels: { italian: 1400, 'caro-kann': 1400 },
+      theme: 'system', board: 'green', sound: true, haptics: true, quick: false, everyNote: false, levels: { italian: 1400, 'caro-kann': 1400 },
     });
   });
 
@@ -34,6 +34,14 @@ describe('settings', () => {
     expect((await openStore()).getSettings().board).toBe('green');
     storage.data.set('cc.settings.v1', JSON.stringify({ v: 1, board: 'brown' }));
     expect((await openStore()).getSettings().board).toBe('brown');
+  });
+
+  it('stops only for new plans unless the user asks for every note', async () => {
+    let store = await openStore();
+    expect(store.getSettings().everyNote).toBe(false);
+    store.saveSettings({ ...store.getSettings(), everyNote: true });
+    store = await openStore();
+    expect(store.getSettings().everyNote).toBe(true);
   });
 
   it('falls back to defaults for corrupt or invalid data', async () => {

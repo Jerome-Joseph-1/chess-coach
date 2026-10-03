@@ -6,7 +6,7 @@ const NOTE_IDS = [...new Set(Object.values(FAMILIES).flat())].flatMap((family) =
   ...Object.keys(family.notes).map((after) => moveNoteId(family, after)),
 ]);
 
-/** Counts every opening note as read twice, so the coach's line under the board says what the game is doing. */
+/** Counts every opening note as read twice: autoplay never stops for a plan, and the coach's line says what the game is doing. */
 export async function readAllNotes(page: Page) {
   const notesSeen = Object.fromEntries(NOTE_IDS.map((id) => [id, 2]));
   await page.addInitScript((seen) => {

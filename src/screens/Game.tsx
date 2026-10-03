@@ -57,6 +57,7 @@ function sessionDeps(board: BoardController): SessionDeps {
     noteFor,
     noteSeenCount,
     markNoteSeen,
+    stopsAtEveryNote: () => getSettings().everyNote,
   };
 }
 

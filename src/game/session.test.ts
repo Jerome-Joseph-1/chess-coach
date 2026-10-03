@@ -76,28 +76,35 @@ function setIndexOf(games: Game[], side: Side = 'w'): SetIndex {
 }
 
 interface NoteOptions {
-  /** A note on the position after this many scripted moves, by ply: its id. */
+  /** A note on the move that reaches the position after this many scripted moves, by ply: its id. */
   notes?: Record<number, string>;
+  /** A variation's plan on the position after this many scripted moves, by ply: its id. */
+  plans?: Record<number, string>;
   /** How often each note has been seen before this game. */
   seen?: Record<string, number>;
+  /** The user asked to stop on every new note. */
+  everyNote?: boolean;
 }
 
 const NOTE_NAME = 'Two Knights Defence';
 const noteText = (id: string) => `The coach explains ${id} here.`;
 
 /** Notes on positions of `game`, and a seen counter that behaves like the store's. */
-function fakeNotes(game: Game, { notes = {}, seen = {} }: NoteOptions) {
+function fakeNotes(game: Game, { notes = {}, plans = {}, seen = {}, everyNote = false }: NoteOptions) {
   const counts = { ...seen };
-  const ids = new Map(Object.entries(notes).map(([ply, id]) => [epd(positionAfter(game, Number(ply))), id]));
+  const byPosition = (byPly: Record<number, string>, plan: boolean) =>
+    Object.entries(byPly).map(([ply, id]): [string, { id: string; plan: boolean }] => [epd(positionAfter(game, Number(ply))), { id, plan }]);
+  const ids = new Map([...byPosition(notes, false), ...byPosition(plans, true)]);
   return {
     noteFor: vi.fn<SessionDeps['noteFor']>((fen) => {
-      const id = ids.get(epd(fen));
-      return id ? { id, name: NOTE_NAME, text: noteText(id) } : null;
+      const found = ids.get(epd(fen));
+      return found ? { ...found, name: NOTE_NAME, text: noteText(found.id) } : null;
     }),
     noteSeenCount: vi.fn<SessionDeps['noteSeenCount']>((id) => counts[id] ?? 0),
     markNoteSeen: vi.fn<SessionDeps['markNoteSeen']>((id) => {
       counts[id] = (counts[id] ?? 0) + 1;
     }),
+    stopsAtEveryNote: vi.fn(() => everyNote),
   };
 }
 
@@ -809,9 +816,9 @@ describe('opening notes', () => {
     expect(started.deps.noteFor).toHaveBeenCalledWith(positionAfter(fixtureGame(GAME_1), 0), 'Bc4');
   });
 
-  it('stops on a note autoplay reaches, counts it, and plays on from there with Continue', async () => {
+  it('stops on a new plan autoplay reaches, counts it, and plays on from there with Continue', async () => {
     momentsAt({ 3: 'pause' });
-    const started = await startReady({ notes: { 2: 'two' } });
+    const started = await startReady({ plans: { 2: 'two' } });
     const release = gateBeats(started);
     started.session.play();
     await flush();
@@ -821,7 +828,7 @@ describe('opening notes', () => {
     expect(movesPlayed(started)).toBe(2);
     expect(started.session.getView().note).toEqual(full('two'));
     expect(started.deps.markNoteSeen.mock.calls).toEqual([['two']]);
-    // The note's move waits for nothing: autoplay stops and the user reads at their own pace.
+    // The plan's move waits for nothing: autoplay stops and the user reads at their own pace.
     expect(started.session.getView().phase).toEqual({ kind: 'ready' });
     expect(started.session.getView().held).toBe(true);
     expect(waits(started)).toEqual([beat(0, 3)]);
@@ -833,9 +840,66 @@ describe('opening notes', () => {
     expect(waits(started)).toEqual([beat(0, 3), beat(0, 1)]);
   });
 
+  it('shows a note on a move as autoplay passes it, without stopping or counting it', async () => {
+    momentsAt({ 3: 'pause' });
+    const started = await startReady({ notes: { 2: 'two' } });
+    const release = gateBeats(started);
+    started.session.play();
+    await flush();
+    await release();
+    expect(shownPly(started)).toBe(2);
+    expect(started.session.getView().note).toEqual(full('two'));
+    expect(started.session.getView().phase.kind).toBe('playing');
+    await beatsUntilPause(started, release);
+    expect(waits(started)).toEqual([beat(0, 3), beat(1, 2), beat(2, 1)]);
+    expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
+  });
+
+  it('stops for at most two new plans in a game', async () => {
+    const started = await startReady({ plans: { 1: 'one', 2: 'two', 3: 'three' } });
+    const stops: number[] = [];
+    started.session.subscribe((view) => {
+      if (view.held) stops.push(shownPly(started));
+    });
+    started.session.play();
+    await waitForPhase(started, 'ready');
+    started.session.play();
+    await waitForPhase(started, 'ready');
+    started.session.play();
+    await waitForPhase(started, 'done');
+    expect([...new Set(stops)]).toEqual([1, 2]);
+    expect(started.deps.markNoteSeen.mock.calls).toEqual([['one'], ['two']]);
+  });
+
+  it('plays through a plan seen before, still in full while it is new', async () => {
+    momentsAt({ 3: 'pause' });
+    const started = await startReady({ plans: { 2: 'two' }, seen: { two: 1 } });
+    const release = gateBeats(started);
+    started.session.play();
+    await flush();
+    await release();
+    expect(started.session.getView().note).toEqual(full('two'));
+    await beatsUntilPause(started, release);
+    expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
+  });
+
+  it('stops on every new note when the user asks for it', async () => {
+    momentsAt({ 3: 'pause' });
+    const started = await startReady({ notes: { 1: 'one', 2: 'two' }, everyNote: true });
+    started.session.play();
+    await waitForPhase(started, 'ready');
+    expect(shownPly(started)).toBe(1);
+    expect(started.session.getView().held).toBe(true);
+    started.session.play();
+    await flush();
+    await waitForPhase(started, 'ready');
+    expect(shownPly(started)).toBe(2);
+    expect(started.deps.markNoteSeen.mock.calls).toEqual([['one'], ['two']]);
+  });
+
   it('shows only the name once the note has been read twice, without holding the move', async () => {
     momentsAt({ 3: 'pause' });
-    const started = await startReady({ notes: { 2: 'two' }, seen: { two: 2 } });
+    const started = await startReady({ plans: { 2: 'two' }, seen: { two: 2 }, everyNote: true });
     const release = gateBeats(started);
     started.session.play();
     await flush();
@@ -881,7 +945,7 @@ describe('opening notes', () => {
     expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
   });
 
-  it('shows the note of the position stepped to without counting it', async () => {
+  it('counts the note of a position the user steps to, once a game', async () => {
     const started = await startReady({ notes: { 1: 'one' } });
     await stepForward(started);
     expect(started.session.getView().note).toEqual(full('one'));
@@ -889,21 +953,23 @@ describe('opening notes', () => {
     expect(started.session.getView().note).toBeNull();
     await stepBack(started);
     expect(started.session.getView().note).toEqual(full('one'));
-    expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
+    expect(started.deps.markNoteSeen.mock.calls).toEqual([['one']]);
   });
 
-  it('keeps a note read in this game in full when the user looks back at it', async () => {
+  it('counts the note the user pauses on, and keeps it in full when they look back at it', async () => {
     const started = await startReady({ notes: { 1: 'one' }, seen: { one: 1 } });
     const release = gateBeats(started);
     started.session.play();
     await flush();
-    await release();
     started.session.pausePlayback();
     await release();
+    expect(shownPly(started)).toBe(1);
     expect(started.deps.noteSeenCount('one')).toBe(2);
-    await stepBack(started, movesPlayed(started) - 1);
+    await stepForward(started);
+    await stepBack(started);
     expect(shownPly(started)).toBe(1);
     expect(started.session.getView().note).toEqual(full('one'));
+    expect(started.deps.markNoteSeen.mock.calls).toEqual([['one']]);
   });
 
   it('shows no note while a review replays its moves', async () => {

@@ -173,6 +173,14 @@ export function Settings() {
                 onChange={(quick) => update({ quick })}
               />
             </li>
+            <li>
+              <Switch
+                label="Stop at every opening note"
+                hint="The game waits while you read each new note. When off, it waits only for a new opening plan."
+                checked={settings.everyNote}
+                onChange={(everyNote) => update({ everyNote })}
+              />
+            </li>
           </ul>
         </section>
 

@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { coachLine, playButton } from './board';
+import { coachLine, moveList, playButton } from './board';
 
 const PLAY_URL = './#/play/italian/1400';
 const START_NOTE = 'italian:e4 e5 Nf3 Nc6 Bc4';
@@ -40,7 +40,7 @@ test('the opening position is explained under the name of the opening, and count
   expect(await seenCount(page, START_NOTE)).toBe(1);
 });
 
-test('autoplay stops on a new note, and Continue plays on to the next one', async ({ page }) => {
+test('autoplay stops for a new plan, at most twice a game, and plays through notes on moves', async ({ page }) => {
   await playQuietGame(page);
   await playButton(page).click();
   await expect(noteName(page)).toHaveText('Two Knights Defence', { timeout: RUN_MS });
@@ -54,6 +54,22 @@ test('autoplay stops on a new note, and Continue plays on to the next one', asyn
   await expect(noteName(page)).toHaveText('Two Knights: 4.d4', { timeout: RUN_MS });
   await expect(coachLine(page)).toHaveText(/^4\.d4 opens the centre/);
   await expect(main).toHaveText('Continue');
+
+  // The notes on the next moves show as they pass; the game does not wait for them or count them as read.
+  await main.click();
+  await expect.poll(() => moveList(page).count(), { timeout: RUN_MS }).toBeGreaterThanOrEqual(5 + 6);
+  await expect(main).toHaveText('Pause');
+  expect(await seenCount(page, 'two-knights-d4:Nxe4')).toBe(0);
+});
+
+test('with every note chosen in Settings, autoplay also stops for notes on moves', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('cc.settings.v1', JSON.stringify({ v: 1, everyNote: true })));
+  await seedNotesSeen(page, { 'two-knights': 2, 'two-knights-d4': 2 });
+  await playQuietGame(page);
+  await playButton(page).click();
+  await expect(coachLine(page)).toHaveText(/^4\.\.\.Nxe4 grabs a pawn/, { timeout: RUN_MS });
+  await expect(page.locator('.game-main')).toHaveText('Continue');
+  expect(await seenCount(page, 'two-knights-d4:Nxe4')).toBe(1);
 });
 
 test('a note read once is shown in full a second time', async ({ page }) => {
