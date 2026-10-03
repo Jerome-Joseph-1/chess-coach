@@ -35,6 +35,12 @@ const CREDITS: Credit[] = [
     href: 'https://github.com/nmrugg/stockfish.js',
   },
   {
+    name: 'Opening names',
+    licence: 'CC0',
+    note: 'The names of the openings and their variations, from lichess-org/chess-openings.',
+    href: 'https://github.com/lichess-org/chess-openings',
+  },
+  {
     name: 'chess.js',
     licence: 'BSD-2-Clause',
     note: 'Move rules and notation.',
