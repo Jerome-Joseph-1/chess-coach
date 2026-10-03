@@ -115,7 +115,7 @@ function Summary({ moments, bonus }: { moments: MomentResult[]; bonus: boolean }
 function RecapBody({ game, bonus }: { game: GameSummary; bonus: boolean }) {
   const turns = useTurns(game);
   const [unlocked, setUnlocked] = useState(getLastGameUnlock);
-  const perfect = game.moments.length > 0 && game.moments.every(isRight);
+  const perfect = game.moments.some((m) => m.type !== 'nothing') && game.moments.every(isRight);
   usePerfectCelebration(game, perfect && !unlocked);
 
   const closeLevelUp = () => {

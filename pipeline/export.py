@@ -9,6 +9,16 @@ def load_games(folder):
     return [json.loads(p.read_text()) for p in sorted(folder.glob("games/*.json"))]
 
 
+def has_critical(game):
+    return any(t["label"] == "critical" for t in game["turns"])
+
+
+def write_games(games, folder):
+    folder.mkdir(parents=True)
+    for game in games:
+        (folder / f"{game['id']}.json").write_text(json.dumps(game, separators=(",", ":")))
+
+
 def set_report(name, games):
     turns = [t for g in games for t in g["turns"]]
     labels = Counter(t["label"] for t in turns)
@@ -26,14 +36,15 @@ def main():
     args.target.mkdir(parents=True, exist_ok=True)
     sets, rows = [], []
     for folder in sorted(p for p in args.source.iterdir() if (p / "games").is_dir()):
-        games = load_games(folder)
+        # A game with no critical moment would only ever ask "is something happening?" on quiet positions.
+        games = [g for g in load_games(folder) if has_critical(g)]
         if not games:
             continue
         first = games[0]
         out = args.target / folder.name
         if out.exists():
             shutil.rmtree(out)
-        shutil.copytree(folder / "games", out / "games")
+        write_games(games, out / "games")
         index = {"opening": first["opening"], "level": first["level"], "side": first["side"], "start": first["start"],
                  "games": [{"id": g["id"], "moves": g["moves"]} for g in games]}
         (out / "index.json").write_text(json.dumps(index, separators=(",", ":")))
