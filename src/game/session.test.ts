@@ -845,7 +845,7 @@ describe('opening notes', () => {
     expect(started.deps.noteSeenCount('start')).toBe(2);
   });
 
-  it('keeps the question first where a key position opens, then reads the note as play resumes', async () => {
+  it('keeps the question first where a key position opens, and plays on from it at the usual pace', async () => {
     momentsAt({ 3: 'pause' });
     const started = await playToPause({ notes: { 3: 'three' } });
     expect(started.session.getView().note).toBeNull();
@@ -854,9 +854,24 @@ describe('opening notes', () => {
     gateBeats(started);
     started.session.pauseDone({ outcomes: outcomes(true), resumePly: 3 });
     await flush();
-    expect(started.session.getView().note).toEqual(full('three'));
-    expect(started.deps.markNoteSeen.mock.calls).toEqual([['three']]);
-    expect(started.deps.wait).toHaveBeenCalledWith(readingMs(noteText('three')));
+    expect(started.session.getView().note).toBeNull();
+    expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
+    expect(started.deps.wait).toHaveBeenLastCalledWith(RESUME_MS);
+  });
+
+  it('shows no note on the moves a key position played out, even looking back', async () => {
+    momentsAt({ 3: 'pause' });
+    const started = await playToPause({ notes: { 3: 'three', 5: 'five' }, depth: 4 });
+    const release = gateBeats(started);
+    started.session.pauseDone({ outcomes: outcomes(true), resumePly: 5 });
+    await flush();
+    expect(started.session.getView().note).toBeNull();
+    started.session.pausePlayback();
+    await release();
+    await stepBack(started, movesPlayed(started) - 3);
+    expect(shownPly(started)).toBe(3);
+    expect(started.session.getView().note).toBeNull();
+    expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
   });
 
   it('shows the note of the position stepped to without counting it', async () => {

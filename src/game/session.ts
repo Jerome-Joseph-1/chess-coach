@@ -125,6 +125,8 @@ export class GameSession {
   private handledPlies = new Set<number>();
   /** Notes counted as read in this game: they stay in full whenever their position is shown again. */
   private readNotes = new Set<string>();
+  /** Answered key positions and the moves their panel played: the question was the lesson there, so no note. */
+  private quietPlies = new Set<number>();
   private pauseResolver: ((result: PauseResult) => void) | null = null;
   /** Everything that moves the board runs here, one task at a time. */
   private queue: Promise<void> = Promise.resolve();
@@ -300,8 +302,7 @@ export class GameSession {
 
   /** The note on the position shown: in full while it is new to the user, else only the variation's name. */
   private shownNote(): SessionView['note'] {
-    // A key position about to open asks its own question first.
-    if (this.viewPly === this.ply && this.nextMoment()) return null;
+    if (this.quietPlies.has(this.viewPly) || (this.viewPly === this.ply && this.nextMoment())) return null;
     const note = this.noteAt(this.viewPly);
     if (!note) return null;
     const full = this.readNotes.has(note.id) || this.deps.noteSeenCount(note.id) < FULL_READS;
@@ -524,11 +525,11 @@ export class GameSession {
       this.finish();
       return;
     }
+    for (let ply = this.game.turns[turnIndex].ply; ply <= Math.max(this.ply, result.resumePly); ply++) this.quietPlies.add(ply);
     this.update({ phase: { kind: 'playing' } });
     await this.catchUp(result.resumePly);
-    // One short beat while the panel settles into the dock, then the game plays on; longer if a note is new.
-    const note = this.readNoteAt(this.ply);
-    await this.until(this.deps.wait(note ? Math.max(RESUME_MS, readingMs(note.text)) : RESUME_MS));
+    // One short beat while the panel settles into the dock, then the game plays on.
+    await this.until(this.deps.wait(RESUME_MS));
   }
 
   private async askPause(turnIndex: number, type: PausedType, practice = false): Promise<PauseResult> {
