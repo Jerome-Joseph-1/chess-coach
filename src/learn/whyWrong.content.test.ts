@@ -1,9 +1,10 @@
 // Opt-in: runs over a whole content folder. CONTENT_DIR=<content-dir> npx vitest run src/learn/whyWrong.content.test.ts
 import { describe, expect, it } from 'vitest';
-import type { Game, Side } from '../content/types';
+import type { Game, Side, Turn } from '../content/types';
 import { materialChange } from '../pause/material';
-import { playLine as playedLine } from '../pause/position';
+import { moveBefore, playLine as playedLine } from '../pause/position';
 import { playLine } from './board';
+import { settled } from './loss';
 import { whyWrong, type WrongMove } from './whyWrong';
 
 const CONTENT_DIR: string | undefined = import.meta.env.CONTENT_DIR;
@@ -31,23 +32,29 @@ function namesMove(text: string, san: string): boolean {
 
 const PIECES: Record<string, string> = { pawn: 'p', knight: 'n', bishop: 'b', rook: 'r', queen: 'q' };
 
-/** The piece a text says the user loses: "wins your rook", "taking your knight on g4", "traps your bishop on b5". */
-function claimedPiece(text: string): string | null {
-  const found = text.match(/\b(?:wins|taking|traps) (?:your |a |the |two |three |four )?(pawn|knight|bishop|rook|queen)/);
-  return found ? PIECES[found[1]] : null;
+/** The pieces a text says the user loses: "wins your rook", "takes the queen", "can take your knight on g4", "traps your bishop". */
+function claimedPieces(text: string): string[] {
+  const claims = text.matchAll(/\b(?:wins|takes|taking|take|traps) (?:your |a |the )?(pawn|knight|bishop|rook|queen)/g);
+  return [...claims].map((claim) => PIECES[claim[1]]);
 }
 
-/** The line takes a piece of this type from the user and leaves the user's material lower. */
-function losesPiece(fen: string, line: string[], side: Side, type: string): boolean {
+/** The opponent takes a piece of this type in the line; a promoted piece taken back was only a pawn. */
+function takes(fen: string, line: string[], side: Side, type: string): boolean {
   const moves = playedLine(fen, line);
-  // A promoted piece taken back was only a pawn.
   const promoted = new Set(moves.filter((m) => m.side === side && m.uci.length === 5).map((m) => m.uci.slice(2, 4)));
-  const taken = moves.some((m) => m.side !== side && (promoted.has(m.uci.slice(2, 4)) ? 'p' : m.captured) === type);
-  return taken && materialChange(fen, moves.at(-1)!.after, side) < 0;
+  return moves.some((m) => m.side !== side && (promoted.has(m.uci.slice(2, 4)) ? 'p' : m.captured) === type);
+}
+
+/** The line the coach reads for a wrong move: the common mistake's own line or the move's refutation, played to the end of its exchange. */
+function punishingLine(turn: Turn, uci: string): string[] {
+  const [move] = playLine(turn.fen, [uci]);
+  const mistake = uci === turn.mistakeMove && turn.lines.mistake?.[0] === uci;
+  const stored = mistake ? turn.lines.mistake!.slice(1) : (turn.refutations[uci] ?? []);
+  return [uci, ...settled(move.after, stored)];
 }
 
 describe.skipIf(!CONTENT_DIR)('whyWrong over a whole content folder', () => {
-  it('never gives the answer away, and every blunder names a piece its line really wins', async () => {
+  it('never gives the answer away, and every piece it says is lost really goes', async () => {
     const games = await loadGames(CONTENT_DIR!);
     let checked = 0;
     for (const game of games) {
@@ -58,19 +65,24 @@ describe.skipIf(!CONTENT_DIR)('whyWrong over a whole content folder', () => {
         for (const uci of Object.keys(turn.grades)) {
           const move = playLine(turn.fen, [uci])[0];
           if (!move || answers.includes(move.san)) continue;
-          const lines = [[uci, ...(turn.refutations[uci] ?? [])], uci === turn.mistakeMove ? (turn.lines.mistake ?? []) : []];
+          const line = punishingLine(turn, uci);
           // The opponent may play a move written the same way, which names nothing of the user's.
-          const played = lines.flatMap((line) => playLine(turn.fen, line));
+          const played = playLine(turn.fen, line);
           const theirs = new Set(played.filter((m) => m.color !== game.side).flatMap((m) => [m.san, m.san.replace(/[+#]$/, '')]));
-          const first = whyWrong(game, i, uci, 0);
-          const told: WrongMove[] = first.kind === 'ignores-threat' ? [first, whyWrong(game, i, uci, 2)] : [first];
+          const told: WrongMove[] = [0, 1, 2].map((hint) => whyWrong(game, i, uci, hint as 0 | 1 | 2));
           for (const why of told) {
             const where = `${game.id} turn ${i} ${move.san}: ${why.text}`;
             for (const san of answers) if (!theirs.has(san)) expect(namesMove(why.text, san), where).toBe(false);
-            if (why.kind !== 'blunder') continue;
-            const piece = claimedPiece(why.text);
-            if (piece) expect(losesPiece(turn.fen, [uci, ...turn.refutations[uci]], game.side, piece), where).toBe(true);
-            else expect(why.text, where).toMatch(/checkmate|forced mate|wins material/);
+            expect(why.text, where).not.toMatch(/\bsafe\b|line that follows/);
+            const down = why.text.match(/you stay a (\w+) down/);
+            if (down) expect(moveBefore(game, turn.ply)?.captured, where).toBe(PIECES[down[1]]);
+            const shown = why.reply ? [uci, why.reply] : [];
+            for (const piece of claimedPieces(why.text.replace(/you stay a \w+ down/, ''))) {
+              expect(takes(turn.fen, line, game.side, piece) || takes(turn.fen, shown, game.side, piece), where).toBe(true);
+            }
+            if (why.kind === 'blunder' && !down && !/checkmate|forced mate/.test(why.text)) {
+              expect(materialChange(turn.fen, playedLine(turn.fen, line).at(-1)!.after, game.side), where).toBeLessThan(0);
+            }
           }
           checked++;
         }

@@ -1,20 +1,22 @@
 import { Chess, type Color, type Move, type PieceSymbol, type Square } from 'chess.js';
-import { NAME } from '../board/captions';
+import { NAME, attackedTargets } from '../board/captions';
 import type { Game, Turn } from '../content/types';
 import type { HintLevel } from '../pause/flow';
-import { VALUE, kingOf, otherColor, passTurn, playLine, uciOf, type PieceAt } from './board';
-import { ideaOf, replyText } from './ideas';
+import { moveBefore } from '../pause/position';
+import { VALUE, captureGain, kingOf, otherColor, passTurn, playLine, uciOf, type PieceAt } from './board';
+import { costOf, couldTakeBefore, giveaway, hangingAfter, mateAfter, settled, wasLoose } from './loss';
+import { attacked, baitText, blunderText, capturedRef, clause, tempting, type Caught, type Say } from './punishText';
 import { tacticIn, type Tactic, type TacticId } from './tactics';
 import { punishment, type Role, type Theme } from './themes';
-import type { Trade } from './trade';
-import { colorName, listOf, refer, tradeText } from './words';
+import { capturedSquare } from './trade';
+import { colorName, listOf } from './words';
 
 /**
- * blunder: the stored punishing line wins material or mates.
- * bait: the move is the position's common mistake.
- * ignores-threat: a defend position, and the punishing line is the opponent's threat.
- * weaker: loses under 10% and costs nothing.
- * missed: loses 10% or more but no material: the chance just goes.
+ * blunder: the punishing line wins material or mates.
+ * bait: the move is the position's common mistake, and its line wins material or mates.
+ * ignores-threat: the punishing line carries out a threat the opponent already had.
+ * weaker: loses under 10%, and no line wins material.
+ * missed: loses 10% or more, but no line wins material: the chance just goes.
  * unknown: the move has no grade.
  */
 export type WrongKind = 'blunder' | 'bait' | 'ignores-threat' | 'weaker' | 'missed' | 'unknown';
@@ -33,29 +35,31 @@ export interface WrongMove {
 const FALLBACK = 'Not quite. Try again.';
 /** Win% a move may lose and still count as a weaker move rather than a miss. */
 const MISS = 10;
+/** Win% left after a missed chance below which the user ends up worse. */
+const WORSE = 40;
 /** The user's pieces a punishing line goes after. */
 const TARGET_ROLES: Role[] = ['target', 'pinned', 'behind', 'trapped'];
-const COUNT = ['', 'a', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
-const MINORS: PieceSymbol[] = ['n', 'b'];
+/** Index in a punishing line from which a lone pawn won no longer counts. */
+const LONG_LINE = 4;
+/** Lichess's curve from centipawns to win%, which the grades use, and the win% at its ±1000 cap. */
+const CURVE = 0.00368208;
+const CAPPED = 97.5;
 
-/** What every sentence about one wrong move needs. */
-interface Say {
-  user: Color;
-  /** The opponent, "White" or "Black". */
-  them: string;
-  /** The wrong move, as played. */
-  move: Move;
-}
+/** Why a punishment waits for the hint that marks the piece in trouble: it carries out the opponent's threat, or takes a piece that already hung. */
+type Held = 'threat' | 'hanging' | null;
 
 /**
  * Why `uci` is wrong at this key position, from what the move actually loses, told only as far as the hints
- * given allow. It reads the stored punishing lines, never the best line or the game's move.
+ * given allow. The best move is read only to keep the text from pointing at it.
  */
 export function whyWrong(game: Game, turnIndex: number, uci: string, hint: HintLevel): WrongMove {
   const turn = game.turns[turnIndex];
   const [move] = playLine(turn.fen, [uci]);
   if (turn.grades[uci] === undefined || !move) return plain('unknown');
-  const found = classify(turn, { user: game.side, them: colorName(otherColor(game.side)), move }, hint);
+  const answers = [playLine(turn.fen, turn.lines.best ?? [])[0]?.san, game.moves[turn.ply]].filter((san) => san !== undefined);
+  const after = pawnsAt(turn.bestWin - turn.grades[uci]);
+  const say: Say = { turn, user: game.side, them: colorName(otherColor(game.side)), move, answers, after };
+  const found = classify(game, say, hint >= 2);
   // With the move drawn on the board, there is nothing left to explain.
   return hint >= 3 ? plain(found.kind) : found;
 }
@@ -64,184 +68,231 @@ function plain(kind: WrongKind): WrongMove {
   return { kind, text: FALLBACK, reply: null, targets: [] };
 }
 
-function classify(turn: Turn, say: Say, hint: HintLevel): WrongMove {
-  const uci = uciOf(say.move);
-  const refutation = turn.refutations[uci] ?? [];
-  const caught = punishment(turn.fen, uci, refutation, say.user);
-  if (ignoresThreat(turn, say.user, refutation)) return threatIgnored(say, caught, refutation, hint >= 2);
-  const bait = uci === turn.mistakeMove ? baitWrong(turn, say) : null;
-  if (bait) return bait;
-  if (caught?.tactic) return punished('blunder', caught, caught.tactic, blunderText(say, caught.tactic));
-  return turn.grades[uci] < MISS ? weaker(say) : missed(turn, say);
+function classify(game: Game, say: Say, named: boolean): WrongMove {
+  const caught = caughtBy(say);
+  const down = leftDown(game, say);
+  if (down) return stillDown(say, down, caught, named);
+  if (caught) return punished(say, caught, named);
+  return unpunished(say, named);
 }
 
-/** A defend position whose punishing line starts with the threat the user was asked to meet. */
-function ignoresThreat(turn: Turn, user: Color, refutation: string[]): boolean {
-  if (!turn.kinds.includes('defend') || !refutation.length) return false;
-  return threatMoves(turn, user).includes(refutation[0]);
+function quietKind({ turn, move }: Say): WrongKind {
+  return turn.grades[uciOf(move)] < MISS ? 'weaker' : 'missed';
 }
 
-const threats = new WeakMap<Turn, string[]>();
+/** The stored line that punishes the move, made fair to the user, and what the move costs in it. */
+function caughtBy(say: Say): Caught | null {
+  const { turn, move, user } = say;
+  const uci = uciOf(move);
+  const mistake = uci === turn.mistakeMove && turn.lines.mistake?.[0] === uci;
+  let line = settled(move.after, (mistake ? turn.lines.mistake!.slice(1) : turn.refutations[uci]) ?? []);
+  while (line.length) {
+    const theme = punishment(turn.fen, uci, line, user);
+    const t = theme?.tactic;
+    if (!theme || !t) return null;
+    const cut = giveaway(t);
+    if (cut < 0) return paidFor(say, theme, t);
+    line = settled(move.after, line.slice(0, cut));
+  }
+  return null;
+}
 
-/** The moves that carry out the opponent's threat: the threat line's first move, and its tactic's moves. */
-function threatMoves(turn: Turn, user: Color): string[] {
+/**
+ * The punishment, when it is what the move pays for: mate, or material the best move doesn't lose as well. A lone
+ * pawn won at the end of a long line says too little to blame the move on it.
+ */
+function paidFor(say: Say, theme: Theme, t: Tactic): Caught | null {
+  const cost = costOf(say.turn.fen, say.move, t);
+  if (t.id === 'checkmate') return { theme, t, cost };
+  if (cost.trade.net <= 0 || bestLosesToo(say, t.moves[t.key])) return null;
+  return cost.trade.net <= 1 && t.key >= LONG_LINE ? null : { theme, t, cost };
+}
+
+/** The best move's line answers with the same capture: that loss isn't this move's doing. */
+function bestLosesToo({ turn }: Say, capture: Move): boolean {
+  const [, reply] = playLine(turn.fen, turn.lines.best?.slice(0, 2) ?? []);
+  return reply?.to === capture.to && reply.captured === capture.captured;
+}
+
+// ---- The opponent has just taken something, and the move doesn't take it back.
+
+/** The piece the opponent has just taken, when the best move takes back, the move doesn't, and the user is that much down. */
+function leftDown(game: Game, { turn, move }: Say): PieceSymbol | null {
+  const last = lastMove(game, turn);
+  if (!last?.captured || last.recapture || turn.lines.best?.[0]?.slice(2, 4) !== last.to || move.to === last.to) return null;
+  const taken = last.captured as PieceSymbol;
+  return turn.material <= 1 - VALUE[taken] ? taken : null;
+}
+
+const lastMoves = new WeakMap<Turn, ReturnType<typeof moveBefore>>();
+
+function lastMove(game: Game, turn: Turn): ReturnType<typeof moveBefore> {
+  if (!lastMoves.has(turn)) lastMoves.set(turn, moveBefore(game, turn.ply));
+  return lastMoves.get(turn)!;
+}
+
+/** "After Bd5, you stay a queen down.", and from hint 2 how the piece that took gets away. */
+function stillDown(say: Say, taken: PieceSymbol, caught: Caught | null, named: boolean): WrongMove {
+  const kind = caught ? 'blunder' : quietKind(say);
+  const lead = `After ${say.move.san}, you stay a ${NAME[taken]} down`;
+  const [reply] = caught?.t.moves ?? playLine(say.move.after, say.turn.refutations[uciOf(say.move)]?.slice(0, 1) ?? []);
+  if (!named || !reply) return { kind, text: `${lead}.`, reply: null, targets: [] };
+  const escapes = new Chess(say.move.after).get(reply.from)?.type === taken && reply.piece === taken;
+  if (!escapes) return { kind, text: `${lead}.`, reply: uciOf(reply), targets: [] };
+  const takes = reply.captured ? `, taking ${capturedRef(say, reply)}` : '';
+  const text = `${lead}: ${say.them}'s ${NAME[taken]} gets away with ${reply.san}${takes}.`;
+  return { kind, text, reply: uciOf(reply), targets: reply.captured ? [capturedSquare(reply)] : [] };
+}
+
+// ---- A line that wins material or mates.
+
+function punished(say: Say, caught: Caught, named: boolean): WrongMove {
+  const held = heldBack(say, caught.t);
+  const bait = uciOf(say.move) === say.turn.mistakeMove;
+  const kind: WrongKind = held === 'threat' ? 'ignores-threat' : bait ? 'bait' : 'blunder';
+  if (!held) return marked(kind, caught, bait ? baitText(say, caught) : blunderText(say, caught));
+  const lead = held === 'threat' ? threatLead(say) : hangingLead(say, caught.t.moves[caught.t.key].captured === 'p');
+  if (!named) return { kind, text: `${lead}.`, reply: null, targets: [], pattern: caught.t.id };
+  return marked(kind, caught, `${lead}: ${clause(say, caught, { grabbed: Boolean(say.move.captured) })}.`);
+}
+
+function heldBack(say: Say, t: Tactic): Held {
+  if (carriesThreat(say, t)) return 'threat';
+  const square = capturedAtStart(t);
+  return square && square !== say.move.to && wasLoose(say.turn.fen, square, say.user) ? 'hanging' : null;
+}
+
+/** "That doesn't stop White's threat", or "exf6 grabs the knight, but it doesn't stop Black's threat". */
+function threatLead(say: Say): string {
+  return say.move.captured ? `${tempting(say.move)}, but it doesn't stop ${say.them}'s threat` : `That doesn't stop ${say.them}'s threat`;
+}
+
+function hangingLead(say: Say, pawn: boolean): string {
+  return `${tempting(say.move)}, but it leaves ${pawn ? 'a pawn' : 'a piece'} hanging`;
+}
+
+/** Where the piece taken at the key capture stood when the line began. */
+function capturedAtStart(t: Tactic): Square | null {
+  if (t.id === 'checkmate') return null;
+  let square = capturedSquare(t.moves[t.key]);
+  for (let i = t.key - 1; i >= 0; i--) if (t.moves[i].to === square && t.moves[i].color !== t.side) square = t.moves[i].from;
+  return square;
+}
+
+/** The opponent plays a move of the threat it already had, on the way to the key capture. */
+function carriesThreat({ turn, user }: Say, t: Tactic): boolean {
+  const threat = [...threatMoves(turn, user), ...quietThreat(turn)];
+  return t.moves.slice(0, t.key + 1).some((m, i) => i % 2 === 0 && threat.some((x) => sameMove(x, m)));
+}
+
+function sameMove(a: Move, b: Move): boolean {
+  return uciOf(a) === uciOf(b) && a.captured === b.captured;
+}
+
+const threats = new WeakMap<Turn, Move[]>();
+
+/** The moves of the threat the opponent would carry out if the user passed, when it wins something: its first move and its tactic's moves. */
+function threatMoves(turn: Turn, user: Color): Move[] {
   const known = threats.get(turn);
   if (known) return known;
-  const threat = turn.lines.threat ?? [];
   const passed = passTurn(turn.fen);
-  const tactic = passed && threat.length ? tacticIn(passed, threat, otherColor(user)) : null;
-  const moves = [...threat.slice(0, 1), ...(tactic ? [tactic.moves[tactic.at], tactic.moves[tactic.key]].map(uciOf) : [])];
+  const tactic = passed && turn.lines.threat?.length ? tacticIn(passed, turn.lines.threat, otherColor(user)) : null;
+  const moves = tactic ? [tactic.moves[0], tactic.moves[tactic.at], tactic.moves[tactic.key]] : [];
   threats.set(turn, moves);
   return moves;
 }
 
-/** Says only that the threat still stands, until a hint has pointed at what it is after. */
-function threatIgnored(say: Say, caught: Theme | null, refutation: string[], named: boolean): WrongMove {
-  const t = caught?.tactic;
-  const lead = `That doesn't stop ${say.them}'s threat`;
-  if (!named) return { kind: 'ignores-threat', text: `${lead}.`, reply: null, targets: [], pattern: t?.id };
-  if (!t) {
-    const [reply] = playLine(say.move.after, refutation.slice(0, 1));
-    return { kind: 'ignores-threat', text: `${lead}.`, reply: reply ? uciOf(reply) : null, targets: [] };
-  }
-  return punished('ignores-threat', caught!, t, `${lead}: ${threatClause(t, say.user)}.`);
-}
-
-/** "Bxf2+ checks your king and attacks your rook at once"; a longer line names only the opponent's moves. */
-function threatClause(t: Tactic, user: Color): string {
-  if (t.id === 'checkmate' && t.key === 0) return `${mateMove(t)} is checkmate`;
-  return isLong(t) ? `${theirMoves(t)}, ${whatItDoes(t, user)}` : replyText(t, user);
-}
-
-/** A tactic that takes a few moves to play out: spelling them all would name the user's own replies. */
-function isLong(t: Tactic): boolean {
-  return t.at > 0 || (t.id === 'material-win' && t.key > 0);
-}
-
-function mateMove(t: Tactic): string {
-  return t.moves[t.key].san.replace('#', '');
-}
-
-/** The position's common mistake, told the way the lesson tells it, when its line really costs something. */
-function baitWrong(turn: Turn, say: Say): WrongMove | null {
-  const uci = uciOf(say.move);
-  const stored = turn.lines.mistake?.[0] === uci ? turn.lines.mistake.slice(1) : turn.refutations[uci];
-  const theme = punishment(turn.fen, uci, stored ?? [], say.user);
-  const t = theme?.tactic;
-  if (!t) return null;
-  const text = isLong(t)
-    ? `${tempting(say.move)}, but ${say.them} answers ${theirMoves(t)}, ${whatItDoes(t, say.user)}.`
-    : ideaOf(theme!, say.user, { fen: turn.fen });
-  return punished('bait', theme!, t, text);
-}
-
-/** "Bxf7+ grabs a pawn", "Qd7 looks natural": how the lesson opens a trap. */
-function tempting(move: Move): string {
-  if (!move.captured) return `${move.san} looks natural`;
-  return `${move.san} grabs ${move.captured === 'p' ? 'a pawn' : `the ${NAME[move.captured]}`}`;
+/** The threat line's first move when it takes nothing but attacks a piece bigger than the attacker, or a loose one. */
+function quietThreat(turn: Turn): Move[] {
+  const passed = passTurn(turn.fen);
+  const [move] = passed ? playLine(passed, turn.lines.threat?.slice(0, 1) ?? []) : [];
+  if (!move || move.captured) return [];
+  const hits = attackedTargets(new Chess(move.after), move.to, move.promotion ?? move.piece, move.color);
+  return hits.some((p) => p.type !== 'k') ? [move] : [];
 }
 
 /** The reply on the board and the user's pieces it goes after, where they stand once the reply is played. */
-function punished(kind: WrongKind, theme: Theme, t: Tactic, text: string): WrongMove {
+function marked(kind: WrongKind, { theme, t, cost }: Caught, text: string): WrongMove {
   const [reply] = t.moves;
   const board = new Chess(reply.after);
   const user = otherColor(t.side);
   const pieces: PieceAt[] = theme.pieces.filter((p) => TARGET_ROLES.includes(p.role) && p.color === user);
+  const forked = cost.forked.map((p) => ({ ...p, color: user }));
   // A mate goes after the king wherever it stands; a piece the reply has just taken is marked where it stood.
   const king = t.id === 'checkmate' ? [kingOf(board, user)] : [];
   const stands = (p: PieceAt) => board.get(p.square)?.type === p.type && board.get(p.square)?.color === p.color;
-  const shown = [...king, ...pieces, ...(t.won ? [t.won] : [])].filter((p) => stands(p) || p.square === reply.to);
+  const shown = [...king, ...pieces, ...forked, ...(t.won ? [t.won] : [])].filter((p) => stands(p) || p.square === reply.to);
   return { kind, text, reply: uciOf(reply), targets: [...new Set(shown.map((p) => p.square))], pattern: t.id };
 }
 
-function blunderText({ them, move }: Say, t: Tactic): string {
-  const after = `After ${move.san}`;
-  if (t.id === 'checkmate') {
-    if (t.key === 0) return `${after}, ${mateMove(t)} is checkmate.`;
-    return `${after}, ${them} has a forced mate that starts with ${t.moves[0].san}.`;
-  }
-  return `${after}, ${them} plays ${theirMoves(t)}, ${whatItDoes(t, otherColor(t.side))}.`;
-}
+// ---- No line wins anything: check the position after the move before calling it harmless.
 
-/** The opponent's moves up to the one that makes the tactic: "Bxc3+", "Bxc3+ and then Qa5"; the user's replies go unsaid. */
-function theirMoves(t: Tactic): string {
-  const first = t.moves[0].san;
-  if (t.at === 0) return first;
-  return `${first} and ${t.at === 2 ? 'then' : 'later'} ${t.moves[t.at].san}`;
-}
-
-/** "a fork that wins your rook", from the side of the user, whose pieces the line takes. */
-function whatItDoes(t: Tactic, user: Color): string {
-  const trade = withoutMinorSwaps(t.trade);
-  const loss = lossText(trade);
-  switch (t.id) {
-    case 'fork':
-      return `a fork that wins ${loss}`;
-    case 'pin':
-      return `a pin that wins ${loss}`;
-    case 'skewer':
-      return `a skewer that wins ${loss}`;
-    case 'discovered-attack':
-      return `a discovered ${t.target.type === 'k' ? 'check' : 'attack'} that wins ${loss}`;
-    case 'mate-threat':
-      return `threatening mate, and it wins ${loss}`;
-    case 'trapped-piece': {
-      const traps = `which traps ${refer(t.trapped, user)}`;
-      return onlyLoses(trade, t.trapped.type) ? traps : `${traps} and wins ${lossText(trade, t.trapped.type)}`;
-    }
-    case 'remove-defender':
-      return `which removes a defender and wins ${loss}`;
-    case 'free-piece':
-      return t.won && onlyLoses(trade, t.won.type) ? `taking ${refer(t.won, user)} for free` : `which wins ${loss}`;
-    case 'checkmate':
-      return `which leads to mate`;
-    default:
-      return t.key > 0 ? `and the line that follows wins ${loss}` : `which wins ${loss}`;
-  }
-}
-
-/** A knight given for a bishop, or the other way round, costs nothing, so it goes unsaid. */
-function withoutMinorSwaps(trade: Trade): Trade {
-  const won = [...trade.won];
-  const lost = trade.lost.filter((type) => {
-    const swapped = MINORS.includes(type) ? won.findIndex((other) => MINORS.includes(other)) : -1;
-    if (swapped >= 0) won.splice(swapped, 1);
-    return swapped < 0;
-  });
-  return { ...trade, won, lost };
-}
-
-/** The line costs the user exactly one piece of this type and nothing comes back. */
-function onlyLoses(trade: Trade, type: PieceSymbol): boolean {
-  return trade.won.length === 1 && trade.won[0] === type && !trade.lost.length && !trade.promoted.length;
+function unpunished(say: Say, named: boolean): WrongMove {
+  const kind = quietKind(say);
+  const mate = mateAfter(say.move);
+  if (mate) return { kind, text: `After ${say.move.san}, ${mate.san.replace('#', '')} is checkmate.`, reply: uciOf(mate), targets: [] };
+  const capture = hangingAfter(say.move);
+  if (capture && reallyHangs(say, capture)) return hanging(say, kind, capture, named);
+  return threatStillOn(say, named) ?? { kind, text: quietText(say, kind), reply: null, targets: [] };
 }
 
 /**
- * What the user loses over the whole line, counted from its captures: "your rook", "your queen and a pawn",
- * "two pawns for a knight"; a piece already named can be "it".
+ * A capture the static check finds is only claimed when nothing says otherwise: the stored line doesn't start with
+ * it (and win nothing), the best move doesn't allow it too, and the grades lose about as much as it takes.
  */
-function lossText(trade: Trade, named?: PieceSymbol): string {
-  if (!trade.won.length) return 'material';
-  const counts = new Map<PieceSymbol, number>();
-  for (const type of [...trade.won].sort((a, b) => VALUE[b] - VALUE[a])) counts.set(type, (counts.get(type) ?? 0) + 1);
-  const one = (type: PieceSymbol, i: number) => (i > 0 ? `a ${NAME[type]}` : type === named ? 'it' : `your ${NAME[type]}`);
-  const parts = [...counts].map(([type, n], i) => (n > 1 ? `${COUNT[n]} ${NAME[type]}s` : one(type, i)));
-  parts.push(...trade.promoted.map((type) => `a new ${NAME[type]}`));
-  const back = trade.lost.length ? ` for ${tradeText({ ...trade, won: trade.lost, lost: [], promoted: [] })}` : '';
-  return listOf(parts) + back;
+function reallyHangs(say: Say, capture: Move): boolean {
+  const stored = say.turn.refutations[uciOf(say.move)]?.[0];
+  return stored !== uciOf(capture) && !bestLosesToo(say, capture) && gradeDrop(say) >= captureGain(capture) - 1;
 }
 
-function weaker({ move }: Say): WrongMove {
-  return { kind: 'weaker', text: `${move.san} is safe, but there's a stronger move here.`, reply: null, targets: [] };
+/** The pawns the move gives away by the grades. */
+function gradeDrop({ turn, after }: Say): number {
+  return pawnsAt(turn.bestWin) - after;
 }
 
-/** Nothing is lost, but the move gives up what the position offered. */
-function missed(turn: Turn, { move, them }: Say): WrongMove {
-  const safe = `${move.san} is safe, but`;
-  const text = turn.kinds.includes('win')
-    ? `${safe} it lets the chance go.`
-    : turn.kinds.includes('defend')
-      ? `${safe} there's a better answer to ${them}'s threat.`
-      : `${safe} there's a much stronger move here.`;
-  return { kind: 'missed', text, reply: null, targets: [] };
+/** A win% read back as an evaluation in pawns through the curve the grades use. */
+function pawnsAt(win: number): number {
+  const capped = Math.min(CAPPED, Math.max(100 - CAPPED, win));
+  return Math.log(capped / (100 - capped)) / CURVE / 100;
+}
+
+/** A piece the move leaves en prise; held back to hint 2 when it hung before the move too. */
+function hanging(say: Say, kind: WrongKind, capture: Move, named: boolean): WrongMove {
+  const piece = capturedRef(say, capture);
+  if (!couldTakeBefore(say.turn.fen, capture)) {
+    return { kind, text: `After ${say.move.san}, ${say.them} can take ${piece}.`, reply: uciOf(capture), targets: [capture.to] };
+  }
+  const threat = threatMoves(say.turn, say.user).some((m) => sameMove(m, capture));
+  const lead = threat ? threatLead(say) : hangingLead(say, capture.captured === 'p');
+  const heldKind = threat ? 'ignores-threat' : kind;
+  if (!named) return { kind: heldKind, text: `${lead}.`, reply: null, targets: [] };
+  return { kind: heldKind, text: `${lead}: ${capture.san} wins ${piece}.`, reply: uciOf(capture), targets: [capture.to] };
+}
+
+/**
+ * The stored line still opens with the opponent's threat, though it wins nothing by force, and the best move
+ * doesn't allow it: say so, and from hint 2 what the threat hits.
+ */
+function threatStillOn(say: Say, named: boolean): WrongMove | null {
+  const [reply] = playLine(say.move.after, say.turn.refutations[uciOf(say.move)]?.slice(0, 1) ?? []);
+  if (!reply || !threatMoves(say.turn, say.user).some((m) => sameMove(m, reply)) || bestLosesToo(say, reply)) return null;
+  const lead = threatLead(say);
+  if (!named) return { kind: 'ignores-threat', text: `${lead}.`, reply: null, targets: [] };
+  const hit = attacked(say, reply);
+  const parts = [
+    ...(reply.captured ? [`takes ${capturedRef(say, reply)}`] : []),
+    ...(reply.san.includes('+') ? ['checks your king'] : []),
+    ...(hit.length ? [`attacks ${listOf(hit)}`] : []),
+  ];
+  const does = parts.length ? `: ${reply.san} ${listOf(parts)}${parts.length > 1 ? ' at once' : ''}` : '';
+  return { kind: 'ignores-threat', text: `${lead}${does}.`, reply: uciOf(reply), targets: [] };
+}
+
+/** Nothing hangs: say only that something better was there, and whether the user ends up worse. */
+function quietText({ turn, move, them }: Say, kind: WrongKind): string {
+  if (kind === 'weaker') return "There's a stronger move here.";
+  const worse = turn.bestWin - turn.grades[uciOf(move)] < WORSE;
+  if (turn.kinds.includes('win')) return `${move.san} lets the chance go${worse ? ', and you end up worse' : ''}.`;
+  const better = turn.kinds.includes('defend') ? `There's a better answer to ${them}'s threat` : "There's a much stronger move here";
+  return worse ? `${better}, and after ${move.san} you end up worse.` : `${better}.`;
 }

@@ -1,0 +1,3632 @@
+{
+ "caro-kann-1100-0007#13": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "Nf3",
+   "d5",
+   "e5",
+   "Bf5",
+   "Nc3",
+   "e6",
+   "d4",
+   "c5",
+   "Be3",
+   "Qb6",
+   "Na4",
+   "Qa5+",
+   "Nc3",
+   "Nc6",
+   "Bd3",
+   "Bg4",
+   "dxc5",
+   "d4",
+   "Bxd4",
+   "Nxd4",
+   "Nxd4",
+   "Bxd1",
+   "Bb5+",
+   "Kd8",
+   "c6",
+   "Bb4",
+   "cxb7",
+   "Bxc3+"
+  ],
+  "turn": {
+   "ply": 27,
+   "moveNo": 15,
+   "fen": "r2k2nr/pP3ppp/4p3/qB2P3/1b1N4/2N5/PPP2PPP/R2bK2R b KQ - 0 15",
+   "label": "critical",
+   "kinds": [
+    "defend"
+   ],
+   "grades": {
+    "g7g5": 70.4
+   },
+   "refutations": {
+    "g7g5": [
+     "b7a8q",
+     "d8c7",
+     "a8c6",
+     "c7b8",
+     "c6e8"
+    ]
+   },
+   "bestWin": 72.8,
+   "material": 6,
+   "lines": {
+    "best": [
+     "b4c3",
+     "e1d1",
+     "a8b8",
+     "d4c6",
+     "d8c7",
+     "c6a5",
+     "c3a5"
+    ],
+    "mistake": [
+     "a8b8",
+     "d4c6",
+     "d8c7",
+     "c6a5",
+     "d1c2",
+     "a1c1",
+     "b4c3",
+     "b2c3"
+    ],
+    "threat": [
+     "b7a8q",
+     "d8c7"
+    ]
+   },
+   "mistakeMove": "a8b8",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1100-0217#14": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "e5",
+   "Bf5",
+   "Nc3",
+   "e6",
+   "Nf3",
+   "Bb4",
+   "Bg5",
+   "Qa5",
+   "Qd2",
+   "c5",
+   "dxc5",
+   "Nc6",
+   "a3",
+   "Bxc5",
+   "Nb5",
+   "Qxd2+",
+   "Bxd2",
+   "O-O-O",
+   "b4",
+   "Be7",
+   "Ng5",
+   "Bxg5",
+   "Bxg5",
+   "f6",
+   "exf6",
+   "gxf6",
+   "Bf4",
+   "e5"
+  ],
+  "turn": {
+   "ply": 29,
+   "moveNo": 16,
+   "fen": "2kr2nr/pp5p/2n1pp2/1N1p1b2/1P3B2/P7/2P2PPP/R3KB1R b KQ - 1 16",
+   "label": "critical",
+   "kinds": [
+    "win",
+    "defend"
+   ],
+   "grades": {
+    "d8d7": 32.4
+   },
+   "refutations": {
+    "d8d7": [
+     "b5d6",
+     "d7d6",
+     "f4d6",
+     "c8d7",
+     "d6f8"
+    ]
+   },
+   "bestWin": 63.1,
+   "material": 0,
+   "lines": {
+    "best": [
+     "e6e5",
+     "f4d2",
+     "a7a6",
+     "b5c3",
+     "c6d4",
+     "a1c1",
+     "d4c2"
+    ],
+    "mistake": [
+     "f5c2",
+     "b5d6",
+     "d8d6",
+     "f4d6",
+     "c8d7",
+     "d6c5"
+    ],
+    "threat": [
+     "b5d6",
+     "d8d6",
+     "f4d6"
+    ]
+   },
+   "mistakeMove": "f5c2",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1100-0034#7": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "Qf3",
+   "d5",
+   "Nc3",
+   "dxe4",
+   "Qxe4",
+   "Nf6",
+   "Qf4",
+   "Nbd7",
+   "Bc4",
+   "b5",
+   "Bb3",
+   "e5",
+   "Qf3",
+   "Nc5",
+   "Qxc6+",
+   "Bd7"
+  ],
+  "turn": {
+   "ply": 15,
+   "moveNo": 9,
+   "fen": "r1bqkb1r/p4ppp/2Q2n2/1pn1p3/8/1BN5/PPPP1PPP/R1B1K1NR b KQkq - 0 9",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "c5d7": 41.2
+   },
+   "refutations": {
+    "c5d7": [
+     "c6a8",
+     "f8c5",
+     "a8c6",
+     "e8g8",
+     "c6b5"
+    ]
+   },
+   "bestWin": 57.9,
+   "material": -1,
+   "lines": {
+    "best": [
+     "c8d7",
+     "c6f3",
+     "e5e4",
+     "f3g3",
+     "a8c8",
+     "g1e2"
+    ],
+    "mistake": [
+     "c5d7",
+     "c6a8",
+     "f8c5",
+     "a8c6",
+     "e8g8",
+     "c6b5"
+    ]
+   },
+   "mistakeMove": "c5d7",
+   "trigger": true,
+   "inCheck": true
+  }
+ },
+ "caro-kann-1400-0028#15": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "Nf3",
+   "d5",
+   "exd5",
+   "cxd5",
+   "d4",
+   "Nc6",
+   "Bb5",
+   "Bd7",
+   "O-O",
+   "g6",
+   "Ne5",
+   "Nxe5",
+   "Nc3",
+   "Nc6",
+   "Nxd5",
+   "Bg7",
+   "Bf4",
+   "Rc8",
+   "Re1",
+   "Nf6",
+   "Nxf6+",
+   "Bxf6",
+   "d5",
+   "Nb4",
+   "d6",
+   "Bxb5",
+   "Qf3",
+   "Nxc2",
+   "dxe7",
+   "Qd7",
+   "Bh6",
+   "Qf5"
+  ],
+  "turn": {
+   "ply": 31,
+   "moveNo": 17,
+   "fen": "2r1k2r/pp1qPp1p/5bpB/1b6/8/5Q2/PPn2PPP/R3R1K1 b k - 2 17",
+   "label": "critical",
+   "kinds": [
+    "win",
+    "defend"
+   ],
+   "grades": {
+    "d7d5": 74.0
+   },
+   "refutations": {
+    "d7d5": [
+     "f3d5",
+     "b5c6",
+     "d5d6",
+     "f6b2"
+    ]
+   },
+   "bestWin": 91.0,
+   "material": 5,
+   "lines": {
+    "best": [
+     "d7f5",
+     "f3f5",
+     "g6f5",
+     "a1c1",
+     "c8c6",
+     "h6f8",
+     "c2e1",
+     "c1e1",
+     "f6b2"
+    ],
+    "mistake": [
+     "f6e7",
+     "f3f6",
+     "h8g8",
+     "h6g5",
+     "c8c7",
+     "f6f4"
+    ],
+    "threat": [
+     "f3f6",
+     "h8g8"
+    ]
+   },
+   "mistakeMove": "f6e7",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1400-0103#24": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "e5",
+   "Bf5",
+   "f4",
+   "e6",
+   "Nf3",
+   "c5",
+   "Bb5+",
+   "Nc6",
+   "dxc5",
+   "Bxc5",
+   "Bxc6+",
+   "bxc6",
+   "c3",
+   "Ne7",
+   "Nh4",
+   "O-O",
+   "b4",
+   "Bb6",
+   "a4",
+   "a5",
+   "Nd2",
+   "axb4",
+   "cxb4",
+   "Bd4",
+   "Ra2",
+   "Be4",
+   "Nhf3",
+   "Bc3",
+   "O-O",
+   "Bd3",
+   "Rf2",
+   "Qb6",
+   "a5",
+   "Qb5",
+   "Nb3",
+   "Bxb4",
+   "Nfd4",
+   "Qc4",
+   "Bd2",
+   "c5",
+   "Bxb4",
+   "cxb4",
+   "Ra1",
+   "Rfc8",
+   "Qd2",
+   "Nf5",
+   "Rc1",
+   "Qa6"
+  ],
+  "turn": {
+   "ply": 49,
+   "moveNo": 26,
+   "fen": "r1r3k1/5ppp/4p3/P2pPn2/1pqN1P2/1N1b4/3Q1RPP/2R3K1 b - - 5 26",
+   "label": "critical",
+   "kinds": [
+    "defend"
+   ],
+   "grades": {
+    "f5d4": 15.8
+   },
+   "refutations": {
+    "f5d4": [
+     "c1c4",
+     "d5c4",
+     "b3d4",
+     "a8a5",
+     "h2h3"
+    ]
+   },
+   "bestWin": 54.9,
+   "material": 1,
+   "lines": {
+    "best": [
+     "c4a6",
+     "c1c8",
+     "a8c8",
+     "d4f5",
+     "d3f5",
+     "d2b4"
+    ],
+    "mistake": [
+     "f5d4",
+     "c1c4",
+     "d5c4",
+     "b3d4",
+     "a8a5",
+     "h2h3"
+    ],
+    "threat": [
+     "c1c4",
+     "d5c4"
+    ]
+   },
+   "mistakeMove": "f5d4",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1400-0204#12": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "Nc3",
+   "d5",
+   "exd5",
+   "cxd5",
+   "d4",
+   "Bf5",
+   "Bf4",
+   "a6",
+   "Qf3",
+   "Nc6",
+   "O-O-O",
+   "Nf6",
+   "Bg5",
+   "Bg4",
+   "Qe3",
+   "Bxd1",
+   "Nxd1",
+   "e6",
+   "c3",
+   "Bd6",
+   "f4",
+   "h6",
+   "Bh4",
+   "Qc7",
+   "Bxf6",
+   "Bxf4"
+  ],
+  "turn": {
+   "ply": 25,
+   "moveNo": 14,
+   "fen": "r3k2r/1pq2pp1/p1nbpB1p/3p4/3P1P2/2P1Q3/PP4PP/2KN1BNR b kq - 0 14",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "c6d8": 68.0
+   },
+   "refutations": {
+    "c6d8": [
+     "f6e5",
+     "d6e5",
+     "f4e5",
+     "b7b5",
+     "c1b1"
+    ]
+   },
+   "bestWin": 89.0,
+   "material": -1,
+   "lines": {
+    "best": [
+     "d6f4",
+     "f6g7",
+     "f4e3",
+     "d1e3",
+     "h8h7",
+     "g7e5",
+     "c6e5"
+    ],
+    "mistake": [
+     "g7f6",
+     "g2g3",
+     "h6h5",
+     "h2h4",
+     "e8c8",
+     "c1b1"
+    ],
+    "threat": [
+     "f6e5",
+     "d6e5",
+     "f4e5"
+    ]
+   },
+   "mistakeMove": "g7f6",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1400-0029#17": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "Nc3",
+   "d5",
+   "exd5",
+   "cxd5",
+   "Nf3",
+   "Bg4",
+   "d4",
+   "Nf6",
+   "Be3",
+   "e6",
+   "Be2",
+   "Nc6",
+   "O-O",
+   "Bb4",
+   "a3",
+   "Bxc3",
+   "bxc3",
+   "Bxf3",
+   "Bxf3",
+   "O-O",
+   "Rb1",
+   "b6",
+   "c4",
+   "Rc8",
+   "Bg5",
+   "h6",
+   "cxd5",
+   "hxg5",
+   "dxc6",
+   "Nd5",
+   "c4",
+   "Nc3",
+   "Qd3",
+   "Nxb1",
+   "h3",
+   "Nxa3"
+  ],
+  "turn": {
+   "ply": 35,
+   "moveNo": 19,
+   "fen": "2rq1rk1/p4pp1/1pP1p3/6p1/2PP4/P2Q1B1P/5PP1/1n3RK1 b - - 0 19",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "e6e5": 4.1
+   },
+   "refutations": {},
+   "bestWin": 64.6,
+   "material": 4,
+   "lines": {
+    "best": [
+     "b1a3",
+     "d3a3",
+     "d8d4",
+     "a3a7",
+     "d4c4",
+     "a7b6"
+    ],
+    "mistake": [
+     "f7f5",
+     "f1b1",
+     "d8d6",
+     "d3e3",
+     "c8c6",
+     "c4c5",
+     "b6c5",
+     "f3c6",
+     "d6c6",
+     "d4c5"
+    ],
+    "threat": [
+     "f1d1",
+     "e6e5"
+    ]
+   },
+   "mistakeMove": "f7f5",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1400-0003#11": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "e5",
+   "Bf5",
+   "Nf3",
+   "e6",
+   "Nc3",
+   "c5",
+   "Bb5+",
+   "Nc6",
+   "Ne2",
+   "Qa5+",
+   "Nc3",
+   "a6",
+   "Bxc6+",
+   "bxc6",
+   "dxc5",
+   "Bxc5",
+   "O-O",
+   "Ne7",
+   "Bg5",
+   "Ng6",
+   "a3",
+   "Qc7"
+  ],
+  "turn": {
+   "ply": 23,
+   "moveNo": 13,
+   "fen": "r3k2r/5ppp/p1p1p1n1/q1bpPbB1/8/P1N2N2/1PP2PPP/R2Q1RK1 b kq - 0 13",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "e8g8": 34.2
+   },
+   "refutations": {
+    "e8g8": [
+     "b2b4",
+     "c5b4",
+     "a3b4",
+     "a5b4",
+     "g5d2"
+    ]
+   },
+   "bestWin": 62.4,
+   "material": 0,
+   "lines": {
+    "best": [
+     "a5c7",
+     "c3a4",
+     "c5a7",
+     "f3d4",
+     "g6e5",
+     "g5f4"
+    ],
+    "mistake": [
+     "e8g8",
+     "b2b4",
+     "c5b4",
+     "a3b4",
+     "a5b4",
+     "g5d2"
+    ],
+    "threat": [
+     "b2b4",
+     "c5b4",
+     "a3b4",
+     "a5b4"
+    ]
+   },
+   "mistakeMove": "e8g8",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1700-0127#18": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "f4",
+   "d5",
+   "e5",
+   "Bf5",
+   "d4",
+   "e6",
+   "c3",
+   "Nd7",
+   "Nf3",
+   "Ne7",
+   "Bd3",
+   "a6",
+   "O-O",
+   "h6",
+   "Qc2",
+   "c5",
+   "Bxf5",
+   "Nxf5",
+   "g4",
+   "Nh4",
+   "Qf2",
+   "Nxf3+",
+   "Qxf3",
+   "Be7",
+   "f5",
+   "Qb6",
+   "f6",
+   "gxf6",
+   "exf6",
+   "Nxf6",
+   "g5",
+   "hxg5",
+   "Bxg5",
+   "Rg8",
+   "h4",
+   "O-O-O",
+   "Rf2",
+   "Ne4"
+  ],
+  "turn": {
+   "ply": 37,
+   "moveNo": 20,
+   "fen": "2kr2r1/1p2bp2/pq2pn2/2pp2B1/3P3P/2P2Q2/PP3R2/RN4K1 b - - 2 20",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "f6d7": 2.7
+   },
+   "refutations": {},
+   "bestWin": 90.4,
+   "material": 1,
+   "lines": {
+    "best": [
+     "f6e4",
+     "g1f1",
+     "e7g5",
+     "h4g5",
+     "e4g5",
+     "f3e3"
+    ],
+    "mistake": [
+     "g8g6",
+     "b1d2",
+     "f6h7",
+     "f3f7",
+     "h7g5",
+     "f7g6"
+    ],
+    "threat": [
+     "f2g2",
+     "c5d4"
+    ]
+   },
+   "mistakeMove": "g8g6",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1700-0016#10": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "e5",
+   "Bf5",
+   "Nf3",
+   "e6",
+   "c4",
+   "h6",
+   "Nc3",
+   "Bb4",
+   "Bd2",
+   "Ne7",
+   "Be2",
+   "O-O",
+   "O-O",
+   "Ng6",
+   "Re1",
+   "Nd7",
+   "Qb3",
+   "Ba5",
+   "Qxb7",
+   "Rb8"
+  ],
+  "turn": {
+   "ply": 21,
+   "moveNo": 12,
+   "fen": "r2q1rk1/pQ1n1pp1/2p1p1np/b2pPb2/2PP4/2N2N2/PP1BBPPP/R3R1K1 b - - 0 12",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "f5d3": 33.2
+   },
+   "refutations": {
+    "f5d3": [
+     "e2d3",
+     "a8b8",
+     "b7a6",
+     "b8b2",
+     "d3g6"
+    ]
+   },
+   "bestWin": 51.7,
+   "material": -1,
+   "lines": {
+    "best": [
+     "a8b8",
+     "b7a7",
+     "d5c4",
+     "e2c4",
+     "f5g4",
+     "c3e2",
+     "a5d2",
+     "f3d2",
+     "b8b2"
+    ],
+    "mistake": [
+     "a5b6",
+     "c4c5",
+     "a8b8",
+     "b7c6",
+     "g6e5",
+     "f3e5",
+     "d7e5",
+     "d4e5"
+    ],
+    "threat": [
+     "b7c6",
+     "a8c8"
+    ]
+   },
+   "mistakeMove": "a5b6",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1700-0024#3": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "Nf3",
+   "d5",
+   "d3",
+   "dxe4",
+   "Ng5",
+   "exd3",
+   "Bxd3",
+   "Nd7"
+  ],
+  "turn": {
+   "ply": 7,
+   "moveNo": 5,
+   "fen": "rnbqkbnr/pp2pppp/2p5/6N1/8/3B4/PPP2PPP/RNBQK2R b KQkq - 0 5",
+   "label": "critical",
+   "kinds": [
+    "win",
+    "defend"
+   ],
+   "grades": {
+    "e8d7": 43.1
+   },
+   "refutations": {
+    "e8d7": [
+     "g5f7",
+     "d8a5",
+     "c1d2",
+     "a5d5"
+    ]
+   },
+   "bestWin": 53.2,
+   "material": 1,
+   "lines": {
+    "best": [
+     "b8d7",
+     "d3c4",
+     "e7e6",
+     "e1g1",
+     "h7h6",
+     "g5e6",
+     "f7e6"
+    ],
+    "mistake": [
+     "g8f6",
+     "g5f7",
+     "d8d5",
+     "f7h8",
+     "d5g2",
+     "h1f1"
+    ],
+    "threat": [
+     "g5f7",
+     "d8d5",
+     "f7h8",
+     "d5g2"
+    ]
+   },
+   "mistakeMove": "g8f6",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1700-0180#28": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "e5",
+   "Bf5",
+   "h4",
+   "h5",
+   "Nf3",
+   "e6",
+   "Bd3",
+   "Bg4",
+   "O-O",
+   "Be7",
+   "Bg5",
+   "Bxg5",
+   "hxg5",
+   "Bxf3",
+   "Qxf3",
+   "Qxg5",
+   "c4",
+   "Nd7",
+   "Nc3",
+   "Qg4",
+   "Qe3",
+   "Nh6",
+   "Be2",
+   "Qh4",
+   "cxd5",
+   "exd5",
+   "e6",
+   "Nf6",
+   "Bd3",
+   "O-O",
+   "Ne2",
+   "Nfg4",
+   "exf7+",
+   "Rxf7",
+   "Qg3",
+   "Qg5",
+   "f3",
+   "Qe3+",
+   "Kh1",
+   "Qxd3",
+   "Nf4",
+   "Qxd4",
+   "fxg4",
+   "Nxg4",
+   "Rf3",
+   "Raf8",
+   "Ne6",
+   "Nf2+",
+   "Kh2",
+   "Ng4+",
+   "Kh3",
+   "Rxf3",
+   "gxf3",
+   "Qxb2",
+   "Rf1",
+   "Rf6"
+  ],
+  "turn": {
+   "ply": 57,
+   "moveNo": 30,
+   "fen": "5rk1/pp4p1/2p1N3/3p3p/6n1/5PQK/Pq6/5R2 b - - 1 30",
+   "label": "critical",
+   "kinds": [
+    "defend"
+   ],
+   "grades": {
+    "b2c3": 45.1
+   },
+   "refutations": {
+    "b2c3": [
+     "e6f8",
+     "g4e3",
+     "f1g1",
+     "g8f8",
+     "g3d6"
+    ]
+   },
+   "bestWin": 86.0,
+   "material": 4,
+   "lines": {
+    "best": [
+     "f8f6",
+     "e6g5",
+     "b2e2",
+     "f1g1",
+     "e2e5",
+     "g3e5",
+     "g4e5"
+    ],
+    "mistake": [
+     "g4e3",
+     "f1g1",
+     "e3f5",
+     "g3f4",
+     "b2f6",
+     "e6f8",
+     "f6f8"
+    ],
+    "threat": [
+     "e6f8",
+     "b2e2"
+    ]
+   },
+   "mistakeMove": "g4e3",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1700-0043#7": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "Nf3",
+   "d5",
+   "e5",
+   "Bg4",
+   "d4",
+   "e6",
+   "Nc3",
+   "c5",
+   "Bb5+",
+   "Nd7",
+   "Be3",
+   "cxd4",
+   "Qxd4",
+   "Bxf3",
+   "gxf3",
+   "a6"
+  ],
+  "turn": {
+   "ply": 15,
+   "moveNo": 9,
+   "fen": "r2qkbnr/pp1n1ppp/4p3/1B1pP3/3Q4/2N1BP2/PPP2P1P/R3K2R b KQkq - 0 9",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "g7g5": 24.7
+   },
+   "refutations": {
+    "g7g5": [
+     "c3d5",
+     "a7a6",
+     "e3g5",
+     "d8a5",
+     "g5d2"
+    ]
+   },
+   "bestWin": 53.6,
+   "material": 0,
+   "lines": {
+    "best": [
+     "a7a6",
+     "b5d7",
+     "d8d7",
+     "e1c1",
+     "g8e7",
+     "f3f4"
+    ],
+    "mistake": [
+     "f8c5",
+     "d4c5",
+     "g8e7",
+     "c5a3",
+     "e8g8",
+     "b5d7"
+    ],
+    "threat": [
+     "c3d5",
+     "a7a6",
+     "b5d7",
+     "d8d7"
+    ]
+   },
+   "mistakeMove": "f8c5",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1700-0235#8": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "Nd2",
+   "dxe4",
+   "Nxe4",
+   "Nf6",
+   "Ng5",
+   "h6",
+   "Nxf7",
+   "Kxf7",
+   "Nf3",
+   "c5",
+   "Ne5+",
+   "Kg8",
+   "Bc4+",
+   "e6",
+   "c3",
+   "cxd4"
+  ],
+  "turn": {
+   "ply": 17,
+   "moveNo": 10,
+   "fen": "rnbq1bkr/pp4p1/4pn1p/2p1N3/2BP4/2P5/PP3PPP/R1BQK2R b KQ - 0 10",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "f8d6": 19.1
+   },
+   "refutations": {
+    "f8d6": [
+     "d4c5",
+     "d6c7",
+     "d1d8",
+     "c7d8",
+     "e5g6"
+    ]
+   },
+   "bestWin": 69.6,
+   "material": 2,
+   "lines": {
+    "best": [
+     "c5d4",
+     "e5g6",
+     "b8c6",
+     "e1g1",
+     "d4c3",
+     "b2c3",
+     "d8d1",
+     "f1d1"
+    ],
+    "mistake": [
+     "f8d6",
+     "d4c5",
+     "d6c7",
+     "d1d8",
+     "c7d8",
+     "e5g6"
+    ],
+    "threat": [
+     "e5g6",
+     "b8c6"
+    ]
+   },
+   "mistakeMove": "f8d6",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "caro-kann-1700-0145#27": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "Nf3",
+   "d5",
+   "exd5",
+   "cxd5",
+   "d4",
+   "Nc6",
+   "c3",
+   "Bg4",
+   "Be2",
+   "g6",
+   "h3",
+   "Bxf3",
+   "Bxf3",
+   "Bg7",
+   "O-O",
+   "e6",
+   "Nd2",
+   "Nge7",
+   "Re1",
+   "O-O",
+   "Nf1",
+   "a6",
+   "Bg5",
+   "Qb6",
+   "b3",
+   "Nf5",
+   "Ne3",
+   "Nd6",
+   "Ng4",
+   "Nf5",
+   "Nf6+",
+   "Bxf6",
+   "Bxf6",
+   "Rac8",
+   "g4",
+   "Ng7",
+   "Qd2",
+   "Ne8",
+   "Bg5",
+   "Qc7",
+   "Re3",
+   "Ng7",
+   "Bh6",
+   "b5",
+   "Kg2",
+   "Ne7",
+   "Bg5",
+   "f6",
+   "Bh6",
+   "Rf7",
+   "Rae1",
+   "g5",
+   "Bxg7",
+   "Kxg7",
+   "Rxe6",
+   "Ng6"
+  ],
+  "turn": {
+   "ply": 55,
+   "moveNo": 29,
+   "fen": "2r5/2q1nrkp/p3Rp2/1p1p2p1/3P2P1/1PP2B1P/P2Q1PK1/4R3 b - - 0 29",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "c7c3": 32.8
+   },
+   "refutations": {
+    "c7c3": [
+     "d2c3",
+     "c8c3",
+     "e6e7",
+     "f7e7",
+     "e1e7"
+    ]
+   },
+   "bestWin": 46.1,
+   "material": -1,
+   "lines": {
+    "best": [
+     "e7g6",
+     "e6e3",
+     "g6f4",
+     "g2h1",
+     "a6a5",
+     "f3d1"
+    ],
+    "mistake": [
+     "c7c3",
+     "d2c3",
+     "c8c3",
+     "e6e7",
+     "f7e7",
+     "e1e7"
+    ],
+    "threat": [
+     "e6a6",
+     "e7g6"
+    ]
+   },
+   "mistakeMove": "c7c3",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "caro-kann-2000-0187#26": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "exd5",
+   "cxd5",
+   "Bd3",
+   "Nc6",
+   "c3",
+   "Nf6",
+   "Ne2",
+   "Bg4",
+   "h3",
+   "Bh5",
+   "Qb3",
+   "Bxe2",
+   "Bxe2",
+   "Qc7",
+   "O-O",
+   "e6",
+   "Nd2",
+   "Bd6",
+   "Nf3",
+   "O-O",
+   "Bg5",
+   "Ne4",
+   "Be3",
+   "Na5",
+   "Qb5",
+   "a6",
+   "Qd3",
+   "Nc4",
+   "Rab1",
+   "b5",
+   "b3",
+   "Nxe3",
+   "fxe3",
+   "Qxc3",
+   "Rfd1",
+   "Qa5",
+   "Rb2",
+   "Rfc8",
+   "Rc2",
+   "Bg3",
+   "Rdc1",
+   "Rxc2",
+   "Rxc2",
+   "Bf2+",
+   "Kh1",
+   "Ng3+",
+   "Kh2",
+   "Ne4",
+   "Nd2",
+   "Bg3+",
+   "Kh1",
+   "Nf2+"
+  ],
+  "turn": {
+   "ply": 53,
+   "moveNo": 28,
+   "fen": "r5k1/5ppp/p3p3/qp1p4/3Pn3/1P1QP1bP/P1RNB1P1/7K b - - 8 28",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "a5a3": 38.1
+   },
+   "refutations": {
+    "a5a3": [
+     "d2e4",
+     "d5e4",
+     "d3e4",
+     "a8d8",
+     "e4f3"
+    ]
+   },
+   "bestWin": 90.2,
+   "material": 1,
+   "lines": {
+    "best": [
+     "e4f2",
+     "h1g1",
+     "f2d3",
+     "e2d3",
+     "h7h6",
+     "g1h1"
+    ],
+    "mistake": [
+     "e4d2",
+     "d3d2",
+     "a5d2",
+     "c2d2",
+     "a8c8",
+     "e2d1"
+    ],
+    "threat": [
+     "d2e4",
+     "d5e4"
+    ]
+   },
+   "mistakeMove": "e4d2",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "caro-kann-2000-0150#25": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "exd5",
+   "cxd5",
+   "c3",
+   "Nc6",
+   "Bf4",
+   "Bf5",
+   "Bb5",
+   "e6",
+   "Nd2",
+   "Bd6",
+   "Ne2",
+   "Ne7",
+   "O-O",
+   "O-O",
+   "Nf3",
+   "h6",
+   "Re1",
+   "Bxf4",
+   "Nxf4",
+   "Bg4",
+   "h3",
+   "Bf5",
+   "Ne5",
+   "Nxe5",
+   "Rxe5",
+   "Ng6",
+   "Nxg6",
+   "Bxg6",
+   "Bd3",
+   "Bxd3",
+   "Qxd3",
+   "Qb6",
+   "Rb1",
+   "Rac8",
+   "Rh5",
+   "Qa5",
+   "a3",
+   "Qa4",
+   "Qg3",
+   "Qc2",
+   "Re1",
+   "Kh7",
+   "Qd6",
+   "Qxb2",
+   "Re3",
+   "Rfd8",
+   "Qe7",
+   "Rf8",
+   "Rg3",
+   "Qc1+"
+  ],
+  "turn": {
+   "ply": 51,
+   "moveNo": 27,
+   "fen": "2r2r2/pp2Qppk/4p2p/3p3R/3P4/P1P3RP/1q3PP1/6K1 b - - 5 27",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "g7g6": 37.8
+   },
+   "refutations": {
+    "g7g6": [
+     "e7g5",
+     "h7g7",
+     "g5h6",
+     "g7f6",
+     "h6g5"
+    ]
+   },
+   "bestWin": 59.6,
+   "material": 1,
+   "lines": {
+    "best": [
+     "b2c1",
+     "g1h2",
+     "c1f4",
+     "h5e5",
+     "c8e8",
+     "e7b7"
+    ],
+    "mistake": [
+     "b2c3",
+     "g3c3",
+     "c8c3",
+     "e7f8",
+     "c3c7",
+     "g1h2"
+    ],
+    "threat": [
+     "h5h6",
+     "g7h6"
+    ]
+   },
+   "mistakeMove": "b2c3",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "caro-kann-2000-0010#24": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "exd5",
+   "cxd5",
+   "c4",
+   "Nf6",
+   "Nc3",
+   "g6",
+   "Nf3",
+   "Bg7",
+   "Be2",
+   "O-O",
+   "O-O",
+   "dxc4",
+   "Bxc4",
+   "a6",
+   "Ne5",
+   "b5",
+   "Bb3",
+   "Bb7",
+   "Bg5",
+   "Nbd7",
+   "Rc1",
+   "Nb6",
+   "Qe2",
+   "Rc8",
+   "Rfd1",
+   "e6",
+   "Ng4",
+   "h5",
+   "Nxf6+",
+   "Bxf6",
+   "Bxf6",
+   "Qxf6",
+   "Ne4",
+   "Bxe4",
+   "Qxe4",
+   "Nc4",
+   "Bxc4",
+   "Rxc4",
+   "Rxc4",
+   "bxc4",
+   "d5",
+   "Qxb2",
+   "dxe6",
+   "c3",
+   "e7",
+   "Re8",
+   "Rd8",
+   "Qc1+"
+  ],
+  "turn": {
+   "ply": 49,
+   "moveNo": 26,
+   "fen": "3Rr1k1/4Pp2/p5p1/7p/4Q3/2p5/Pq3PPP/6K1 b - - 2 26",
+   "label": "critical",
+   "kinds": [
+    "win",
+    "defend"
+   ],
+   "grades": {
+    "b2b3": 92.9
+   },
+   "refutations": {
+    "b2b3": [
+     "d8e8",
+     "g8h7",
+     "a2b3",
+     "h7g7",
+     "e4d4"
+    ]
+   },
+   "bestWin": 100.0,
+   "material": 0,
+   "lines": {
+    "best": [
+     "b2c1",
+     "d8d1",
+     "c1d1",
+     "e4e1",
+     "d1e1"
+    ],
+    "mistake": [
+     "b2b5",
+     "a2a4",
+     "c3c2",
+     "e4c2",
+     "b5e5",
+     "d8e8"
+    ],
+    "threat": [
+     "d8e8",
+     "g8g7"
+    ]
+   },
+   "mistakeMove": "b2b5",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "caro-kann-2000-0148#26": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "Nd2",
+   "dxe4",
+   "Nxe4",
+   "Bf5",
+   "Ng3",
+   "Bg6",
+   "Nf3",
+   "e6",
+   "h4",
+   "h6",
+   "h5",
+   "Bh7",
+   "Bd3",
+   "Bxd3",
+   "Qxd3",
+   "Nd7",
+   "c4",
+   "Ngf6",
+   "Be3",
+   "Bd6",
+   "Ne4",
+   "Nxe4",
+   "Qxe4",
+   "Nf6",
+   "Qc2",
+   "Ng4",
+   "O-O-O",
+   "Nxe3",
+   "fxe3",
+   "Qa5",
+   "c5",
+   "Be7",
+   "Kb1",
+   "O-O",
+   "Ne5",
+   "Rad8",
+   "g4",
+   "Qc7",
+   "Rdf1",
+   "Bf6",
+   "Nf3",
+   "e5",
+   "dxe5",
+   "Bxe5",
+   "Qf5",
+   "Rd5",
+   "e4",
+   "Rxc5",
+   "g5",
+   "Qa5",
+   "gxh6",
+   "Bxb2"
+  ],
+  "turn": {
+   "ply": 53,
+   "moveNo": 28,
+   "fen": "5rk1/pp3pp1/2p4P/q1r1bQ1P/4P3/5N2/PP6/1K3R1R b - - 0 28",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "e5c7": 72.7
+   },
+   "refutations": {
+    "e5c7": [
+     "f5g4",
+     "c5g5",
+     "f3g5",
+     "a5c5",
+     "h6h7"
+    ]
+   },
+   "bestWin": 82.5,
+   "material": 0,
+   "lines": {
+    "best": [
+     "e5b2",
+     "f5c5",
+     "a5c5",
+     "b1b2",
+     "c5b4",
+     "b2c1",
+     "b4e4",
+     "h6g7",
+     "g8g7"
+    ],
+    "mistake": [
+     "a5b5",
+     "f3e5",
+     "c5e5",
+     "h6g7",
+     "e5f5",
+     "g7f8q",
+     "g8f8",
+     "e4f5"
+    ],
+    "threat": [
+     "f3g5",
+     "g7g6",
+     "h5g6"
+    ]
+   },
+   "mistakeMove": "a5b5",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "caro-kann-2000-0193#13": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "d4",
+   "d5",
+   "e5",
+   "e6",
+   "Nc3",
+   "c5",
+   "dxc5",
+   "Nc6",
+   "Nf3",
+   "Bxc5",
+   "a3",
+   "a6",
+   "Bf4",
+   "Nge7",
+   "b4",
+   "Ba7",
+   "Bd3",
+   "Ng6",
+   "Bg3",
+   "O-O",
+   "O-O",
+   "Qc7",
+   "Re1",
+   "b5",
+   "h4",
+   "f5",
+   "exf6",
+   "Qxg3"
+  ],
+  "turn": {
+   "ply": 27,
+   "moveNo": 15,
+   "fen": "r1b2rk1/b1q3pp/p1n1pPn1/1p1p4/1P5P/P1NB1NB1/2P2PP1/R2QR1K1 b - - 0 15",
+   "label": "critical",
+   "kinds": [
+    "win",
+    "defend"
+   ],
+   "grades": {
+    "g6f4": 49.7
+   },
+   "refutations": {
+    "g6f4": [
+     "f3g5",
+     "g7g6",
+     "f6f7",
+     "f8f7",
+     "g5f7",
+     "c7f7"
+    ]
+   },
+   "bestWin": 80.2,
+   "material": -1,
+   "lines": {
+    "best": [
+     "c7g3",
+     "g1h1",
+     "a7f2",
+     "c3e2",
+     "g3g4",
+     "e1f1"
+    ],
+    "mistake": [
+     "g6f4",
+     "f3g5",
+     "g7g6",
+     "f6f7",
+     "f8f7",
+     "g5f7",
+     "c7f7"
+    ],
+    "threat": [
+     "g3c7",
+     "g7f6",
+     "d3g6",
+     "h7g6",
+     "c3d5",
+     "e6d5",
+     "d1d5"
+    ]
+   },
+   "mistakeMove": "g6f4",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "caro-kann-2000-0132#15": {
+  "side": "b",
+  "start": [
+   "e4",
+   "c6"
+  ],
+  "moves": [
+   "Nf3",
+   "d5",
+   "d3",
+   "dxe4",
+   "Ng5",
+   "exd3",
+   "Bxd3",
+   "e5",
+   "Qf3",
+   "Nf6",
+   "Bc4",
+   "Bb4+",
+   "c3",
+   "Bg4",
+   "Nxf7",
+   "Bxf3",
+   "Nxd8",
+   "Bxg2",
+   "Rg1",
+   "Bd5",
+   "Bxd5",
+   "cxd5",
+   "cxb4",
+   "Kxd8",
+   "Rxg7",
+   "Nbd7",
+   "Bg5",
+   "h6",
+   "Bh4",
+   "Rc8",
+   "Na3",
+   "Rc6"
+  ],
+  "turn": {
+   "ply": 31,
+   "moveNo": 17,
+   "fen": "2rk3r/pp1n2R1/5n1p/3pp3/1P5B/N7/PP3P1P/R3K3 b Q - 3 17",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "h8g8": 39.6
+   },
+   "refutations": {
+    "h8g8": [
+     "g7g8",
+     "d8e7",
+     "g8c8",
+     "b7b6",
+     "a3b5"
+    ]
+   },
+   "bestWin": 44.0,
+   "material": 0,
+   "lines": {
+    "best": [
+     "c8c6",
+     "b4b5",
+     "c6e6",
+     "a1c1",
+     "h8e8",
+     "b2b4"
+    ],
+    "mistake": [
+     "h8g8",
+     "g7g8",
+     "d8e7",
+     "g8c8",
+     "b7b6",
+     "a3b5"
+    ],
+    "threat": [
+     "a1d1",
+     "d5d4"
+    ]
+   },
+   "mistakeMove": "h8g8",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "italian-1100-0140#7": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Nf6",
+   "d4",
+   "exd4",
+   "O-O",
+   "Nxe4",
+   "Re1",
+   "f5",
+   "Bd5",
+   "Bd6",
+   "Ng5",
+   "Nb4",
+   "Nxe4",
+   "fxe4",
+   "Rxe4+",
+   "Be7",
+   "Qh5+"
+  ],
+  "turn": {
+   "ply": 15,
+   "moveNo": 11,
+   "fen": "r1bqk2r/ppppb1pp/8/3B4/1n1pR3/8/PPP2PPP/RNBQ2K1 w kq - 1 11",
+   "label": "critical",
+   "kinds": [
+    "win",
+    "defend"
+   ],
+   "grades": {
+    "d5f7": 55.1
+   },
+   "refutations": {
+    "d5f7": [
+     "e8f7",
+     "e4d4",
+     "d7d5",
+     "a2a3",
+     "b4c6",
+     "d4d5"
+    ]
+   },
+   "bestWin": 88.4,
+   "material": -1,
+   "lines": {
+    "best": [
+     "d1h5",
+     "g7g6",
+     "h5e5",
+     "h8g8",
+     "c1g5",
+     "d7d6",
+     "e5e7",
+     "d8e7",
+     "e4e7"
+    ],
+    "mistake": [
+     "c1g5",
+     "b4d5",
+     "d1d4",
+     "e8f8",
+     "g5e7",
+     "d5e7"
+    ],
+    "threat": [
+     "b4d5",
+     "d1h5"
+    ]
+   },
+   "mistakeMove": "c1g5",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "italian-1100-0169#6": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Nf6",
+   "Nc3",
+   "Bc5",
+   "d3",
+   "d6",
+   "Ng5",
+   "O-O",
+   "h3",
+   "Qe7",
+   "Nd5",
+   "Qd7",
+   "Nxf6+",
+   "gxf6",
+   "Qh5"
+  ],
+  "turn": {
+   "ply": 13,
+   "moveNo": 10,
+   "fen": "r1b2rk1/pppq1p1p/2np1p2/2b1p1N1/2B1P3/3P3P/PPP2PP1/R1BQK2R w KQ - 0 10",
+   "label": "critical",
+   "kinds": [
+    "win",
+    "defend"
+   ],
+   "grades": {
+    "h1h2": 38.3
+   },
+   "refutations": {
+    "h1h2": [
+     "c5b4",
+     "c2c3"
+    ]
+   },
+   "bestWin": 90.9,
+   "material": 0,
+   "lines": {
+    "best": [
+     "d1h5",
+     "f8e8",
+     "c4f7",
+     "g8g7",
+     "f7e8",
+     "f6g5",
+     "e8d7",
+     "c8d7",
+     "c1g5"
+    ],
+    "mistake": [
+     "g5f3",
+     "g8h8",
+     "f3h4",
+     "c6a5",
+     "d1f3",
+     "d7e7"
+    ],
+    "threat": [
+     "f6g5",
+     "c1g5"
+    ]
+   },
+   "mistakeMove": "g5f3",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "italian-1100-0094#24": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Nf6",
+   "Ng5",
+   "Bc5",
+   "Nxf7",
+   "Qe7",
+   "Nxh8",
+   "Bxf2+",
+   "Kxf2",
+   "Nxe4+",
+   "Kf1",
+   "Qf6+",
+   "Qf3",
+   "Nd4",
+   "Qxf6",
+   "Nxf6",
+   "Nf7",
+   "Nxc2",
+   "Nxe5",
+   "Nxa1",
+   "Bd3",
+   "d6",
+   "Nc4",
+   "g6",
+   "Nc3",
+   "Bf5",
+   "Bxf5",
+   "gxf5",
+   "Na3",
+   "Ne4",
+   "Nd5",
+   "O-O-O",
+   "d3",
+   "Nc5",
+   "Ne7+",
+   "Kb8",
+   "Nxf5",
+   "Nxd3",
+   "Be3",
+   "Nxb2",
+   "Kf2",
+   "Rf8",
+   "g4",
+   "Nd3+",
+   "Ke2",
+   "Ne5",
+   "Rxa1",
+   "Nxg4",
+   "Rf1",
+   "Nxh2",
+   "Rf4"
+  ],
+  "turn": {
+   "ply": 49,
+   "moveNo": 28,
+   "fen": "1k3r2/ppp4p/3p4/5N2/8/N3B3/P3K2n/5R2 w - - 0 28",
+   "label": "critical",
+   "kinds": [
+    "win",
+    "defend"
+   ],
+   "grades": {
+    "f1h1": 5.7
+   },
+   "refutations": {},
+   "bestWin": 78.1,
+   "material": 2,
+   "lines": {
+    "best": [
+     "f1f4",
+     "h7h5",
+     "f5d6",
+     "f8f4",
+     "e3f4",
+     "h2g4"
+    ],
+    "mistake": [
+     "f5e7",
+     "h2f1",
+     "e3f2",
+     "f1h2",
+     "a3b5",
+     "a7a6"
+    ],
+    "threat": [
+     "h2f1",
+     "f5g7"
+    ]
+   },
+   "mistakeMove": "f5e7",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "italian-1400-0116#14": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "h6",
+   "c3",
+   "Nf6",
+   "d3",
+   "d6",
+   "O-O",
+   "Be7",
+   "Re1",
+   "Bg4",
+   "h3",
+   "Bh5",
+   "Nbd2",
+   "a6",
+   "Bb3",
+   "Qd7",
+   "Nf1",
+   "g5",
+   "Ng3",
+   "Bg6",
+   "d4",
+   "g4",
+   "hxg4",
+   "Qxg4",
+   "Ba4",
+   "h5",
+   "dxe5",
+   "dxe5",
+   "Nxe5",
+   "Qxd1",
+   "Rxd1"
+  ],
+  "turn": {
+   "ply": 29,
+   "moveNo": 18,
+   "fen": "r3k2r/1pp1bp2/p1n2nb1/4N2p/B3P3/2P3N1/PP3PP1/R1BqR1K1 w kq - 0 18",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "b2b3": 71.6
+   },
+   "refutations": {
+    "b2b3": [
+     "d1e1",
+     "g3f1",
+     "f6g4",
+     "a4c6",
+     "b7c6"
+    ]
+   },
+   "bestWin": 74.1,
+   "material": -8,
+   "lines": {
+    "best": [
+     "e1d1",
+     "e8f8",
+     "e5c6",
+     "b7c6",
+     "g3f5",
+     "g6f5",
+     "e4f5"
+    ],
+    "mistake": [
+     "a4d1",
+     "c6e5",
+     "d1c2",
+     "e8c8",
+     "c1g5",
+     "h8g8"
+    ],
+    "threat": [
+     "d1e1",
+     "g3f1",
+     "g6e4"
+    ]
+   },
+   "mistakeMove": "a4d1",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "italian-1400-0161#10": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Nf6",
+   "d3",
+   "h6",
+   "O-O",
+   "Bc5",
+   "c3",
+   "Ng4",
+   "d4",
+   "exd4",
+   "cxd4",
+   "Bd6",
+   "e5",
+   "Be7",
+   "h3",
+   "h5",
+   "Nc3",
+   "d6",
+   "Nd5",
+   "dxe5",
+   "dxe5",
+   "Ngxe5",
+   "Nxe5"
+  ],
+  "turn": {
+   "ply": 21,
+   "moveNo": 14,
+   "fen": "r1bqk2r/ppp1bpp1/2n5/3Nn2p/2B5/5N1P/PP3PP1/R1BQ1RK1 w kq - 0 14",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "b2b4": 48.8
+   },
+   "refutations": {
+    "b2b4": [
+     "e5c4",
+     "c1f4",
+     "c4d6",
+     "f1e1",
+     "c8e6",
+     "d5e7",
+     "d8e7"
+    ]
+   },
+   "bestWin": 74.3,
+   "material": -1,
+   "lines": {
+    "best": [
+     "f3e5",
+     "c6e5",
+     "f1e1",
+     "c7c6",
+     "e1e5",
+     "c8e6"
+    ],
+    "mistake": [
+     "d5e7",
+     "d8d1",
+     "f1d1",
+     "e5f3",
+     "g2f3",
+     "e8e7"
+    ],
+    "threat": [
+     "e5c4",
+     "c1f4",
+     "c4b2"
+    ]
+   },
+   "mistakeMove": "d5e7",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "italian-1400-0245#10": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Nf6",
+   "d3",
+   "Bc5",
+   "c3",
+   "O-O",
+   "Nbd2",
+   "Na5",
+   "Nxe5",
+   "Nxc4",
+   "Nexc4",
+   "d5",
+   "exd5",
+   "Nxd5",
+   "O-O",
+   "Nf4",
+   "d4",
+   "Qg5",
+   "Qf3",
+   "Nh3+",
+   "Kh1",
+   "Bg4",
+   "Qg3"
+  ],
+  "turn": {
+   "ply": 21,
+   "moveNo": 14,
+   "fen": "r4rk1/ppp2ppp/8/2b3q1/2NP2b1/2P2Q1n/PP1N1PPP/R1B2R1K w - - 5 14",
+   "label": "critical",
+   "kinds": [
+    "win",
+    "defend"
+   ],
+   "grades": {
+    "a2a3": 61.7
+   },
+   "refutations": {
+    "a2a3": [
+     "g4f3"
+    ]
+   },
+   "bestWin": 81.9,
+   "material": 1,
+   "lines": {
+    "best": [
+     "f3g3",
+     "c5e7",
+     "g2h3",
+     "g4e2",
+     "f1g1",
+     "f7f6"
+    ],
+    "mistake": [
+     "d2e4",
+     "g4f3",
+     "e4g5",
+     "f3e2",
+     "g5h3",
+     "e2c4"
+    ],
+    "threat": [
+     "g4f3",
+     "d2f3"
+    ]
+   },
+   "mistakeMove": "d2e4",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "italian-1400-0068#25": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "d6",
+   "h3",
+   "Nf6",
+   "Ng5",
+   "Be6",
+   "Bxe6",
+   "fxe6",
+   "Nxe6",
+   "Qe7",
+   "Nxf8",
+   "Rxf8",
+   "d3",
+   "O-O-O",
+   "Bg5",
+   "h6",
+   "Bxf6",
+   "Qxf6",
+   "O-O",
+   "Nd4",
+   "Nc3",
+   "a6",
+   "Qd2",
+   "g5",
+   "Nd5",
+   "Qg7",
+   "c3",
+   "Ne6",
+   "g3",
+   "h5",
+   "Kh2",
+   "Kb8",
+   "b4",
+   "Rf3",
+   "Ne3",
+   "Qd7",
+   "Qe2",
+   "Rdf8",
+   "Nf5",
+   "g4",
+   "h4",
+   "Ng7",
+   "Nxg7",
+   "Qxg7",
+   "c4",
+   "Qd7",
+   "a4",
+   "Qc6",
+   "b5",
+   "axb5",
+   "axb5",
+   "Qc5",
+   "Kg2"
+  ],
+  "turn": {
+   "ply": 51,
+   "moveNo": 29,
+   "fen": "1k3r2/1pp5/3p4/1Pq1p2p/2P1P1pP/3P1rP1/4QP1K/R4R2 w - - 1 29",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "a1a6": 38.6
+   },
+   "refutations": {
+    "a1a6": [
+     "f3f2",
+     "e2f2"
+    ]
+   },
+   "bestWin": 52.6,
+   "material": 1,
+   "lines": {
+    "best": [
+     "h2g2",
+     "c5d4",
+     "a1a2",
+     "b7b6",
+     "e2c2",
+     "b8c8"
+    ],
+    "mistake": [
+     "e2a2",
+     "f3f2",
+     "a2f2",
+     "f8f2",
+     "h2h1",
+     "c5d4",
+     "f1f2",
+     "d4f2"
+    ],
+    "threat": [
+     "f3f2",
+     "h2h1"
+    ]
+   },
+   "mistakeMove": "e2a2",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "italian-1400-0135#14": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "f5",
+   "d3",
+   "Nf6",
+   "Bg5",
+   "Bc5",
+   "Nbd2",
+   "d6",
+   "c3",
+   "f4",
+   "d4",
+   "exd4",
+   "cxd4",
+   "Nxd4",
+   "O-O",
+   "Bg4",
+   "h3",
+   "Bxf3",
+   "Nxf3",
+   "Qe7",
+   "Nxd4",
+   "O-O-O",
+   "Re1",
+   "h6",
+   "Bxf4",
+   "g5",
+   "Bg3",
+   "h5",
+   "Be6+",
+   "Kb8",
+   "Bf5"
+  ],
+  "turn": {
+   "ply": 29,
+   "moveNo": 18,
+   "fen": "1k1r3r/ppp1q3/3pBn2/2b3pp/3NP3/6BP/PP3PP1/R2QR1K1 w - - 2 18",
+   "label": "critical",
+   "kinds": [
+    "win",
+    "defend"
+   ],
+   "grades": {
+    "b2b4": 19.2
+   },
+   "refutations": {
+    "b2b4": [
+     "c5d4",
+     "d1d4",
+     "e7e6",
+     "e4e5",
+     "d6e5",
+     "d4e5",
+     "e6e5",
+     "e1e5"
+    ]
+   },
+   "bestWin": 84.4,
+   "material": 3,
+   "lines": {
+    "best": [
+     "e6f5",
+     "h5h4",
+     "g3h2",
+     "g5g4",
+     "h3g4",
+     "h4h3"
+    ],
+    "mistake": [
+     "d1b3",
+     "c5d4",
+     "a1d1",
+     "d4e5",
+     "e6d5",
+     "f6d5",
+     "e4d5"
+    ],
+    "threat": [
+     "h5h4",
+     "g3h2",
+     "c5d4",
+     "d1d4",
+     "e7e6"
+    ]
+   },
+   "mistakeMove": "d1b3",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "italian-1400-0245#13": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Nf6",
+   "d3",
+   "Bc5",
+   "c3",
+   "O-O",
+   "Nbd2",
+   "Na5",
+   "Nxe5",
+   "Nxc4",
+   "Nexc4",
+   "d5",
+   "exd5",
+   "Nxd5",
+   "O-O",
+   "Nf4",
+   "d4",
+   "Qg5",
+   "Qf3",
+   "Nh3+",
+   "Kh1",
+   "Bg4",
+   "Qg3",
+   "Be7",
+   "gxh3",
+   "Be6",
+   "Qxg5",
+   "Bxg5",
+   "Ne3"
+  ],
+  "turn": {
+   "ply": 27,
+   "moveNo": 17,
+   "fen": "r4rk1/ppp2ppp/4b3/6b1/2NP4/2P4P/PP1N1P1P/R1B2R1K w - - 0 17",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "d2e4": 29.2
+   },
+   "refutations": {
+    "d2e4": [
+     "g5c1",
+     "f1c1",
+     "e6c4",
+     "h1g1",
+     "f8e8"
+    ]
+   },
+   "bestWin": 81.8,
+   "material": 4,
+   "lines": {
+    "best": [
+     "c4e3",
+     "a8e8",
+     "h1g2",
+     "g5e3",
+     "f2e3",
+     "f7f5"
+    ],
+    "mistake": [
+     "d2e4",
+     "g5c1",
+     "f1c1",
+     "e6c4",
+     "h1g1",
+     "f8e8"
+    ],
+    "threat": [
+     "f8e8",
+     "f2f4"
+    ]
+   },
+   "mistakeMove": "d2e4",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "italian-1400-0004#14": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Bc5",
+   "d3",
+   "Nf6",
+   "O-O",
+   "O-O",
+   "a3",
+   "d6",
+   "h3",
+   "Be6",
+   "Bxe6",
+   "fxe6",
+   "Bg5",
+   "a5",
+   "Nc3",
+   "h6",
+   "Be3",
+   "Ba7",
+   "Bxa7",
+   "Rxa7",
+   "Nb5",
+   "Ra8",
+   "Qd2",
+   "d5",
+   "exd5",
+   "exd5",
+   "d4",
+   "e4",
+   "Nh4",
+   "Nh5",
+   "g3"
+  ],
+  "turn": {
+   "ply": 29,
+   "moveNo": 18,
+   "fen": "r2q1rk1/1pp3p1/2n4p/pN1p3n/3Pp2N/P6P/1PPQ1PP1/R4RK1 w - - 2 18",
+   "label": "critical",
+   "kinds": [
+    "defend"
+   ],
+   "grades": {
+    "d2e2": 27.1
+   },
+   "refutations": {
+    "d2e2": [
+     "h5f4",
+     "e2e1",
+     "d8h4",
+     "g1h2",
+     "a8d8"
+    ]
+   },
+   "bestWin": 39.9,
+   "material": 0,
+   "lines": {
+    "best": [
+     "g2g3",
+     "a5a4",
+     "g1h2",
+     "c6a5",
+     "h4g6",
+     "f8f3"
+    ],
+    "mistake": [
+     "d2e2",
+     "h5f4",
+     "e2e1",
+     "d8h4",
+     "g1h2",
+     "a8d8"
+    ],
+    "threat": [
+     "d8h4",
+     "c2c4"
+    ]
+   },
+   "mistakeMove": "d2e2",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "italian-1700-0058#15": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Bc5",
+   "d4",
+   "exd4",
+   "c3",
+   "dxc3",
+   "Bxf7+",
+   "Kxf7",
+   "Qd5+",
+   "Ke8",
+   "Qxc5",
+   "d6",
+   "Qxc3",
+   "Nf6",
+   "Bg5",
+   "Qe7",
+   "O-O",
+   "h6",
+   "Bh4",
+   "Ne5",
+   "Nxe5",
+   "dxe5",
+   "Nd2",
+   "Kf7",
+   "Nc4",
+   "Re8",
+   "f4",
+   "Qc5+",
+   "Bf2",
+   "Nxe4",
+   "Bxc5",
+   "Nxc3",
+   "Nxe5+"
+  ],
+  "turn": {
+   "ply": 31,
+   "moveNo": 19,
+   "fen": "r1b1r3/ppp2kp1/7p/2B1p3/2N2P2/2n5/PP4PP/R4RK1 w - - 0 19",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "g2g4": 62.2
+   },
+   "refutations": {
+    "g2g4": [
+     "c3e2",
+     "g1f2",
+     "e2f4",
+     "f2f3",
+     "b7b6",
+     "c4e5",
+     "e8e5"
+    ]
+   },
+   "bestWin": 85.6,
+   "material": -1,
+   "lines": {
+    "best": [
+     "c4e5",
+     "f7g8",
+     "b2c3",
+     "b7b6",
+     "c5d4",
+     "c8b7"
+    ],
+    "mistake": [
+     "f4e5",
+     "f7e6",
+     "c5f8",
+     "c3d5",
+     "f8g7",
+     "b7b6"
+    ],
+    "threat": [
+     "c3e2",
+     "g1f2",
+     "e2f4"
+    ]
+   },
+   "mistakeMove": "f4e5",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "italian-1700-0086#8": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Bc5",
+   "d4",
+   "exd4",
+   "c3",
+   "Nf6",
+   "cxd4",
+   "Bb4+",
+   "Nc3",
+   "Nxe4",
+   "O-O",
+   "Bxc3",
+   "bxc3",
+   "d5",
+   "Bb3",
+   "O-O",
+   "Qc2",
+   "Bf5",
+   "Qb2"
+  ],
+  "turn": {
+   "ply": 17,
+   "moveNo": 12,
+   "fen": "r2q1rk1/ppp2ppp/2n5/3p1b2/3Pn3/1BP2N2/P1Q2PPP/R1B2RK1 w - - 4 12",
+   "label": "critical",
+   "kinds": [
+    "defend"
+   ],
+   "grades": {
+    "c2e4": 34.2
+   },
+   "refutations": {
+    "c2e4": [
+     "f5e4",
+     "f3e5",
+     "c6e5"
+    ]
+   },
+   "bestWin": 39.3,
+   "material": -1,
+   "lines": {
+    "best": [
+     "c2b2",
+     "c6a5",
+     "c1f4",
+     "f8e8",
+     "h2h3",
+     "b7b5"
+    ],
+    "mistake": [
+     "f3h4",
+     "d8h4",
+     "b3d5",
+     "e4d6",
+     "c2d1",
+     "c6e7"
+    ],
+    "threat": [
+     "e4g3",
+     "h2g3",
+     "f5c2",
+     "b3c2"
+    ]
+   },
+   "mistakeMove": "f3h4",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "italian-1700-0073#9": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Nf6",
+   "O-O",
+   "h6",
+   "Re1",
+   "Bc5",
+   "c3",
+   "O-O",
+   "d4",
+   "exd4",
+   "cxd4",
+   "Bb4",
+   "Nc3",
+   "Bxc3",
+   "bxc3",
+   "d5",
+   "exd5",
+   "Nxd5",
+   "Ba3",
+   "Re8",
+   "Rxe8+"
+  ],
+  "turn": {
+   "ply": 19,
+   "moveNo": 13,
+   "fen": "r1bqr1k1/ppp2pp1/2n4p/3n4/2BP4/B1P2N2/P4PPP/R2QR1K1 w - - 2 13",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "d1b3": 31.7
+   },
+   "refutations": {
+    "d1b3": [
+     "c8e6",
+     "c4f1",
+     "d5b6",
+     "c3c4",
+     "c6d4",
+     "f3d4",
+     "d8d4"
+    ]
+   },
+   "bestWin": 86.0,
+   "material": 0,
+   "lines": {
+    "best": [
+     "e1e8",
+     "d8e8",
+     "c4d5",
+     "c8g4",
+     "h2h3",
+     "g4h5"
+    ],
+    "mistake": [
+     "d1b3",
+     "c8e6",
+     "c4f1",
+     "d5b6",
+     "c3c4",
+     "c6d4",
+     "f3d4",
+     "d8d4"
+    ],
+    "threat": [
+     "e8e1",
+     "d1e1"
+    ]
+   },
+   "mistakeMove": "d1b3",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "italian-2000-0110#9": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Bc5",
+   "c3",
+   "d6",
+   "d4",
+   "exd4",
+   "cxd4",
+   "Bb4+",
+   "Nc3",
+   "Nf6",
+   "Bg5",
+   "h6",
+   "Bxf6",
+   "Qxf6",
+   "O-O",
+   "O-O",
+   "Nd5",
+   "Qg6",
+   "Bb5",
+   "Re8",
+   "Nxb4"
+  ],
+  "turn": {
+   "ply": 19,
+   "moveNo": 13,
+   "fen": "r1b1r1k1/ppp2pp1/2np2qp/1B1N4/1b1PP3/5N2/PP3PPP/R2Q1RK1 w - - 6 13",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "f3d2": 28.5
+   },
+   "refutations": {
+    "f3d2": [
+     "b4a5",
+     "a1c1",
+     "a7a6",
+     "b5a4",
+     "b7b5",
+     "c1c6"
+    ]
+   },
+   "bestWin": 80.8,
+   "material": 0,
+   "lines": {
+    "best": [
+     "d5b4",
+     "e8e4",
+     "b4c6",
+     "c8h3",
+     "g2g3",
+     "g6h5"
+    ],
+    "mistake": [
+     "d5c7",
+     "c8h3",
+     "f3h4",
+     "g6e4",
+     "g2h3",
+     "e4h4"
+    ],
+    "threat": [
+     "b4a5",
+     "b2b4"
+    ]
+   },
+   "mistakeMove": "d5c7",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "italian-2000-0234#20": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Be7",
+   "d4",
+   "d6",
+   "dxe5",
+   "dxe5",
+   "Qxd8+",
+   "Bxd8",
+   "O-O",
+   "f6",
+   "Nc3",
+   "Be7",
+   "Be3",
+   "Bd7",
+   "Rfd1",
+   "a6",
+   "Bf7+",
+   "Kd8",
+   "Nd5",
+   "Nh6",
+   "Bxh6",
+   "gxh6",
+   "Nh4",
+   "Bd6",
+   "Nxf6",
+   "Ke7",
+   "Nxd7",
+   "Kxd7",
+   "Nf5",
+   "Raf8",
+   "Bh5",
+   "Ke6",
+   "Nxh6",
+   "Rf4",
+   "Bg4+",
+   "Kf6",
+   "Bf5",
+   "Ne7",
+   "Ng4+",
+   "Kf7",
+   "Nh6+",
+   "Kg7",
+   "g3"
+  ],
+  "turn": {
+   "ply": 41,
+   "moveNo": 24,
+   "fen": "7r/1pp1n1kp/p2b3N/4pB2/4Pr2/8/PPP2PPP/R2R2K1 w - - 9 24",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "f2f3": 57.8
+   },
+   "refutations": {
+    "f2f3": [
+     "g7h6",
+     "f5h3",
+     "f4f6",
+     "d1d2",
+     "h6g7"
+    ]
+   },
+   "bestWin": 79.7,
+   "material": 2,
+   "lines": {
+    "best": [
+     "g2g3",
+     "g7h6",
+     "g3f4",
+     "e5f4",
+     "e4e5",
+     "d6e5"
+    ],
+    "mistake": [
+     "h6g4",
+     "e7f5",
+     "f2f3",
+     "h7h5",
+     "g4f2",
+     "f5d4"
+    ],
+    "threat": [
+     "g7h6",
+     "g2g3",
+     "f4f5",
+     "e4f5"
+    ]
+   },
+   "mistakeMove": "h6g4",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "italian-2000-0176#11": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Bc5",
+   "d3",
+   "Nf6",
+   "c3",
+   "O-O",
+   "b4",
+   "Bb6",
+   "a4",
+   "a6",
+   "O-O",
+   "d6",
+   "Re1",
+   "Ne7",
+   "h3",
+   "Ng6",
+   "Nbd2",
+   "c6",
+   "Nf1",
+   "d5",
+   "Bb3",
+   "dxe4",
+   "dxe4",
+   "Qxd1",
+   "Bxd1"
+  ],
+  "turn": {
+   "ply": 23,
+   "moveNo": 15,
+   "fen": "r1b2rk1/1p3ppp/pbp2nn1/4p3/PP2P3/1BP2N1P/5PP1/R1BqRNK1 w - - 0 15",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "b3d5": 46.7
+   },
+   "refutations": {
+    "b3d5": [
+     "d1d3",
+     "c1e3",
+     "c6d5",
+     "e3b6",
+     "f6e4"
+    ]
+   },
+   "bestWin": 50.6,
+   "material": -9,
+   "lines": {
+    "best": [
+     "b3d1",
+     "a6a5",
+     "c1e3",
+     "b6e3",
+     "e1e3",
+     "c8e6"
+    ],
+    "mistake": [
+     "e1d1",
+     "f6e4",
+     "c1e3",
+     "b6e3",
+     "f1e3",
+     "e4c3"
+    ],
+    "threat": [
+     "d1b3",
+     "a4a5"
+    ]
+   },
+   "mistakeMove": "e1d1",
+   "trigger": true,
+   "inCheck": false
+  }
+ },
+ "italian-2000-0231#25": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Bc5",
+   "O-O",
+   "d6",
+   "c3",
+   "Nf6",
+   "d3",
+   "Bb6",
+   "Nbd2",
+   "Bg4",
+   "h3",
+   "Bh5",
+   "Re1",
+   "h6",
+   "Nf1",
+   "a6",
+   "Ng3",
+   "Bg6",
+   "Bb3",
+   "Bh7",
+   "d4",
+   "O-O",
+   "Bc2",
+   "Re8",
+   "Be3",
+   "exd4",
+   "cxd4",
+   "Nxe4",
+   "d5",
+   "Bxe3",
+   "Nxe4",
+   "Bxf2+",
+   "Nxf2",
+   "Bxc2",
+   "Qxc2",
+   "Nb4",
+   "Qc4",
+   "a5",
+   "a3",
+   "Na6",
+   "Rac1",
+   "Nc5",
+   "b4",
+   "axb4",
+   "Rxe8+",
+   "Qxe8",
+   "axb4",
+   "Ra4",
+   "Nd4",
+   "Ne4",
+   "Re1",
+   "b5",
+   "Qxc7"
+  ],
+  "turn": {
+   "ply": 51,
+   "moveNo": 29,
+   "fen": "4q1k1/2p2pp1/3p3p/1p1P4/rPQNn3/7P/5NP1/4R1K1 w - - 0 29",
+   "label": "critical",
+   "kinds": [
+    "win",
+    "defend"
+   ],
+   "grades": {
+    "e1e4": 43.8
+   },
+   "refutations": {
+    "e1e4": [
+     "e8e4",
+     "f2e4",
+     "b5c4",
+     "d4b5",
+     "a4b4",
+     "b5c7"
+    ]
+   },
+   "bestWin": 87.0,
+   "material": 1,
+   "lines": {
+    "best": [
+     "c4c7",
+     "e8a8",
+     "f2e4",
+     "a4a1",
+     "e4f6",
+     "g7f6"
+    ],
+    "mistake": [
+     "e1e4",
+     "e8e4",
+     "f2e4",
+     "b5c4",
+     "d4b5",
+     "a4b4",
+     "b5c7"
+    ],
+    "threat": [
+     "b5c4",
+     "f2e4"
+    ]
+   },
+   "mistakeMove": "e1e4",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "italian-2000-0077#2": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "Nf6",
+   "d4",
+   "exd4",
+   "e5",
+   "d5",
+   "Bb5"
+  ],
+  "turn": {
+   "ply": 5,
+   "moveNo": 6,
+   "fen": "r1bqkb1r/ppp2ppp/2n2n2/3pP3/2Bp4/5N2/PPP2PPP/RNBQK2R w KQkq d6 0 6",
+   "label": "critical",
+   "kinds": [
+    "win"
+   ],
+   "grades": {
+    "e5f6": 20.5
+   },
+   "refutations": {
+    "e5f6": [
+     "d5c4",
+     "e1g1",
+     "d8f6",
+     "f1e1",
+     "c8e6"
+    ]
+   },
+   "bestWin": 50.6,
+   "material": -1,
+   "lines": {
+    "best": [
+     "c4b5",
+     "f6e4",
+     "f3d4",
+     "c8d7",
+     "b5c6",
+     "b7c6"
+    ],
+    "mistake": [
+     "e5f6",
+     "d5c4",
+     "e1g1",
+     "d8f6",
+     "f1e1",
+     "c8e6"
+    ],
+    "threat": [
+     "d5c4",
+     "e5f6",
+     "g7f6"
+    ]
+   },
+   "mistakeMove": "e5f6",
+   "trigger": false,
+   "inCheck": false
+  }
+ },
+ "italian-2000-0112#1": {
+  "side": "w",
+  "start": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "Bc4"
+  ],
+  "moves": [
+   "d6",
+   "Nc3",
+   "Bg4",
+   "h3"
+  ],
+  "turn": {
+   "ply": 3,
+   "moveNo": 5,
+   "fen": "r2qkbnr/ppp2ppp/2np4/4p3/2B1P1b1/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 2 5",
+   "label": "critical",
+   "kinds": [
+    "trap"
+   ],
+   "grades": {
+    "f3e5": 30.4
+   },
+   "refutations": {
+    "f3e5": [
+     "c6e5",
+     "c4e2",
+     "g4e2",
+     "d1e2",
+     "e5c6"
+    ]
+   },
+   "bestWin": 56.5,
+   "material": 0,
+   "lines": {
+    "best": [
+     "h2h3",
+     "g4f3",
+     "d1f3",
+     "g8f6",
+     "c3d5",
+     "c6d4",
+     "d5f6",
+     "d8f6",
+     "f3f6",
+     "g7f6"
+    ],
+    "mistake": [
+     "f3e5",
+     "c6e5",
+     "c4e2",
+     "g4e2",
+     "d1e2",
+     "e5c6"
+    ],
+    "threat": [
+     "g8f6",
+     "h2h3",
+     "g4f3",
+     "d1f3"
+    ]
+   },
+   "mistakeMove": "f3e5",
+   "trigger": true,
+   "inCheck": false
+  }
+ }
+}

@@ -89,7 +89,7 @@ const PIECES: Record<string, string> = { pawn: 'p', knight: 'n', bishop: 'b', ro
 
 /** What a text says the user loses, read from its words: a piece, or mate. */
 function claimOf(text: string): { claimedPiece: string } | { claimedMate: true } | null {
-  const piece = text.match(/\b(?:wins|taking|traps) (?:your |a |the |two |three |four )?(pawn|knight|bishop|rook|queen)/);
+  const piece = text.match(/\b(?:wins|takes|taking|take|traps) (?:your |a |the |two |three |four )?(pawn|knight|bishop|rook|queen)/);
   if (piece) return { claimedPiece: PIECES[piece[1]] };
   return /checkmate|forced mate|leads to mate/.test(text) ? { claimedMate: true } : null;
 }
