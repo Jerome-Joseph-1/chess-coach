@@ -1,37 +1,41 @@
+import { captionFor } from '../board/captions';
+import type { ArrowTone } from '../board/types';
 import type { Game, Turn } from '../content/types';
-import type { LineOption } from './LineStepper';
-import { opponentName } from './copy';
-import { flipTurn } from './position';
+import { mistakeVerdict } from './copy';
+import { stepsOf, type Sequence, type SequenceStep } from './sequence';
 
-/** Lines the reveal can step through for one turn, in tab order; only the ones the content has. */
-export function revealLines(
-  game: Game,
-  turnIndex: number,
-  playedUci: string | null = null,
-  playedId: 'yours' | 'refutation' = 'yours',
-): LineOption[] {
-  const turn = game.turns[turnIndex];
-  const { threat, best, mistake } = turn.lines;
-  const answer = playedUci ? turn.refutations[playedUci] : undefined;
-  const lines: LineOption[] = [];
-  if (best?.length) lines.push({ id: 'best', label: 'Best line', fen: turn.fen, moves: best });
-  if (playedUci && answer?.length) {
-    lines.push({ id: playedId, label: 'Your move', fen: turn.fen, moves: [playedUci, ...answer] });
-  }
-  const repeatsYours = mistake?.[0] === playedUci && answer?.length;
-  if (mistake?.length && !repeatsYours) {
-    lines.push({ id: 'mistake', label: 'Common mistake', fen: turn.fen, moves: mistake });
-  }
-  if (threat?.length) {
-    lines.push({ id: 'threat', label: `${opponentName(game)}'s threat`, fen: flipTurn(turn.fen), moves: threat });
-  }
-  return lines;
+/** The user's losing move and the answer that shows what goes wrong, with captions that say so. */
+function mistakeSteps(game: Game, turn: Turn, uci: string | null): SequenceStep[] {
+  const answer = uci ? turn.refutations[uci] : undefined;
+  if (!uci || !answer?.length) return [];
+  const steps = stepsOf(turn.fen, [uci, ...answer], 'mistake');
+  const { at, text } = mistakeVerdict(game, turn.fen, steps);
+  return steps.slice(0, at + 1).map((step, i) => {
+    if (i === at) return { ...step, note: text };
+    return i === 0 ? { ...step, note: 'Your move' } : step;
+  });
 }
 
-/** The line that backs the headline: what you win, the threat you stop, or the trap. */
-export function openingLine(turn: Turn): LineOption['id'] {
-  if (turn.kinds.includes('win')) return 'best';
-  if (turn.kinds.includes('defend')) return 'threat';
-  if (turn.kinds.includes('trap')) return 'mistake';
-  return 'best';
+/** The best line from the pause position; after a mistake its first move says it is the better one. */
+function bestSteps(game: Game, turn: Turn, afterMistake: boolean): SequenceStep[] {
+  const steps = stepsOf(turn.fen, turn.lines.best ?? [], 'best');
+  const [first] = steps;
+  if (!afterMistake || !first) return steps;
+  const text = captionFor(first.before, first.uci, game.side);
+  return [{ ...first, note: text ? `The better move: ${text}` : 'The better move' }, ...steps.slice(1)];
+}
+
+/**
+ * What the reveal plays for one turn: the user's losing move and its answer, if they played one,
+ * then the best line from the pause position.
+ */
+export function revealSequence(game: Game, turnIndex: number, missedUci: string | null): Sequence {
+  const turn = game.turns[turnIndex];
+  const mistake = mistakeSteps(game, turn, missedUci);
+  return { steps: [...mistake, ...bestSteps(game, turn, mistake.length > 0)] };
+}
+
+/** A single line from a position, e.g. a refutation to look at on its own. */
+export function lineSequence(fen: string, moves: string[], tone: ArrowTone): Sequence {
+  return { steps: stepsOf(fen, moves, tone) };
 }

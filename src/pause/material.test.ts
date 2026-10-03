@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { material, materialLabel } from './material';
+import { material, materialChange, pieceValue } from './material';
 import { italian1, italian2 } from './testGames';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -25,8 +25,23 @@ describe('material', () => {
   });
 });
 
-describe('materialLabel', () => {
-  it('says level when nothing separates the sides, else the signed lead', () => {
-    expect([0, 1, -2].map(materialLabel)).toEqual(['Material level', '+1', '−2']);
+describe('pieceValue', () => {
+  it('knows the usual values for either colour and none for the king', () => {
+    expect(['p', 'N', 'b', 'R', 'q', 'k'].map(pieceValue)).toEqual([1, 3, 3, 5, 9, 0]);
+  });
+});
+
+describe('materialChange', () => {
+  const afterNxe5 = 'rnbqkbnr/pppp1ppp/8/4N3/8/8/PPPPPPPP/RNBQKB1R b KQkq - 0 2';
+  const afterNxe5Nxe5 = 'rnbqkb1r/pppp1ppp/8/4n3/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 3';
+
+  it('measures from where the line started, for the side asked', () => {
+    expect(materialChange(START, afterNxe5, 'w')).toBe(1);
+    expect(materialChange(START, afterNxe5, 'b')).toBe(-1);
+    expect(materialChange(START, afterNxe5Nxe5, 'w')).toBe(-2);
+  });
+
+  it('is zero where the line began', () => {
+    expect(materialChange(START, START, 'w')).toBe(0);
   });
 });

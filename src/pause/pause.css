@@ -15,19 +15,21 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px 16px 8px;
+  padding: 12px 16px 4px;
 }
 .pause-sheet-foot {
-  padding: 8px 16px calc(12px + var(--safe-bottom));
+  display: grid;
+  justify-items: center;
+  padding: 4px 16px calc(10px + var(--safe-bottom));
 }
 .pause-sheet-foot .btn-lg {
-  min-height: 48px;
+  min-height: 44px;
 }
 .pause-sheet-scroll:last-child {
   padding-bottom: calc(12px + var(--safe-bottom));
 }
 .pause-phase {
-  animation: pause-phase var(--t-move) var(--spring) both;
+  animation: pause-phase 240ms ease-out both;
 }
 @keyframes pause-phase {
   from {
@@ -123,7 +125,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   font: var(--text-callout);
 }
 .pause-reveal .pause-title {
@@ -142,121 +144,52 @@
 }
 .pause-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  justify-items: center;
+  width: 100%;
 }
-.pause-actions.is-single {
-  grid-template-columns: 1fr;
-}
-
-/* Line stepper */
-.stepper {
-  margin-top: 12px;
-  touch-action: pan-y;
-}
-.seg,
-.stepper-chips {
-  display: flex;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.seg {
-  gap: 2px;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--surface-2);
-}
-.seg-tab {
-  flex: 1 0 auto;
-  min-height: 32px;
-  padding: 0 10px;
+/* The quiet way out under a question or under Continue. */
+.pause-link {
+  min-height: 36px;
+  padding: 0 16px;
   border: 0;
-  border-radius: 999px;
   background: transparent;
   color: var(--text-muted);
   font: var(--text-callout);
-  white-space: nowrap;
   cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 100ms ease-out;
 }
-.seg-tab.is-active {
-  background: var(--surface-3);
-  color: var(--text-strong);
+.pause-link:active:not(:disabled) {
+  transform: scale(0.94);
 }
-.stepper-chips {
-  gap: 4px;
-  margin-top: 6px;
-  touch-action: pan-x;
+.pause-link:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
-.stepper-chip {
-  flex: none;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--text-muted);
-  font: var(--text-code);
-  cursor: pointer;
-}
-.stepper-chip small {
-  margin-right: 4px;
-  font: inherit;
-  opacity: 0.65;
-}
-.stepper-chip.is-current {
-  background: var(--surface-3);
-  color: var(--text-strong);
-}
-/* Room for two lines of caption, so the controls below do not jump from move to move. */
-.stepper-foot {
+
+/* Line stepper: previous, the caption of the move on show, next. */
+.stepper {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  min-height: 44px;
   margin-top: 4px;
+  touch-action: pan-y;
 }
 .stepper-caption {
   flex: 1;
+  /* Room for two lines, so the arrows do not jump from move to move. */
+  min-height: 44px;
   margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text);
   font: var(--text-body);
-}
-.stepper-material {
-  flex: none;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--text-muted);
-  font: var(--text-caption);
-  white-space: nowrap;
-}
-
-/* Back to the position on the left, previous / counter / next on the right. */
-.stepper-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 4px;
-}
-.stepper .stepper-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  min-height: 40px;
-  padding: 0 16px 0 12px;
-  font: var(--text-callout);
-  white-space: nowrap;
-}
-.stepper-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  text-align: center;
 }
 .stepper-nav {
   display: grid;
+  flex: none;
   place-items: center;
   width: 40px;
   height: 40px;
@@ -268,24 +201,34 @@
   color: var(--text-strong);
   cursor: pointer;
   touch-action: manipulation;
+  transition: transform 100ms ease-out;
 }
-.stepper-count {
-  min-width: 3.4em;
-  color: var(--text-muted);
-  font: var(--text-callout);
-  text-align: center;
+.stepper-nav:active:not(:disabled) {
+  transform: scale(0.94);
 }
 .stepper-nav:disabled {
   opacity: 0.4;
   cursor: default;
 }
-@media (max-width: 359px) {
-  .stepper .stepper-back {
-    width: 40px;
-    padding: 0;
-    justify-content: center;
+/* A soft ring that asks to be pressed while the line waits. */
+.stepper-nav.is-pulsing {
+  animation: stepper-pulse 1.6s ease-out infinite;
+}
+@keyframes stepper-pulse {
+  0% {
+    box-shadow:
+      inset 0 0 0 1px var(--hairline),
+      0 0 0 0 color-mix(in srgb, var(--text-strong) 28%, transparent);
   }
-  .stepper-back-label {
-    display: none;
+  70%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1px var(--hairline),
+      0 0 0 10px transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stepper-nav.is-pulsing {
+    animation: none;
   }
 }

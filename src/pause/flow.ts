@@ -5,7 +5,6 @@ import { fenAfter, uciOfSan } from './position';
 export const HOLD_MAX = 2.5;
 /** In the play-out, a move losing this much ends it at once. */
 export const BLUNDER_MIN = 10;
-const MAX_TRIES = 2;
 const HOLD_MOVES: Record<Depth, number> = { 1: 0, 2: 0, 3: 0, 4: 1, 5: 5 };
 
 export interface FlowContext {
@@ -15,18 +14,18 @@ export interface FlowContext {
   depth: Depth;
 }
 
-export type Phase = 'spot' | 'find' | 'solve' | 'hold' | 'reply' | 'reveal' | 'guided' | 'done';
+export type Phase = 'spot' | 'find' | 'solve' | 'hold' | 'reply' | 'reveal' | 'done';
+
+/** 0 none yet, 1 the piece is marked, 2 the move is drawn. The Point step only goes to 1. */
+export type HintLevel = 0 | 1 | 2;
 
 /** What the view should react to after an event: sound, confetti, highlights. */
 export type Feedback =
   | { kind: 'spot'; correct: boolean }
   | { kind: 'find'; correct: boolean; square: string }
-  | { kind: 'hint' }
   | { kind: 'move'; uci: string; turn: number }
   | { kind: 'alt'; uci: string }
-  | { kind: 'wrong'; uci: string }
-  | { kind: 'guided'; uci: string }
-  | { kind: 'gentle' };
+  | { kind: 'wrong'; uci: string };
 
 export interface FlowState {
   phase: Phase;
@@ -34,26 +33,24 @@ export interface FlowState {
   turn: number;
   /** Wrong answers on the current question. */
   tries: number;
+  /** How much help the current question has given, by request or after wrong answers. */
+  hint: HintLevel;
   /** The current question is settled and its feedback is on screen until `advance`. */
   answered: boolean;
   /** Where `advance` goes after the feedback. */
   next: Phase | null;
   /** The user's spot answer: true for "Something's up". */
   spotUp: boolean | null;
-  /** The square of the piece the user rightly picked at the find step. */
+  /** The square of the piece the user picked at the find step. */
   picked: string | null;
-  /** This attempt's results. */
   outcomes: StepOutcome[];
-  /** The first attempt's results, kept when the user tries again. */
-  recorded: StepOutcome[] | null;
-  attempt: number;
-  /** The scripted move at `turn` is on the board, or will be set there (a different but fine move). */
-  scriptedDone: boolean;
+  /** The scripted move at the last turn is not on the board: a different but fine move ended the play-out. */
   alt: boolean;
-  /** The losing move that sent the user to the reveal. */
+  /** Some question needed a hint, and the pause was not lost: the result says solved with a hint. */
+  hinted: boolean;
+  /** The first losing move the user played, and the turn it was played at. */
   missedUci: string | null;
-  /** The user gave up on the current question and asked for the answer. */
-  skipped: boolean;
+  missedTurn: number | null;
   feedback: Feedback | null;
 }
 
@@ -61,10 +58,9 @@ export type FlowEvent =
   | { type: 'spot'; up: boolean }
   | { type: 'tap'; square: string }
   | { type: 'move'; uci: string }
-  | { type: 'skip' }
+  | { type: 'hint' }
   | { type: 'advance' }
   | { type: 'replied' }
-  | { type: 'retry' }
   | { type: 'continue' };
 
 export function initialState(ctx: FlowContext): FlowState {
@@ -72,17 +68,16 @@ export function initialState(ctx: FlowContext): FlowState {
     phase: 'spot',
     turn: ctx.turnIndex,
     tries: 0,
+    hint: 0,
     answered: false,
     next: null,
     spotUp: null,
     picked: null,
     outcomes: [],
-    recorded: null,
-    attempt: 0,
-    scriptedDone: false,
     alt: false,
+    hinted: false,
     missedUci: null,
-    skipped: false,
+    missedTurn: null,
     feedback: null,
   };
 }
@@ -129,7 +124,7 @@ export function stepTotal(ctx: FlowContext): number {
   return ctx.type === 'nothing' ? 1 : Math.min(ctx.depth, 3);
 }
 
-/** Which counted step a phase belongs to; the reveal and the guided move are not steps. */
+/** Which counted step a phase belongs to; the reveal is not a step. */
 export function stepNumber(phase: Phase): number | null {
   switch (phase) {
     case 'spot':
@@ -145,24 +140,14 @@ export function stepNumber(phase: Phase): number | null {
   }
 }
 
-/** Turn whose lines the reveal shows: where the user went wrong or gave up, else the pause itself. */
+/** Turn whose lines the reveal shows: where the user went wrong, else the pause itself. */
 export function revealTurn(ctx: FlowContext, state: FlowState): number {
-  return state.missedUci || state.skipped ? state.turn : ctx.turnIndex;
+  return state.missedTurn ?? ctx.turnIndex;
 }
 
-/** Index in game.moves of the next move to play once everything the sheet showed is on the board. */
-export function resumePly(ctx: FlowContext, state: FlowState): number {
-  return ctx.type === 'nothing' ? ctx.game.turns[ctx.turnIndex].ply : ctx.game.turns[state.turn].ply + 1;
-}
-
-/** Where the board must stand when the sheet hands back. */
-export function finalFen(ctx: FlowContext, state: FlowState): string {
-  if (ctx.type === 'nothing') return ctx.game.turns[ctx.turnIndex].fen;
-  return fenAfter(ctx.game.turns[state.turn].fen, [scriptedUci(ctx.game, state.turn)]);
-}
-
+/** The sheet hands the board back on the pause position, so the game resumes at the scripted move there. */
 export function flowResult(ctx: FlowContext, state: FlowState) {
-  return { outcomes: state.recorded ?? state.outcomes, resumePly: resumePly(ctx, state) };
+  return { outcomes: state.outcomes, resumePly: ctx.game.turns[ctx.turnIndex].ply };
 }
 
 export function flowReducer(ctx: FlowContext, state: FlowState, event: FlowEvent): FlowState {
@@ -173,20 +158,14 @@ export function flowReducer(ctx: FlowContext, state: FlowState, event: FlowEvent
       return state.phase === 'find' && !state.answered ? tapSquare(ctx, state, event.square) : state;
     case 'move':
       return playMove(ctx, state, event.uci);
-    case 'skip':
-      return skipQuestion(ctx, state);
+    case 'hint':
+      return takeHint(state);
     case 'advance':
       return advance(state);
     case 'replied':
-      return state.phase === 'reply'
-        ? { ...state, phase: 'hold', turn: state.turn + 1, scriptedDone: false, feedback: null }
-        : state;
-    case 'retry':
-      return state.phase === 'reveal' && ctx.type === 'pause'
-        ? { ...initialState(ctx), recorded: state.recorded, attempt: state.attempt + 1 }
-        : state;
+      return state.phase === 'reply' ? { ...state, phase: 'hold', turn: state.turn + 1, feedback: null } : state;
     case 'continue':
-      return state.phase === 'reveal' ? leave(ctx, state) : state;
+      return state.phase === 'reveal' ? { ...state, phase: 'done', feedback: null } : state;
   }
 }
 
@@ -206,6 +185,18 @@ function failRest(ctx: FlowContext, outcomes: StepOutcome[]): StepOutcome[] {
   return [...outcomes, ...rest.map((step) => ({ step, correct: false }))];
 }
 
+/** Help that comes by itself: the first after two wrong answers, the second after three. */
+function autoHint(state: FlowState, tries: number, top: HintLevel): HintLevel {
+  return Math.max(state.hint, Math.min(top, tries - 1)) as HintLevel;
+}
+
+/** A wrong answer that keeps the question open; it may bring a hint by itself. */
+function missOnce(state: FlowState, feedback: Feedback, top: HintLevel, patch: Partial<FlowState> = {}): FlowState {
+  const tries = state.tries + 1;
+  const hint = autoHint(state, tries, top);
+  return { ...state, ...patch, tries, hint, hinted: state.hinted || hint > 0, feedback };
+}
+
 function answerSpot(ctx: FlowContext, state: FlowState, up: boolean): FlowState {
   const correct = up === (ctx.type === 'pause');
   const outcomes: StepOutcome[] = [...state.outcomes, { step: 'spot', correct }];
@@ -215,64 +206,47 @@ function answerSpot(ctx: FlowContext, state: FlowState, up: boolean): FlowState 
 }
 
 function tapSquare(ctx: FlowContext, state: FlowState, square: string): FlowState {
-  const after = ctx.depth >= 3 ? 'solve' : 'reveal';
-  if (ctx.game.turns[state.turn].keySquares.includes(square)) {
-    const outcomes: StepOutcome[] = [...state.outcomes, { step: 'find', correct: true }];
-    return settle(state, outcomes, after, { kind: 'find', correct: true, square }, { picked: square });
+  if (!ctx.game.turns[state.turn].keySquares.includes(square)) {
+    return missOnce(state, { kind: 'find', correct: false, square }, 1);
   }
-  if (state.tries + 1 < MAX_TRIES) {
-    return { ...state, tries: state.tries + 1, feedback: { kind: 'find', correct: false, square } };
-  }
-  const outcomes: StepOutcome[] = [...state.outcomes, { step: 'find', correct: false }];
-  return settle(state, outcomes, after, { kind: 'hint' });
+  const outcomes: StepOutcome[] = [...state.outcomes, { step: 'find', correct: state.hint === 0 }];
+  const next = ctx.depth >= 3 ? 'solve' : 'reveal';
+  return settle(state, outcomes, next, { kind: 'find', correct: true, square }, { picked: square });
+}
+
+function takeHint(state: FlowState): FlowState {
+  const top = state.phase === 'find' ? 1 : 2;
+  const asking = state.phase === 'find' || state.phase === 'solve' || state.phase === 'hold';
+  if (!asking || state.answered || state.hint >= top) return state;
+  return { ...state, hint: (state.hint + 1) as HintLevel, hinted: true };
 }
 
 function playMove(ctx: FlowContext, state: FlowState, uci: string): FlowState {
-  if (state.answered) return state;
-  if (state.phase === 'guided') return playGuided(ctx, state, uci);
-  if (state.phase !== 'solve' && state.phase !== 'hold') return state;
+  if (state.answered || (state.phase !== 'solve' && state.phase !== 'hold')) return state;
 
   const step = state.phase;
   const grade = ctx.game.turns[state.turn].grades[uci];
-  const correct: StepOutcome[] = [...state.outcomes, { step, correct: true }];
+  const outcomes: StepOutcome[] = [...state.outcomes, { step, correct: state.hint === 0 }];
 
   if (uci === scriptedUci(ctx.game, state.turn)) {
     const last = holdTurns(ctx).at(-1) ?? ctx.turnIndex;
     const next = state.turn < last ? 'reply' : 'reveal';
-    return settle(state, correct, next, { kind: 'move', uci, turn: state.turn }, { scriptedDone: true });
+    return settle(state, outcomes, next, { kind: 'move', uci, turn: state.turn });
   }
-  if (grade !== undefined && grade <= HOLD_MAX) {
-    return settle(state, correct, 'reveal', { kind: 'alt', uci }, { scriptedDone: true, alt: true });
+  // With the move already drawn on the board, only that move counts.
+  if (state.hint < 2 && grade !== undefined && grade <= HOLD_MAX) {
+    return settle(state, outcomes, 'reveal', { kind: 'alt', uci }, { alt: true });
   }
-  const endsPlayOut = step === 'hold' && grade !== undefined && grade >= BLUNDER_MIN;
-  if (!endsPlayOut && state.tries + 1 < MAX_TRIES) {
-    return { ...state, tries: state.tries + 1, feedback: { kind: 'wrong', uci } };
+  if (step === 'hold' && state.hint === 0 && grade !== undefined && grade >= BLUNDER_MIN) {
+    const missed = failRest(ctx, [...state.outcomes, { step, correct: false }]);
+    const patch = { missedUci: uci, missedTurn: state.turn, hinted: false };
+    return settle(state, missed, 'reveal', { kind: 'wrong', uci }, patch);
   }
-  const missed = failRest(ctx, [...state.outcomes, { step, correct: false }]);
-  return settle(state, missed, 'reveal', { kind: 'wrong', uci }, { missedUci: uci });
-}
-
-/** "I'm not sure" and "Show me the answer": a miss, and the reveal comes at once. */
-function skipQuestion(ctx: FlowContext, state: FlowState): FlowState {
-  const { phase } = state;
-  if (state.answered || (phase !== 'find' && phase !== 'solve' && phase !== 'hold')) return state;
-  const outcomes = failRest(ctx, [...state.outcomes, { step: phase, correct: false }]);
-  const done = { ...state, outcomes, skipped: true, tries: 0, feedback: null };
-  return { ...done, phase: 'reveal', recorded: state.recorded ?? outcomes };
-}
-
-function playGuided(ctx: FlowContext, state: FlowState, uci: string): FlowState {
-  if (uci !== scriptedUci(ctx.game, state.turn)) return { ...state, feedback: { kind: 'gentle' } };
-  return settle(state, state.outcomes, 'done', { kind: 'guided', uci }, { scriptedDone: true });
+  const first = state.missedUci ? {} : { missedUci: uci, missedTurn: state.turn };
+  return missOnce(state, { kind: 'wrong', uci }, 2, first);
 }
 
 function advance(state: FlowState): FlowState {
   if (!state.answered || !state.next) return state;
-  const moved: FlowState = { ...state, phase: state.next, next: null, answered: false, tries: 0, feedback: null };
-  return state.next === 'reveal' ? { ...moved, recorded: state.recorded ?? state.outcomes } : moved;
-}
-
-function leave(ctx: FlowContext, state: FlowState): FlowState {
-  const guided = ctx.type === 'pause' && !state.scriptedDone;
-  return { ...state, phase: guided ? 'guided' : 'done', feedback: null };
+  return { ...state, phase: state.next, next: null, answered: false, tries: 0, hint: 0, feedback: null };
 }

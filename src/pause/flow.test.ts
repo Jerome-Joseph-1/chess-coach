@@ -3,7 +3,6 @@ import type { Depth, Game } from '../content/types';
 import {
   BLUNDER_MIN,
   HOLD_MAX,
-  finalFen,
   flowReducer,
   flowResult,
   holdTurns,
@@ -33,6 +32,7 @@ function run(ctx: FlowContext, events: FlowEvent[], from: FlowState = initialSta
 
 const advance: FlowEvent = { type: 'advance' };
 const replied: FlowEvent = { type: 'replied' };
+const hint: FlowEvent = { type: 'hint' };
 const move = (uci: string): FlowEvent => ({ type: 'move', uci });
 const spot = (up: boolean): FlowEvent => ({ type: 'spot', up });
 const tap = (square: string): FlowEvent => ({ type: 'tap', square });
@@ -123,36 +123,24 @@ describe('the step header', () => {
     expect(stepNumber('spot')).toBe(1);
     expect(stepNumber('find')).toBe(2);
     expect(['solve', 'hold', 'reply'].map((phase) => stepNumber(phase as never))).toEqual([3, 3, 3]);
-    expect(['reveal', 'guided', 'done'].map((phase) => stepNumber(phase as never))).toEqual([null, null, null]);
+    expect(['reveal', 'done'].map((phase) => stepNumber(phase as never))).toEqual([null, null]);
   });
 });
 
 describe('a perfect pause', () => {
-  it.each(DEPTHS)('depth %i records every asked step and resumes after the last scripted move', (depth) => {
+  it.each(DEPTHS)('depth %i records every asked step and resumes at the scripted move of the pause', (depth) => {
     for (const [game, turnIndex] of [[italian1, 3], [italian1, 9], [italian2, 1]] as const) {
       const ctx = ctxFor(game, turnIndex, depth);
       const state = run(ctx, perfectRun(ctx));
       const planned = plannedSteps(ctx);
       expect(state.phase).toBe('reveal');
-      expect(state.recorded).toEqual(planned.map((step) => ({ step, correct: true })));
+      expect(state.outcomes).toEqual(planned.map((step) => ({ step, correct: true })));
       expect(stars(state.outcomes)).toBe(planned.length);
+      expect(state.hinted).toBe(false);
 
-      const lastTurn = depth >= 3 ? (holdTurns(ctx).at(-1) ?? turnIndex) : turnIndex;
-      const last = game.turns[lastTurn];
-      if (depth >= 3) {
-        expect(state.scriptedDone).toBe(true);
-        const done = run(ctx, [{ type: 'continue' }], state);
-        expect(done.phase).toBe('done');
-        expect(flowResult(ctx, done).resumePly).toBe(last.ply + 1);
-        expect(finalFen(ctx, done)).toBe(fenAfter(last.fen, [scriptedUci(game, lastTurn)]));
-      } else {
-        const guided = run(ctx, [{ type: 'continue' }], state);
-        expect(guided.phase).toBe('guided');
-        expect(guided.turn).toBe(turnIndex);
-        const done = run(ctx, [move(scriptedUci(game, turnIndex)), advance], guided);
-        expect(done.phase).toBe('done');
-        expect(flowResult(ctx, done).resumePly).toBe(game.turns[turnIndex].ply + 1);
-      }
+      const done = run(ctx, [{ type: 'continue' }], state);
+      expect(done.phase).toBe('done');
+      expect(flowResult(ctx, done).resumePly).toBe(game.turns[turnIndex].ply);
     }
   });
 
@@ -163,7 +151,6 @@ describe('a perfect pause', () => {
     const asked = run(ctx, [replied], afterSolve);
     expect(asked.phase).toBe('hold');
     expect(asked.turn).toBe(4);
-    expect(asked.scriptedDone).toBe(false);
   });
 });
 
@@ -172,26 +159,19 @@ describe('a quiet turn', () => {
     const ctx = ctxFor(italian1, 11, depth, 'nothing');
     const state = run(ctx, [spot(false), advance]);
     expect(state.phase).toBe('reveal');
-    expect(state.recorded).toEqual([{ step: 'spot', correct: true }]);
+    expect(state.outcomes).toEqual([{ step: 'spot', correct: true }]);
     const done = run(ctx, [{ type: 'continue' }], state);
     expect(done.phase).toBe('done');
     expect(flowResult(ctx, done)).toEqual({
       outcomes: [{ step: 'spot', correct: true }],
       resumePly: italian1.turns[11].ply,
     });
-    expect(finalFen(ctx, done)).toBe(italian1.turns[11].fen);
   });
 
   it('counts "Something\'s up" as a miss', () => {
     const ctx = ctxFor(italian1, 11, 3, 'nothing');
     const state = run(ctx, [spot(true), advance]);
-    expect(state.recorded).toEqual([{ step: 'spot', correct: false }]);
-  });
-
-  it('has no try again', () => {
-    const ctx = ctxFor(italian1, 11, 1, 'nothing');
-    const state = run(ctx, [spot(false), advance, { type: 'retry' }]);
-    expect(state.phase).toBe('reveal');
+    expect(state.outcomes).toEqual([{ step: 'spot', correct: false }]);
   });
 });
 
@@ -200,13 +180,13 @@ describe('the spot step', () => {
     const ctx = ctxFor(italian1, 3, depth);
     const state = run(ctx, [spot(false), advance]);
     expect(state.phase).toBe('reveal');
-    expect(state.recorded).toEqual(plannedSteps(ctx).map((step) => ({ step, correct: false })));
+    expect(state.outcomes).toEqual(plannedSteps(ctx).map((step) => ({ step, correct: false })));
+    expect(state.hinted).toBe(false);
     expect(revealTurn(ctx, state)).toBe(3);
 
-    const guided = run(ctx, [{ type: 'continue' }], state);
-    expect(guided.phase).toBe('guided');
-    const done = run(ctx, [move(scriptedUci(italian1, 3)), advance], guided);
-    expect(flowResult(ctx, done).resumePly).toBe(italian1.turns[3].ply + 1);
+    const done = run(ctx, [{ type: 'continue' }], state);
+    expect(done.phase).toBe('done');
+    expect(flowResult(ctx, done).resumePly).toBe(italian1.turns[3].ply);
   });
 
   it('holds the answer on screen until advance', () => {
@@ -228,100 +208,110 @@ describe('the find step', () => {
       const state = run(ctx, [tap(square)], toFind());
       expect(state.feedback).toEqual({ kind: 'find', correct: true, square });
       expect(state.next).toBe('solve');
+      expect(state.outcomes.at(-1)).toEqual({ step: 'find', correct: true });
     }
   });
 
-  it('gives a second try after the first wrong tap', () => {
+  it('gives a second try after the first wrong tap, and a right second tap still counts', () => {
     const state = run(ctx, [tap('a1')], toFind());
     expect(state.phase).toBe('find');
     expect(state.answered).toBe(false);
     expect(state.tries).toBe(1);
+    expect(state.hint).toBe(0);
     expect(state.feedback).toEqual({ kind: 'find', correct: false, square: 'a1' });
+    expect(run(ctx, [tap('d1')], state).outcomes.at(-1)).toEqual({ step: 'find', correct: true });
   });
 
-  it('shows the hint after two misses and moves on, recording a miss', () => {
+  it('marks the piece after two wrong taps and waits for the user to tap it', () => {
     const state = run(ctx, [tap('a1'), tap('a2')], toFind());
-    expect(state.feedback).toEqual({ kind: 'hint' });
-    expect(state.answered).toBe(true);
-    expect(state.outcomes.at(-1)).toEqual({ step: 'find', correct: false });
-    const next = run(ctx, [advance], state);
-    expect(next.phase).toBe('solve');
-    expect(next.tries).toBe(0);
+    expect(state.hint).toBe(1);
+    expect(state.hinted).toBe(true);
+    expect(state.answered).toBe(false);
+    expect(state.phase).toBe('find');
+
+    const found = run(ctx, [tap('d1')], state);
+    expect(found.outcomes.at(-1)).toEqual({ step: 'find', correct: false });
+    expect(found.next).toBe('solve');
+    expect(run(ctx, [advance], found)).toMatchObject({ phase: 'solve', tries: 0, hint: 0, picked: 'd1' });
+  });
+
+  it('marks the piece on request, and counts it as not found', () => {
+    const state = run(ctx, [hint], toFind());
+    expect(state.hint).toBe(1);
+    expect(state.hinted).toBe(true);
+    expect(run(ctx, [hint], state)).toBe(state);
+    expect(run(ctx, [tap('d1')], state).outcomes.at(-1)).toEqual({ step: 'find', correct: false });
+  });
+
+  it('keeps asking for the piece after the hint when the user taps elsewhere', () => {
+    const state = run(ctx, [hint, tap('a1'), tap('a2'), tap('a3')], toFind());
+    expect(state.phase).toBe('find');
+    expect(state.answered).toBe(false);
+    expect(state.hint).toBe(1);
   });
 
   it('goes to the reveal after find at depth 2', () => {
     const shallow = ctxFor(italian1, 3, 2);
     const state = run(shallow, [spot(true), advance, tap('d1'), advance]);
     expect(state.phase).toBe('reveal');
-    expect(state.recorded).toEqual([
+    expect(state.outcomes).toEqual([
       { step: 'spot', correct: true },
       { step: 'find', correct: true },
     ]);
   });
 });
 
-describe('giving up', () => {
+describe('hints', () => {
   const ctx = ctxFor(italian1, 3, 3);
-  const toFind = () => run(ctx, [spot(true), advance]);
   const toSolve = () => run(ctx, [spot(true), advance, tap('d1'), advance]);
-  const skip: FlowEvent = { type: 'skip' };
+  const wrong = losingMove(italian1, 3);
+  const scripted = scriptedUci(italian1, 3);
 
-  it('goes straight from "I\'m not sure" to the reveal, counting the rest as missed', () => {
-    const state = run(ctx, [skip], toFind());
-    expect(state.phase).toBe('reveal');
+  it('walks from the piece to the move and stops there', () => {
+    const first = run(ctx, [hint], toSolve());
+    expect(first.hint).toBe(1);
+    const second = run(ctx, [hint], first);
+    expect(second.hint).toBe(2);
+    expect(run(ctx, [hint], second)).toBe(second);
+  });
+
+  it('counts a hinted answer as not correct, and says the pause was solved with a hint', () => {
+    const state = run(ctx, [hint, move(scripted)], toSolve());
+    expect(state.outcomes.at(-1)).toEqual({ step: 'solve', correct: false });
+    expect(state.hinted).toBe(true);
+    expect(state.next).toBe('reveal');
+  });
+
+  it('comes by itself after the second wrong move, and again after the third', () => {
+    const one = run(ctx, [move(wrong)], toSolve());
+    expect([one.tries, one.hint, one.hinted]).toEqual([1, 0, false]);
+    const two = run(ctx, [move(wrong)], one);
+    expect([two.tries, two.hint, two.hinted]).toEqual([2, 1, true]);
+    const three = run(ctx, [move(wrong)], two);
+    expect([three.tries, three.hint]).toEqual([3, 2]);
+    expect(run(ctx, [move(wrong)], three).hint).toBe(2);
+  });
+
+  it('never ends the question on wrong moves alone', () => {
+    const state = run(ctx, Array.from({ length: 6 }, () => move(wrong)), toSolve());
+    expect(state.phase).toBe('solve');
     expect(state.answered).toBe(false);
-    expect(state.recorded).toEqual([
-      { step: 'spot', correct: true },
-      { step: 'find', correct: false },
-      { step: 'solve', correct: false },
-    ]);
   });
 
-  it('goes from "Show me the answer" to the reveal of the pause turn', () => {
-    const state = run(ctx, [skip], toSolve());
-    expect(state.phase).toBe('reveal');
-    expect(state.recorded).toEqual([
-      { step: 'spot', correct: true },
-      { step: 'find', correct: true },
-      { step: 'solve', correct: false },
-    ]);
-    expect(revealTurn(ctx, state)).toBe(3);
+  it('ignores the hint button where nothing is asked or the answer is on screen', () => {
+    const start = initialState(ctx);
+    expect(run(ctx, [hint], start)).toBe(start);
+    const answered = run(ctx, [move(scripted)], toSolve());
+    expect(run(ctx, [hint], answered)).toBe(answered);
   });
 
-  it('shows the lines of the later turn when given up in the play-out', () => {
+  it('starts again at zero on the next question', () => {
     const deep = ctxFor(italian1, 3, 5);
-    const toHold = run(deep, [spot(true), advance, tap('d1'), advance, move(scriptedUci(italian1, 3)), advance, replied]);
-    expect(toHold.phase).toBe('hold');
-    const state = run(deep, [skip], toHold);
-    expect(state.phase).toBe('reveal');
-    expect(revealTurn(deep, state)).toBe(4);
-    expect(state.recorded).toHaveLength(plannedSteps(deep).length);
-    expect(state.recorded!.slice(0, 3).map((o) => o.correct)).toEqual([true, true, true]);
-    expect(state.recorded!.slice(3).every((o) => !o.correct)).toBe(true);
-  });
-
-  it('leaves the guided move to play after the reveal, and ignores skip anywhere else', () => {
-    const state = run(ctx, [skip, { type: 'continue' }], toSolve());
-    expect(state.phase).toBe('guided');
-    expect(run(ctx, [skip], initialState(ctx)).phase).toBe('spot');
-    const answered = run(ctx, [tap('d1')], toFind());
-    expect(run(ctx, [skip], answered)).toBe(answered);
-  });
-
-  it('keeps the first attempt when the user tries again and gives up again', () => {
-    const state = run(ctx, [skip, { type: 'retry' }, spot(true), advance, skip], toFind());
-    expect(state.attempt).toBe(1);
-    expect(state.recorded!.map((o) => o.correct)).toEqual([true, false, false]);
-  });
-});
-
-describe('the picked piece', () => {
-  it('is remembered after the right tap and forgotten on a new attempt', () => {
-    const ctx = ctxFor(italian1, 3, 3);
-    const square = italian1.turns[3].keySquares[0];
-    const state = run(ctx, [spot(true), advance, tap(square)]);
-    expect(state.picked).toBe(square);
-    expect(run(ctx, [tap('a1')], run(ctx, [spot(true), advance])).picked).toBeNull();
+    const solved = run(deep, [spot(true), advance, tap('d1'), advance, hint, move(scriptedUci(italian1, 3)), advance, replied]);
+    expect(solved.phase).toBe('hold');
+    expect(solved.hint).toBe(0);
+    expect(solved.tries).toBe(0);
+    expect(solved.hinted).toBe(true);
   });
 });
 
@@ -333,33 +323,31 @@ describe('the solve step', () => {
     const uci = scriptedUci(italian1, 3);
     const state = run(ctx, [move(uci)], toSolve());
     expect(state.feedback).toEqual({ kind: 'move', uci, turn: 3 });
-    expect(state.scriptedDone).toBe(true);
     expect(state.alt).toBe(false);
   });
 
-  it('gives one more try, then goes to the reveal with the losing move recorded', () => {
+  it('gives another try after a wrong move and remembers the first one for the reveal', () => {
     const wrong = losingMove(italian1, 3);
     const retry = run(ctx, [move(wrong)], toSolve());
     expect(retry.phase).toBe('solve');
     expect(retry.tries).toBe(1);
     expect(retry.feedback).toEqual({ kind: 'wrong', uci: wrong });
-
-    const failed = run(ctx, [move(wrong), advance], retry);
-    expect(failed.phase).toBe('reveal');
-    expect(failed.missedUci).toBe(wrong);
-    expect(failed.recorded).toEqual([
-      { step: 'spot', correct: true },
-      { step: 'find', correct: true },
-      { step: 'solve', correct: false },
-    ]);
-    expect(failed.scriptedDone).toBe(false);
+    expect(retry.missedUci).toBe(wrong);
+    expect(retry.missedTurn).toBe(3);
+    expect(retry.answered).toBe(false);
   });
 
-  it('lets a right second try through', () => {
+  it('keeps the first wrong move when later ones follow', () => {
+    const [first, second] = Object.keys(italian1.turns[3].grades).filter((uci) => italian1.turns[3].grades[uci] >= BLUNDER_MIN);
+    expect(run(ctx, [move(first), move(second)], toSolve()).missedUci).toBe(first);
+  });
+
+  it('lets a right second try through as correct', () => {
     const wrong = losingMove(italian1, 3);
     const state = run(ctx, [move(wrong), move(scriptedUci(italian1, 3)), advance], toSolve());
     expect(state.phase).toBe('reveal');
     expect(state.outcomes.at(-1)).toEqual({ step: 'solve', correct: true });
+    expect(state.missedUci).toBe(wrong);
   });
 
   it('treats a move the script cannot follow as correct but ends the play-out', () => {
@@ -368,7 +356,7 @@ describe('the solve step', () => {
     const state = run(deep, [spot(true), advance, tap('d1'), advance, move(alt), advance]);
     expect(state.phase).toBe('reveal');
     expect(state.alt).toBe(true);
-    expect(state.recorded).toEqual([
+    expect(state.outcomes).toEqual([
       { step: 'spot', correct: true },
       { step: 'find', correct: true },
       { step: 'solve', correct: true },
@@ -377,13 +365,21 @@ describe('the solve step', () => {
 
     const done = run(deep, [{ type: 'continue' }], state);
     expect(done.phase).toBe('done');
-    expect(flowResult(deep, done).resumePly).toBe(italian1.turns[3].ply + 1);
-    expect(finalFen(deep, done)).toBe(fenAfter(italian1.turns[3].fen, [scriptedUci(italian1, 3)]));
+    expect(flowResult(deep, done).resumePly).toBe(italian1.turns[3].ply);
   });
 
   it('marks an alternative as such in the feedback', () => {
     const alt = otherHoldingMove(italian1, 3);
     expect(run(ctx, [move(alt)], toSolve()).feedback).toEqual({ kind: 'alt', uci: alt });
+  });
+
+  it('accepts only the shown move once the move is on the board', () => {
+    const alt = otherHoldingMove(italian1, 3);
+    const shown = run(ctx, [hint, hint], toSolve());
+    const state = run(ctx, [move(alt)], shown);
+    expect(state.phase).toBe('solve');
+    expect(state.feedback).toEqual({ kind: 'wrong', uci: alt });
+    expect(run(ctx, [move(scriptedUci(italian1, 3))], shown).feedback).toMatchObject({ kind: 'move' });
   });
 
   it('ignores moves while the answer is on screen', () => {
@@ -414,91 +410,67 @@ describe('the hold steps', () => {
 
   it('ends the play-out at once on a move losing 10 or more, and shows its refutation', () => {
     const wrong = losingMove(italian1, 4);
-    const state = run(ctx, [move(wrong), advance], toFirstHold());
-    expect(state.phase).toBe('reveal');
-    expect(state.missedUci).toBe(wrong);
-    expect(revealTurn(ctx, state)).toBe(4);
-    expect(state.recorded).toEqual([
+    const blunder = run(ctx, [move(wrong), advance], toFirstHold());
+    expect(blunder.phase).toBe('reveal');
+    expect(blunder.missedUci).toBe(wrong);
+    expect(revealTurn(ctx, blunder)).toBe(4);
+    expect(blunder.hinted).toBe(false);
+    expect(blunder.outcomes).toEqual([
       { step: 'spot', correct: true },
       { step: 'find', correct: true },
       { step: 'solve', correct: true },
       ...Array.from({ length: 5 }, () => ({ step: 'hold', correct: false })),
     ]);
 
-    const guided = run(ctx, [{ type: 'continue' }], state);
-    expect(guided.phase).toBe('guided');
-    expect(guided.turn).toBe(4);
-    const done = run(ctx, [move(scriptedUci(italian1, 4)), advance], guided);
-    expect(flowResult(ctx, done).resumePly).toBe(italian1.turns[4].ply + 1);
+    const done = run(ctx, [{ type: 'continue' }], blunder);
+    expect(done.phase).toBe('done');
+    expect(flowResult(ctx, done).resumePly).toBe(italian1.turns[3].ply);
   });
 
-  it('gives a retry for a smaller slip', () => {
+  it('does not end the play-out on a big loss once a hint is in hand', () => {
+    const state = run(ctx, [hint, move(losingMove(italian1, 4))], toFirstHold());
+    expect(state.phase).toBe('hold');
+    expect(state.answered).toBe(false);
+  });
+
+  it('gives the hint ladder for a smaller slip and carries on after it', () => {
     const turns = italian1.turns.map((t, i) => (i === 4 ? { ...t, grades: { ...t.grades, h2h3: 5 } } : t));
     const slipCtx = { ...ctx, game: { ...italian1, turns } };
-    const state = run(slipCtx, [move('h2h3')], run(slipCtx, [spot(true), advance, tap('d1'), advance, move(scriptedUci(italian1, 3)), advance, replied]));
-    expect(state.phase).toBe('hold');
-    expect(state.tries).toBe(1);
-    expect(run(slipCtx, [move('h2h3'), advance], state).phase).toBe('reveal');
+    const hold = run(slipCtx, [spot(true), advance, tap('d1'), advance, move(scriptedUci(italian1, 3)), advance, replied]);
+    const slipped = run(slipCtx, [move('h2h3'), move('h2h3')], hold);
+    expect([slipped.phase, slipped.hint]).toEqual(['hold', 1]);
+    const solved = run(slipCtx, [move(scriptedUci(italian1, 4)), advance], slipped);
+    expect(solved.phase).toBe('reply');
+    expect(solved.outcomes.at(-1)).toEqual({ step: 'hold', correct: false });
+    expect(solved.missedTurn).toBe(4);
   });
 
-  it('stops the play-out at an alternative move and resumes after the script move of that turn', () => {
+  it('stops the play-out at an alternative move and still resumes at the pause', () => {
     const alt = otherHoldingMove(italian1, 4);
     const state = run(ctx, [move(alt), advance], toFirstHold());
     expect(state.alt).toBe(true);
     const done = run(ctx, [{ type: 'continue' }], state);
     expect(done.phase).toBe('done');
-    expect(flowResult(ctx, done).resumePly).toBe(italian1.turns[4].ply + 1);
+    expect(flowResult(ctx, done).resumePly).toBe(italian1.turns[3].ply);
   });
 });
 
-describe('try again', () => {
-  it('starts over at the pause but keeps the first attempt as the record', () => {
-    const ctx = ctxFor(italian1, 3, 3);
-    const failed = run(ctx, [spot(false), advance]);
-    const again = run(ctx, [{ type: 'retry' }], failed);
-    expect(again.phase).toBe('spot');
-    expect(again.turn).toBe(3);
-    expect(again.attempt).toBe(1);
-    expect(again.outcomes).toEqual([]);
-
-    const second = run(ctx, perfectRun(ctx), again);
-    expect(second.phase).toBe('reveal');
-    expect(stars(second.outcomes)).toBe(3);
-    expect(second.recorded).toEqual(failed.recorded);
-    expect(flowResult(ctx, run(ctx, [{ type: 'continue' }], second)).outcomes).toEqual(failed.recorded);
-  });
-
-  it('only works from the reveal', () => {
-    const ctx = ctxFor(italian1, 3, 3);
-    const state = run(ctx, [spot(true)]);
-    expect(run(ctx, [{ type: 'retry' }], state)).toBe(state);
-  });
-
-  it('starts over at the pause turn after a miss deep in the play-out', () => {
+describe('the reveal', () => {
+  it('shows the pause turn unless the user went wrong at another one', () => {
     const ctx = ctxFor(italian1, 3, 5);
-    const state = run(ctx, [spot(true), advance, tap('d1'), advance, move(scriptedUci(italian1, 3)), advance, replied, move(losingMove(italian1, 4)), advance]);
-    const again = run(ctx, [{ type: 'retry' }], state);
-    expect(again.turn).toBe(3);
-    expect(again.missedUci).toBeNull();
-  });
-});
-
-describe('guided move', () => {
-  const ctx = ctxFor(italian1, 3, 1);
-  const guided = () => run(ctx, [spot(true), advance, { type: 'continue' }]);
-
-  it('only accepts the scripted move', () => {
-    const wrong = losingMove(italian1, 3);
-    const state = run(ctx, [move(wrong)], guided());
-    expect(state.phase).toBe('guided');
-    expect(state.feedback).toEqual({ kind: 'gentle' });
-    expect(state.answered).toBe(false);
+    const clean = run(ctx, perfectRun(ctx));
+    expect(revealTurn(ctx, clean)).toBe(3);
   });
 
-  it('finishes once the scripted move is played', () => {
-    const uci = scriptedUci(italian1, 3);
-    const state = run(ctx, [move(uci)], guided());
-    expect(state.feedback).toEqual({ kind: 'guided', uci });
-    expect(run(ctx, [advance], state).phase).toBe('done');
+  it('says solved with a hint, not missed, when hints carried the user through', () => {
+    const ctx = ctxFor(italian1, 3, 3);
+    const state = run(ctx, [spot(true), advance, hint, tap('d1'), advance, hint, hint, move(scriptedUci(italian1, 3)), advance]);
+    expect(state.phase).toBe('reveal');
+    expect(state.hinted).toBe(true);
+    expect(state.outcomes).toEqual([
+      { step: 'spot', correct: true },
+      { step: 'find', correct: false },
+      { step: 'solve', correct: false },
+    ]);
   });
 });

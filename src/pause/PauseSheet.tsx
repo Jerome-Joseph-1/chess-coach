@@ -4,7 +4,6 @@ import type { Depth, Game, StepOutcome } from '../content/types';
 import { celebrate, nudge } from '../ui/rewards';
 import { COPY, continuesWith, headline, holdMissHeadline, resultLine } from './copy';
 import {
-  finalFen,
   flowReducer,
   flowResult,
   initialState,
@@ -19,11 +18,12 @@ import {
   type FlowState,
   type Phase,
 } from './flow';
-import { openingLine, revealLines } from './lines';
+import { revealSequence } from './lines';
+import { BoardMarks } from './marks';
 import { samePosition, squaresOf } from './position';
-import { promptFor, skipLabel, spotPromptFor } from './prompt';
+import { hintLabel, promptFor, spotPromptFor } from './prompt';
 import { Sheet } from './Sheet';
-import { RevealActions, SkipAction } from './steps/Actions';
+import { RevealActions, TextLink } from './steps/Actions';
 import { PromptStep } from './steps/PromptStep';
 import { QuietReveal } from './steps/QuietReveal';
 import { RevealStep } from './steps/RevealStep';
@@ -32,7 +32,11 @@ import { StepHeader } from './steps/StepHeader';
 
 export interface PauseResult {
   outcomes: StepOutcome[];
-  /** Index into game.moves where the game resumes after the pause and its play-out. */
+  /**
+   * Index into game.moves of the scripted move at the pause position. The sheet has put the board
+   * back on that position without playing the move, whatever it showed or asked in between;
+   * the game plays that move and everything after it.
+   */
   resumePly: number;
 }
 
@@ -47,8 +51,13 @@ export interface PauseSheetProps {
   onDone: (result: PauseResult) => void;
 }
 
-const REPLY_MS = 500;
-const WRONG_FLASH_MS = 450;
+const REPLY_MS = 350;
+/** A wrong answer's cross stays this long, then the piece snaps back. */
+const WRONG_FLASH_MS = 600;
+/** A right answer stays on screen this long before the flow moves on. */
+const SETTLE_MS = 400;
+
+const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
 function showPosition(board: BoardController, fen: string, animate: boolean): Promise<void> {
   return samePosition(board.fen(), fen) ? Promise.resolve() : board.setPosition(fen, animate);
@@ -56,30 +65,16 @@ function showPosition(board: BoardController, fen: string, animate: boolean): Pr
 
 /** How long a settled answer stays on screen before the flow moves on. */
 function settleMs(state: FlowState): number {
-  switch (state.feedback?.kind) {
-    case 'hint':
-      return 1300;
-    case 'alt':
-      return 1500;
-    case 'move':
-      return state.next === 'reply' ? 550 : 1400;
-    case 'wrong':
-      return 900;
-    default:
-      return 700;
-  }
+  return state.feedback?.kind === 'wrong' ? WRONG_FLASH_MS : SETTLE_MS;
 }
 
 function buildReveal(ctx: FlowContext, state: FlowState) {
   const { game } = ctx;
   const index = revealTurn(ctx, state);
-  const turn = game.turns[index];
   const missedLate = state.missedUci !== null && index !== ctx.turnIndex;
   const scripted = game.moves[game.turns[state.turn].ply];
   return {
-    fen: turn.fen,
-    lines: revealLines(game, index, state.missedUci, missedLate ? 'refutation' : 'yours'),
-    initial: missedLate ? ('refutation' as const) : openingLine(turn),
+    sequence: revealSequence(game, index, state.missedUci),
     text: missedLate && state.missedUci ? holdMissHeadline(game, index, state.missedUci) : headline(game, index),
     note: state.alt ? `${COPY.altNote} ${continuesWith(scripted)}` : undefined,
   };
@@ -88,12 +83,14 @@ function buildReveal(ctx: FlowContext, state: FlowState) {
 export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: PauseSheetProps) {
   const ctx = useMemo<FlowContext>(() => ({ game, turnIndex, type, depth }), [game, turnIndex, type, depth]);
   const [state, setState] = useState(() => initialState(ctx));
+  const [replays, setReplays] = useState(0);
   const latest = useRef(state);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
   const sheetRef = useRef<HTMLDivElement>(null);
   const shakeRef = useRef<HTMLDivElement>(null);
   const flash = useRef(0);
+  const marks = useMemo(() => new BoardMarks(board), [board]);
   const turn = game.turns[turnIndex];
 
   // Keeps showing the last real phase once the flow is done and the parent has not yet removed the sheet.
@@ -108,12 +105,33 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
     return next;
   }
 
-  /** Board callback: keep the piece only when the move was right. */
-  function tryMove(uci: string): boolean {
+  /** Board callback: keep the piece when the move was right; a wrong one shows a cross, then snaps back. */
+  function tryMove(uci: string): boolean | Promise<boolean> {
     const before = latest.current;
     const next = send({ type: 'move', uci });
-    const kind = next.feedback?.kind;
-    return next !== before && kind !== 'wrong' && kind !== 'gentle';
+    if (next === before) return false;
+    const [, to] = squaresOf(uci);
+    if (next.feedback?.kind !== 'wrong') {
+      marks.badge(to, 'good');
+      return true;
+    }
+    marks.badge(to, 'bad');
+    return wait(WRONG_FLASH_MS).then(() => {
+      marks.clearBadges();
+      return false;
+    });
+  }
+
+  /** Marks what the hint in hand shows: the piece, then the move itself. */
+  function showHint(at: FlowState) {
+    if (at.hint === 0) return;
+    if (at.phase === 'find') {
+      board.highlight(game.turns[at.turn].keySquares, 'hint');
+      return;
+    }
+    const [from, to] = squaresOf(scriptedUci(game, at.turn));
+    if (at.hint === 1) board.highlight([from], 'hint');
+    else board.arrow(from, to, 'best');
   }
 
   function react(feedback: Feedback) {
@@ -125,38 +143,34 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
         break;
       case 'find':
         board.clearHighlights();
+        marks.clearBadges();
         board.highlight([feedback.square], feedback.correct ? 'good' : 'bad');
+        marks.badge(feedback.square, feedback.correct ? 'good' : 'bad');
         if (feedback.correct) {
           celebrate('step');
         } else {
           nudge(shakeRef.current);
-          flash.current = window.setTimeout(() => board.clearHighlights(), WRONG_FLASH_MS);
+          flash.current = window.setTimeout(() => {
+            board.clearHighlights();
+            marks.clearBadges();
+            showHint(latest.current);
+          }, WRONG_FLASH_MS);
         }
-        break;
-      case 'hint':
-        board.clearHighlights();
-        board.highlight(turn.keySquares, 'hint');
-        nudge(shakeRef.current);
         break;
       case 'move':
         board.disableInput();
         board.clearHighlights();
+        board.clearArrows();
         celebrate('move', board.squareCenter(squaresOf(feedback.uci)[1]));
         break;
       case 'alt':
         board.disableInput();
         board.clearHighlights();
+        board.clearArrows();
         celebrate('alt');
-        break;
-      case 'guided':
-        board.disableInput();
-        celebrate('step');
         break;
       case 'wrong':
         if (latest.current.answered) board.disableInput();
-        nudge(shakeRef.current);
-        break;
-      case 'gentle':
         nudge(shakeRef.current);
         break;
     }
@@ -175,9 +189,8 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
   useEffect(() => {
     let current = true;
     const timers: number[] = [];
-    const at = game.turns[state.turn];
     board.disableInput();
-    board.clearHighlights();
+    marks.clear();
 
     switch (state.phase) {
       case 'spot':
@@ -199,15 +212,9 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
           }, REPLY_MS),
         );
         break;
-      case 'guided':
-        void showPosition(board, at.fen, true).then(() => {
-          if (!current) return;
-          board.highlight(squaresOf(scriptedUci(game, state.turn)), 'hint');
-          board.enableMoves(game.side, tryMove);
-        });
-        break;
       case 'done':
-        void showPosition(board, finalFen(ctx, state), true).then(() => {
+        board.dim(null);
+        void showPosition(board, turn.fen, false).then(() => {
           if (current) doneRef.current(flowResult(ctx, latest.current));
         });
         break;
@@ -218,16 +225,18 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
     };
   }, [state.phase, state.turn]);
 
+  useEffect(() => showHint(state), [state.hint]);
+
   useEffect(
     () => () => {
       window.clearTimeout(flash.current);
       board.disableInput();
-      board.clearHighlights();
+      marks.clear();
     },
     [],
   );
 
-  const reveal = useMemo(() => (view === 'reveal' ? buildReveal(ctx, state) : null), [view, state.attempt]);
+  const reveal = useMemo(() => (view === 'reveal' ? buildReveal(ctx, state) : null), [view]);
 
   function content() {
     const step = stepNumber(view);
@@ -252,39 +261,37 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
 
   function footer() {
     if (view === 'reveal') {
-      const retry = type === 'pause' ? () => send({ type: 'retry' }) : undefined;
-      return <RevealActions onRetry={retry} onContinue={() => send({ type: 'continue' })} />;
+      const watchable = type === 'pause' && reveal !== null && reveal.sequence.steps.length > 0;
+      const replay = watchable ? () => setReplays((n) => n + 1) : undefined;
+      return <RevealActions onContinue={() => send({ type: 'continue' })} onReplay={replay} />;
     }
-    const label = skipLabel(view);
-    return label && <SkipAction label={label} disabled={state.answered} onSkip={() => send({ type: 'skip' })} />;
+    const label = hintLabel(state);
+    return label && <TextLink label={label} disabled={state.answered} onClick={() => send({ type: 'hint' })} />;
   }
 
   function revealContent() {
-    const result = resultLine(type, depth, state.outcomes);
+    const result = resultLine(type, depth, state.outcomes, state.hinted);
     if (type === 'nothing') {
       return <QuietReveal result={result} text={headline(game, turnIndex)} />;
     }
     if (!reveal) return null;
     return (
       <RevealStep
-        key={state.attempt}
         board={board}
         userSide={game.side}
-        homeFen={reveal.fen}
-        lines={reveal.lines}
-        initialLine={reveal.initial}
+        sequence={reveal.sequence}
         result={result}
         headline={reveal.text}
         note={reveal.note}
-        practice={state.attempt > 0}
         frozen={state.phase === 'done'}
+        replays={replays}
       />
     );
   }
 
   return (
     <Sheet innerRef={sheetRef} label="Pause" footer={footer()}>
-      <div class="pause-phase" key={`${view}-${state.turn}-${state.attempt}`}>
+      <div class="pause-phase" key={`${view}-${state.turn}`}>
         {content()}
       </div>
     </Sheet>

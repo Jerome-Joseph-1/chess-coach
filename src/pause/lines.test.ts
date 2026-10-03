@@ -1,58 +1,70 @@
 import { describe, expect, it } from 'vitest';
-import { openingLine, revealLines } from './lines';
-import { flipTurn, playLine, samePosition, sanOf, uciOfSan } from './position';
-import { italian1, italian2 } from './testGames';
+import { lineSequence, revealSequence } from './lines';
+import { playLine, samePosition, sanOf, uciOfSan } from './position';
+import { italian1 } from './testGames';
 
-describe('revealLines', () => {
+describe('revealSequence', () => {
   const turn = italian1.turns[3];
+  const best = turn.lines.best!;
 
-  it('offers the best line, the common mistake and the threat, in that order', () => {
-    const lines = revealLines(italian1, 3);
-    expect(lines.map((l) => l.id)).toEqual(['best', 'mistake', 'threat']);
-    expect(lines.map((l) => l.label)).toEqual(['Best line', 'Common mistake', "Black's threat"]);
+  it('plays the best line from the pause position', () => {
+    const { steps } = revealSequence(italian1, 3, null);
+    expect(steps.map((s) => s.uci)).toEqual(best.slice(0, steps.length));
+    expect(steps[0].before).toBe(turn.fen);
+    expect(steps.every((s) => s.tone === 'best' && !s.note)).toBe(true);
   });
 
-  it("names the opponent after the user's side", () => {
-    const asBlack = { ...italian1, side: 'b' as const };
-    expect(revealLines(asBlack, 3).at(-1)?.label).toBe("White's threat");
+  it("leads with the user's losing move and the answer, then the best line from the pause position", () => {
+    const { steps } = revealSequence(italian1, 3, 'b1d2');
+    expect(steps.slice(0, 2).map((s) => s.uci)).toEqual(['b1d2', turn.refutations.b1d2[0]]);
+    expect(steps.slice(0, 2).every((s) => s.tone === 'mistake')).toBe(true);
+    expect(steps.slice(2).every((s) => s.tone === 'best')).toBe(true);
+    expect(steps[2].before).toBe(turn.fen);
+    expect(steps[2].uci).toBe(best[0]);
   });
 
-  it('starts the threat line with the opponent to move and no en passant square', () => {
-    const threat = revealLines(italian1, 3).find((l) => l.id === 'threat')!;
-    expect(threat.fen).toBe(flipTurn(turn.fen));
-    expect(threat.fen.split(' ')[1]).toBe('b');
-    expect(threat.fen.split(' ')[3]).toBe('-');
+  it('plays on until the piece is gone when the line shows a loss, and no further', () => {
+    const { steps } = revealSequence(italian1, 3, 'd1d5');
+    const mistake = steps.filter((s) => s.tone === 'mistake');
+    expect(mistake).toHaveLength(6);
+    expect(mistake.at(-1)!.san).toBe('Bxd5');
+    expect(steps[6].before).toBe(turn.fen);
   });
 
-  it("adds the user's losing move with its refutation, and drops the mistake it repeats", () => {
-    const lines = revealLines(italian1, 3, 'c4f7');
-    expect(lines.map((l) => l.id)).toEqual(['best', 'yours', 'threat']);
-    expect(lines[1].moves).toEqual(['c4f7', ...turn.refutations.c4f7]);
+  it('says what goes wrong at the step where the piece is lost', () => {
+    const { steps } = revealSequence(italian1, 3, 'd1d5');
+    expect(steps[0].note).toBe('Your move');
+    expect(steps[5].note).toBe('That loses your queen.');
+    expect(steps.slice(1, 5).every((s) => !s.note)).toBe(true);
   });
 
-  it('keeps the common mistake when the user played something else', () => {
-    expect(revealLines(italian1, 3, 'b1d2').map((l) => l.id)).toEqual(['best', 'yours', 'mistake', 'threat']);
+  it('does not say a piece is lost when the line does not show it', () => {
+    const { steps } = revealSequence(italian1, 3, 'b1d2');
+    expect(steps[1].note).toBe("That's a mistake: it gives Black the upper hand.");
+    expect(steps.map((s) => s.note).join(' ')).not.toMatch(/loses/);
   });
 
-  it('skips the user line when no refutation is recorded', () => {
-    expect(revealLines(italian1, 3, 'd1e2').map((l) => l.id)).toEqual(['best', 'mistake', 'threat']);
+  it('calls the first move of the best line the better one after a mistake', () => {
+    const { steps } = revealSequence(italian1, 3, 'b1d2');
+    const first = steps.find((s) => s.tone === 'best')!;
+    expect(first.note).toMatch(/^The better move/);
   });
 
-  it('labels a later-turn miss as a refutation', () => {
-    expect(revealLines(italian1, 3, 'b1d2', 'refutation').map((l) => l.id)).toContain('refutation');
+  it('leaves the mistake out when no answer to it is recorded', () => {
+    const { steps } = revealSequence(italian1, 3, 'd1e2');
+    expect(steps.every((s) => s.tone === 'best')).toBe(true);
   });
 
-  it('leaves out lines the turn does not have', () => {
-    const ids = revealLines(italian1, 18).map((l) => l.id);
-    expect(ids).toEqual(['best']);
+  it('follows the turn it is asked about', () => {
+    expect(revealSequence(italian1, 7, null).steps[0].before).toBe(italian1.turns[7].fen);
   });
 });
 
-describe('openingLine', () => {
-  it('opens on the line that backs the headline', () => {
-    expect(openingLine(italian1.turns[3])).toBe('best');
-    expect(openingLine({ ...italian1.turns[7], kinds: ['defend'] })).toBe('threat');
-    expect(openingLine(italian2.turns[1])).toBe('mistake');
+describe('lineSequence', () => {
+  it('plays a single line in one colour', () => {
+    const { steps } = lineSequence(italian1.turns[3].fen, ['d1d5', ...italian1.turns[3].refutations.d1d5], 'mistake');
+    expect(steps.length).toBeGreaterThan(2);
+    expect(steps.every((s) => s.tone === 'mistake')).toBe(true);
   });
 });
 

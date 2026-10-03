@@ -2,39 +2,35 @@ import '../../ui/button.css';
 import { Button } from '../../ui/Button';
 import { COPY } from '../copy';
 
-export interface SkipProps {
+export interface LinkProps {
   label: string;
-  disabled: boolean;
-  onSkip: () => void;
+  disabled?: boolean;
+  onClick: () => void;
 }
 
-/** The way out of a question that plays on the board: one quiet, full-width pill. */
-export function SkipAction({ label, disabled, onSkip }: SkipProps) {
+/** A small muted text link: the quiet way out under the one action that matters. */
+export function TextLink({ label, disabled = false, onClick }: LinkProps) {
   return (
-    <button type="button" class="btn btn-secondary btn-lg" disabled={disabled} onClick={onSkip}>
+    <button type="button" class="pause-link" disabled={disabled} onClick={onClick}>
       {label}
     </button>
   );
 }
 
 export interface RevealActionsProps {
-  /** Left out where trying again makes no sense, e.g. a quiet position. */
-  onRetry?: () => void;
   onContinue: () => void;
+  /** Left out where there is nothing to watch, e.g. a quiet position. */
+  onReplay?: () => void;
 }
 
-/** Try again and Continue, side by side and equal; Continue is the one ink action. */
-export function RevealActions({ onRetry, onContinue }: RevealActionsProps) {
+/** Continue is the one action; Watch again sits under it as a link. */
+export function RevealActions({ onContinue, onReplay }: RevealActionsProps) {
   return (
-    <div class={`pause-actions${onRetry ? '' : ' is-single'}`}>
-      {onRetry && (
-        <Button variant="secondary" size="lg" onClick={onRetry}>
-          {COPY.tryAgain}
-        </Button>
-      )}
+    <div class="pause-actions">
       <Button variant="primary" size="lg" onClick={onContinue}>
         {COPY.next}
       </Button>
+      {onReplay && <TextLink label={COPY.watchAgain} onClick={onReplay} />}
     </div>
   );
 }

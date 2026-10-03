@@ -1,85 +1,67 @@
 import type { BoardController } from '../board/types';
-import { placement, playLine, type PlayedMove } from './position';
+import { squaresOf } from './position';
+import { fenAt, type Sequence } from './sequence';
 
-export interface LineData {
-  played: PlayedMove[];
-  /** Position before the first move, then after each move. */
-  fens: string[];
-}
+/** How long a move's arrow shows before the piece moves. */
+export const ARROW_MS = 250;
+/** Autoplay: from the start of one move to the start of the next. */
+export const STEP_MS = 1100;
+/** Autoplay: the least time a move stays on show, when the move itself took most of its step. */
+export const DWELL_MIN_MS = 400;
+/** Autoplay on opening: the pause before the first move, so the headline can be read first. */
+export const LEAD_MS = 600;
 
-export function lineData(fen: string, moves: string[]): LineData {
-  const played = playLine(fen, moves);
-  return { played, fens: [fen, ...played.map((m) => m.after)] };
-}
-
-/** True when the board shows different pieces than the position the user came from. */
-export function isOffHome(shownFen: string, homeFen: string): boolean {
-  return placement(shownFen) !== placement(homeFen);
-}
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export interface ControlState {
-  /** "5 of 6". */
-  count: string;
-  /** The board already shows the position the user came from. */
-  backDisabled: boolean;
   prevDisabled: boolean;
   nextDisabled: boolean;
+  /** Moves remain and nothing is playing them: the next button invites a tap. */
+  pulseNext: boolean;
 }
 
-/** What the control row under a line can do when the stepper stands at step `at`. */
-export function controlState(data: LineData, at: number, homeFen: string): ControlState {
-  return {
-    count: `${at} of ${data.played.length}`,
-    backDisabled: !isOffHome(data.fens[at], homeFen),
-    prevDisabled: at === 0,
-    nextDisabled: at === data.played.length,
-  };
-}
-
-/** "5." before White's move, "5…" before a Black move that opens a line. */
-export function moveNumbers(fen: string, played: PlayedMove[]): string[] {
-  let number = Number(fen.split(' ')[5]) || 1;
-  return played.map((move, i) => {
-    const label = move.side === 'w' ? `${number}.` : i === 0 ? `${number}…` : '';
-    if (move.side === 'b') number += 1;
-    return label;
-  });
+/** What the two arrows beside the caption can do when the stepper stands at step `at`. */
+export function controlState(sequence: Sequence, at: number, playing: boolean): ControlState {
+  const atEnd = at === sequence.steps.length;
+  return { prevDisabled: at === 0, nextDisabled: atEnd, pulseNext: !playing && !atEnd };
 }
 
 /**
- * Walks the board along a line. Forward steps animate with playMove, backward ones use setPosition.
+ * Walks the board along a sequence of moves. Forward steps show the move's arrow, then animate with
+ * playMove; backward ones use setPosition. It can also play the sequence on its own, a move every STEP_MS.
  * Taps made while it is busy only move the target, so quick taps queue instead of fighting.
  */
 export class LineMotion {
-  private data: LineData = { played: [], fens: [] };
+  private sequence: Sequence = { steps: [] };
   private target = 0;
   private at = 0;
   /** Position last handed to the board; null until the first call. */
   private shown: string | null = null;
   private rewind = false;
-  private home = false;
   private stopped = false;
   private running: Promise<void> | null = null;
+  private playing = false;
+  /** Changes whenever autoplay starts or stops, so an old autoplay loop ends itself. */
+  private playId = 0;
 
   constructor(
     private board: BoardController,
-    private homeFen: string,
     private onStep: (step: number) => void,
+    private onPlaying: (playing: boolean) => void,
   ) {}
 
-  /** Switch to another line: the board goes to its start. */
-  setLine(data: LineData): void {
-    this.data = data;
+  /** Switch to another sequence: the board goes to its start. */
+  setSequence(sequence: Sequence): void {
+    this.pause();
+    this.sequence = sequence;
     this.rewind = true;
-    this.home = false;
     this.start();
   }
 
-  /** Move toward step n of the current line (0 = before the first move). */
+  /** Move toward step n (0 = before the first move); stops autoplay. */
   goTo(n: number): void {
-    this.home = false;
-    this.target = Math.max(0, Math.min(this.data.played.length, n));
-    this.start();
+    this.pause();
+    this.moveTo(n);
   }
 
   /** Where the next step would go from, counting steps still queued. */
@@ -87,16 +69,28 @@ export class LineMotion {
     return this.target;
   }
 
-  /** Walk back to the start of the line, then show the position the user came from. */
-  backToPosition(): void {
-    this.target = 0;
-    this.home = true;
-    this.start();
+  /** Step through the rest of the sequence on its own, after `leadMs`. */
+  play(leadMs = 0): void {
+    if (this.playing || this.stopped) return;
+    this.setPlaying(true);
+    void this.autoplay(++this.playId, leadMs);
   }
 
-  /** Drop queued steps; the board is left wherever it is. */
+  pause(): void {
+    this.playId += 1;
+    this.setPlaying(false);
+  }
+
+  /** Back to the start and play it again. */
+  replay(leadMs = 0): void {
+    this.setSequence(this.sequence);
+    this.play(leadMs);
+  }
+
+  /** Drop queued steps and autoplay; the board is left wherever it is. */
   stop(): void {
     this.stopped = true;
+    this.pause();
   }
 
   /** Resolves once the board has caught up with every queued step. */
@@ -104,11 +98,35 @@ export class LineMotion {
     return this.running ?? Promise.resolve();
   }
 
+  private setPlaying(playing: boolean): void {
+    if (this.playing === playing) return;
+    this.playing = playing;
+    this.onPlaying(playing);
+  }
+
+  private async autoplay(id: number, leadMs: number): Promise<void> {
+    const alive = () => this.playId === id;
+    if (leadMs > 0) await sleep(leadMs);
+    while (alive() && this.target < this.sequence.steps.length) {
+      const started = Date.now();
+      this.moveTo(this.target + 1);
+      await this.settled();
+      if (alive() && this.target < this.sequence.steps.length) await sleep(Math.max(DWELL_MIN_MS, STEP_MS - (Date.now() - started)));
+    }
+    if (alive()) this.setPlaying(false);
+  }
+
+  private moveTo(n: number): void {
+    this.target = Math.max(0, Math.min(this.sequence.steps.length, n));
+    this.start();
+  }
+
   private start(): void {
     this.running ??= this.walk().finally(() => (this.running = null));
   }
 
   private async show(fen: string, animate: boolean): Promise<void> {
+    this.board.clearArrows();
     if (this.shown === fen) return;
     this.shown = fen;
     await this.board.setPosition(fen, animate);
@@ -116,32 +134,52 @@ export class LineMotion {
 
   private async walk(): Promise<void> {
     while (!this.stopped) {
-      const data = this.data;
-      const { played, fens } = data;
-      if (this.rewind) {
-        this.rewind = false;
-        this.at = 0;
-        this.target = 0;
-        await this.show(fens[0], true);
-      } else if (this.target > this.at && played[this.at]) {
-        await this.show(fens[this.at], false);
-        await this.board.playMove(played[this.at].uci);
-        if (this.data !== data) {
-          this.shown = null; // the line changed mid-move; the pending rewind puts the board right
-          continue;
-        }
-        this.at += 1;
-        this.shown = fens[this.at];
-      } else if (this.target < this.at) {
-        this.at = this.target;
-        await this.show(fens[this.at], true);
-      } else if (this.home) {
-        this.home = false;
-        await this.show(this.homeFen, true);
-      } else {
-        return;
-      }
-      if (this.data === data) this.onStep(this.at);
+      const sequence = this.sequence;
+      if (!(await this.act(sequence))) return;
+      if (this.sequence === sequence) this.onStep(this.at);
     }
+  }
+
+  /** One action toward the target; false when there is nothing left to do. */
+  private async act(sequence: Sequence): Promise<boolean> {
+    if (this.rewind) {
+      this.rewind = false;
+      this.at = 0;
+      this.target = 0;
+      await this.show(fenAt(sequence, 0), true);
+    } else if (this.target > this.at && sequence.steps[this.at]) {
+      await this.stepForward(sequence);
+    } else if (this.target < this.at) {
+      this.at = this.target;
+      await this.show(fenAt(sequence, this.at), true);
+    } else {
+      return false;
+    }
+    return true;
+  }
+
+  private async stepForward(sequence: Sequence): Promise<void> {
+    const { uci, before, after, tone } = sequence.steps[this.at];
+    // Between two lines the board first goes back to where the next one starts.
+    await this.show(before, true);
+    this.board.arrow(...squaresOf(uci), tone);
+    await sleep(ARROW_MS);
+    if (!this.stillHeadingForward(sequence)) {
+      this.board.clearArrows();
+      return;
+    }
+    await this.board.playMove(uci);
+    this.board.clearArrows();
+    if (this.sequence !== sequence) {
+      this.shown = null; // the sequence changed mid-move; the pending rewind puts the board right
+      return;
+    }
+    this.at += 1;
+    this.shown = after;
+  }
+
+  /** False when a tap during the arrow turned the walk around, or the sequence or the stepper changed. */
+  private stillHeadingForward(sequence: Sequence): boolean {
+    return !this.stopped && this.sequence === sequence && !this.rewind && this.target > this.at;
   }
 }
