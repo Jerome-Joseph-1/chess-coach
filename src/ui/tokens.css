@@ -1,44 +1,74 @@
-/* Calm board, bright rewards: neutral surfaces with one ink-blue accent; colour is saved for feedback. */
+/* Still: neutral canvas, depth from luminance, one ink action per screen, orange only on the brand and due dots. */
 :root {
-  --bg: #f5f6f8;
+  --bg: #f2f2f4;
   --surface: #ffffff;
-  --surface-2: #eef1f5;
-  --ink: #12161c;
-  --muted: #5b6573;
-  --line: #e1e6ec;
-  --accent: #2f5bea;
-  --accent-lip: #1f3fb0;
-  --accent-ink: #ffffff;
-  --good: #1fa463;
-  --good-lip: #137a47;
-  --good-soft: #e3f6ec;
-  --bad: #e5484d;
-  --bad-soft: #fdecec;
-  --warn: #f5a524;
-  --star: #ffb800;
-  --board-light: #e8edf2;
-  --board-dark: #93a7bd;
+  --surface-2: #f7f7f8;
+  --surface-3: #ededf0;
+  --hairline: #e4e4e8;
+  --text-strong: #0a0a0b;
+  --text: #2a2a2f;
+  --text-muted: #6b6b74;
+  --action: #0a0a0b;
+  --on-action: #ffffff;
+  --brand: #f26b2a;
+  --success: #2f9e69;
+  --warning: #b7861f;
+  --danger: #c95454;
+  --board-light: #e4e4e8;
+  --board-dark: #a9a9b2;
+  --top-light: rgba(0, 0, 0, 0.03);
+  --focus: rgba(10, 10, 11, 0.55);
 
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
-  --font-display: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
-  --fs-xs: 12px;
-  --fs-sm: 14px;
-  --fs-md: 16px;
-  --fs-lg: 20px;
-  --fs-xl: 26px;
-  --fs-2xl: 34px;
+  --font: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --text-display: 600 34px/38px var(--font);
+  --text-number: 600 40px/44px var(--font);
+  --text-title: 600 22px/28px var(--font);
+  --text-headline: 500 17px/24px var(--font);
+  --text-callout: 500 15px/20px var(--font);
+  --text-body: 400 15px/22px var(--font);
+  --text-caption: 400 13px/18px var(--font);
+  --text-label: 500 12px/16px var(--font);
+  --text-code: 500 13px/18px var(--font-mono);
 
-  --r-sm: 10px;
-  --r-md: 14px;
-  --r-lg: 22px;
+  --r-row: 14px;
+  --r-card: 20px;
+  --r-sheet: 24px;
   --tap: 44px;
 
-  --t-tap: 120ms;
-  --t-move: 180ms;
-  --t-sheet: 260ms;
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* one spring for everything that moves: mass 1, stiffness 420, damping 42, no overshoot */
+  --spring: linear(0, 0.0848 2.6%, 0.2954 6%, 0.5235 10%, 0.7088 14.2%, 0.8434 18.6%, 0.9314 23.4%, 0.9785 28.6%, 0.9972 35%, 1.0016 43%, 1);
+  --t-move: 480ms;
+  --t-quick: 160ms;
+
+  /* aliases for names used before Still */
+  --ink: var(--text-strong);
+  --muted: var(--text-muted);
+  --line: var(--hairline);
+  --accent: var(--text-strong);
+  --accent-lip: transparent;
+  --accent-ink: var(--on-action);
+  --good: var(--success);
+  --good-lip: transparent;
+  --good-soft: color-mix(in srgb, var(--success) 16%, transparent);
+  --bad: var(--danger);
+  --bad-soft: color-mix(in srgb, var(--danger) 16%, transparent);
+  --warn: var(--warning);
+  --star: var(--warning);
+  --font-display: var(--font);
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 22px;
+  --fs-2xl: 34px;
+  --r-sm: 10px;
+  --r-md: var(--r-row);
+  --r-lg: var(--r-sheet);
+  --t-tap: var(--t-quick);
+  --t-sheet: var(--t-move);
+  --ease-out: var(--spring);
+  --ease-spring: var(--spring);
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -47,47 +77,47 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #0e1116;
-    --surface: #161b22;
-    --surface-2: #1e242d;
-    --ink: #e8edf3;
-    --muted: #94a0ae;
-    --line: #2a313b;
-    --accent: #6e8bff;
-    --accent-lip: #4561d6;
-    --accent-ink: #0e1116;
-    --good: #3dd68c;
-    --good-lip: #24a066;
-    --good-soft: #12301f;
-    --bad: #ff6b6e;
-    --bad-soft: #3a1517;
-    --warn: #ffc14d;
-    --star: #ffcc33;
-    --board-light: #c9d3de;
-    --board-dark: #6c8299;
+    --bg: #0a0a0b;
+    --surface: #17171a;
+    --surface-2: #202024;
+    --surface-3: #2a2a2f;
+    --hairline: #26262b;
+    --text-strong: #f5f5f7;
+    --text: #d9d9de;
+    --text-muted: #95959e;
+    --action: rgba(255, 255, 255, 0.92);
+    --on-action: #0a0a0b;
+    --brand: #ff7a3d;
+    --success: #4cb782;
+    --warning: #d4a23c;
+    --danger: #e07474;
+    --board-light: #b9b9c0;
+    --board-dark: #7a7a84;
+    --top-light: rgba(255, 255, 255, 0.06);
+    --focus: rgba(245, 245, 247, 0.6);
     color-scheme: dark;
   }
 }
 
 :root[data-theme='dark'] {
-  --bg: #0e1116;
-  --surface: #161b22;
-  --surface-2: #1e242d;
-  --ink: #e8edf3;
-  --muted: #94a0ae;
-  --line: #2a313b;
-  --accent: #6e8bff;
-  --accent-lip: #4561d6;
-  --accent-ink: #0e1116;
-  --good: #3dd68c;
-  --good-lip: #24a066;
-  --good-soft: #12301f;
-  --bad: #ff6b6e;
-  --bad-soft: #3a1517;
-  --warn: #ffc14d;
-  --star: #ffcc33;
-  --board-light: #c9d3de;
-  --board-dark: #6c8299;
+  --bg: #0a0a0b;
+  --surface: #17171a;
+  --surface-2: #202024;
+  --surface-3: #2a2a2f;
+  --hairline: #26262b;
+  --text-strong: #f5f5f7;
+  --text: #d9d9de;
+  --text-muted: #95959e;
+  --action: rgba(255, 255, 255, 0.92);
+  --on-action: #0a0a0b;
+  --brand: #ff7a3d;
+  --success: #4cb782;
+  --warning: #d4a23c;
+  --danger: #e07474;
+  --board-light: #b9b9c0;
+  --board-dark: #7a7a84;
+  --top-light: rgba(255, 255, 255, 0.06);
+  --focus: rgba(245, 245, 247, 0.6);
   color-scheme: dark;
 }
 
@@ -100,11 +130,17 @@ body {
   margin: 0;
   height: 100%;
   background: var(--bg);
-  color: var(--ink);
-  font: var(--fs-md) / 1.45 var(--font);
+  color: var(--text);
+  font: var(--text-body);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
+}
+
+body {
+  background: radial-gradient(120% 40% at 50% 0%, var(--top-light), transparent 70%) no-repeat, var(--bg);
 }
 
 #app {
@@ -116,8 +152,8 @@ body {
 h1,
 h2,
 h3 {
-  font-family: var(--font-display);
   margin: 0;
+  color: var(--text-strong);
   text-wrap: balance;
 }
 
@@ -126,10 +162,14 @@ button {
   color: inherit;
 }
 
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --t-tap: 0ms;
     --t-move: 0ms;
-    --t-sheet: 0ms;
+    --t-quick: 0ms;
   }
 }

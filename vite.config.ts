@@ -16,8 +16,8 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: '/chess-coach/',
         scope: '/chess-coach/',
-        theme_color: '#f5f6f8',
-        background_color: '#f5f6f8',
+        theme_color: '#0a0a0b',
+        background_color: '#0a0a0b',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -29,6 +29,11 @@ export default defineConfig({
         globIgnores: ['content/**'],
         navigateFallbackDenylist: [/\/content\//],
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
+            handler: 'CacheFirst',
+            options: { cacheName: 'fonts', expiration: { maxEntries: 20 } },
+          },
           {
             urlPattern: ({ url }) => url.pathname.includes('/content/'),
             handler: 'StaleWhileRevalidate',
