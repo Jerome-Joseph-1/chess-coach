@@ -53,6 +53,7 @@ export type Phase =
   | { kind: 'lines'; turnIndex: number; uci: string }
   | { kind: 'done' };
 
+/** One dot per pause the user will be asked about. */
 export type DotState = 'todo' | 'now' | 'good' | 'bad';
 
 export interface SessionView {
@@ -61,6 +62,8 @@ export interface SessionView {
   depth: Depth;
   /** SAN of every move played so far, the opening moves included. */
   history: string[];
+  /** Position after those moves. */
+  fen: string;
   dots: DotState[];
   status: string;
   /** A wrong move the user can ask to see refuted. */
@@ -106,6 +109,7 @@ export class GameSession {
       game: null,
       depth: deps.getDepth(opening, level),
       history: [],
+      fen: this.chess.fen(),
       dots: [],
       status: '',
       showMe: null,
@@ -178,7 +182,7 @@ export class GameSession {
       .sort(([a], [b]) => a - b)
       .filter(([i, type]) => {
         const ply = this.game?.turns[i].ply ?? -1;
-        return (isPrompted(type) || type === 'silent') && ply >= this.ply && !this.handledPlies.has(ply);
+        return isPrompted(type) && ply >= this.ply && !this.handledPlies.has(ply);
       })
       .map(([i]): DotState => (phase.kind === 'pause' && phase.turnIndex === i ? 'now' : 'todo'));
     return [...this.doneDots, ...upcoming];
@@ -218,7 +222,7 @@ export class GameSession {
     for (const san of game.start) this.chess.move(san);
     this.ply = 0;
     this.moments = this.chooseMomentsFor(game);
-    this.update({ game, history: [...game.start], phase: { kind: 'busy' } });
+    this.update({ game, history: [...game.start], fen: this.chess.fen(), phase: { kind: 'busy' } });
   }
 
   private chooseMomentsFor(game: Game): Map<number, MomentType> {
@@ -255,7 +259,7 @@ export class GameSession {
   /** Plays the next scripted move on the model, not on the board. */
   private takeMove(san: string): void {
     this.lastUci = playSan(this.chess, san);
-    this.update({ history: [...this.view.history, san] });
+    this.update({ history: [...this.view.history, san], fen: this.chess.fen() });
     this.ply++;
   }
 
@@ -319,10 +323,11 @@ export class GameSession {
     const next = this.game.moves[this.ply];
     const { verdict } = gradeMove(turn, uci);
     if (verdict === 'mistake') {
-      this.deps.toast('That loses material');
-      if (turn.refutations[uci]) this.update({ showMe: { turnIndex, uci } });
+      const canShow = Boolean(turn.refutations[uci]);
+      this.deps.toast(canShow ? 'That loses material. Tap Show me to see why.' : 'That loses material.');
+      if (canShow) this.update({ showMe: { turnIndex, uci } });
     } else if (verdict === 'unknown') {
-      this.deps.toast(`Not covered in this game — this game continues with ${next}.`);
+      this.deps.toast(`This game continues with ${next}.`);
     } else {
       this.deps.toast(`That works too. This game continues with ${next} — play it to go on.`);
     }
@@ -354,7 +359,7 @@ export class GameSession {
     }
     if (!holds) await this.showMiss(turnIndex, played);
     await this.playScripted();
-    if (holds) this.deps.toast(`This game continues with ${san}`);
+    if (holds) this.deps.toast(`This game continues with ${san}.`);
   }
 
   private async showMiss(turnIndex: number, playedUci: string): Promise<void> {
@@ -411,7 +416,8 @@ export class GameSession {
     const { depthChanged } = this.deps.recordMoment(result);
     this.results.push(result);
     this.handledPlies.add(turn.ply);
-    this.doneDots.push(outcomes.length > 0 && outcomes.every((o) => o.correct) ? 'good' : 'bad');
+    // Silent checks get no dot, so the count never gives them away.
+    if (type !== 'silent') this.doneDots.push(outcomes.length > 0 && outcomes.every((o) => o.correct) ? 'good' : 'bad');
     this.update({ depth: depthChanged ?? this.view.depth });
     if (depthChanged) {
       this.deps.celebrate('levelup');

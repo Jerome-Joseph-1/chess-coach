@@ -10,7 +10,7 @@ import type { BoardController, Tone } from './types';
 
 type MoveHandler = (uci: string) => boolean | Promise<boolean>;
 
-const MOVE_MS = 180;
+const MOVE_MS = 480;
 
 const TONE_MARKERS: Record<Tone, MarkerType> = {
   focus: { class: 'marker-focus', slice: 'markerFrame' },

@@ -1,0 +1,133 @@
+.game {
+  display: flex;
+  flex-direction: column;
+  max-width: 520px;
+  min-height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
+  margin: 0 auto;
+}
+
+.game-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+}
+.game-back {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-strong);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--t-quick) var(--spring);
+}
+.game-back:active {
+  transform: scale(0.96);
+}
+.game-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font: var(--text-headline);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.game-pill {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text);
+  font: var(--text-label);
+}
+.game-pill:empty {
+  display: none;
+}
+
+.game-player {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 16px;
+}
+.game-player-name {
+  font: var(--text-callout);
+  color: var(--text-strong);
+}
+.game-player-detail {
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.game-captured {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 18px;
+  text-align: right;
+  white-space: nowrap;
+}
+.game-lead {
+  font: var(--text-label);
+  color: var(--text-muted);
+}
+
+.game-board {
+  padding: 0 16px;
+}
+
+.game-moves {
+  display: flex;
+  gap: 4px;
+  margin: 8px 16px 0;
+  padding: 6px;
+  overflow-x: auto;
+  list-style: none;
+  border-radius: var(--r-row);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  font: var(--text-code);
+  color: var(--text-strong);
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.game-moves::-webkit-scrollbar {
+  display: none;
+}
+.game-moves li {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 8px;
+  transition: background var(--t-move) var(--spring);
+}
+.game-moves li.is-last {
+  background: var(--surface-3);
+}
+.game-move-no {
+  margin-right: 4px;
+  color: var(--text-muted);
+}
+
+.game-slot {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 16px 16px 20px;
+}
+.game-status {
+  margin: 0;
+  color: var(--text);
+  font: var(--text-callout);
+  text-align: center;
+}

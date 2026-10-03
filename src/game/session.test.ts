@@ -179,6 +179,13 @@ describe('starting a game', () => {
     expect(started.session.getView().history).toEqual(['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Nf6']);
   });
 
+  it('keeps the view in step with the moves played', async () => {
+    const started = await startAt(1);
+    const view = started.session.getView();
+    expect(view.fen).toBe(started.board.fen());
+    expect(view.game?.id).toBe(GAME_1);
+  });
+
   it('shows who is thinking while the opponent waits 400 to 700 ms', async () => {
     const started = startSession();
     let release!: () => void;
@@ -260,14 +267,14 @@ describe('a normal turn', () => {
   it('says a move outside the analysis is not covered', async () => {
     const started = await startAt(1);
     expect(started.board.userMove('a2a3')).toBe(false);
-    expect(started.deps.toast).toHaveBeenCalledWith('Not covered in this game — this game continues with d4.');
+    expect(started.deps.toast).toHaveBeenCalledWith('This game continues with d4.');
     expect(started.session.getView().showMe).toBeNull();
   });
 
   it('calls a mistake a loss of material and offers the refutation', async () => {
     const started = await startAt(3);
     expect(started.board.userMove('c4d5')).toBe(false);
-    expect(started.deps.toast).toHaveBeenCalledWith('That loses material');
+    expect(started.deps.toast).toHaveBeenCalledWith('That loses material. Tap Show me to see why.');
     expect(started.session.getView().showMe).toEqual({ turnIndex: 1, uci: 'c4d5' });
   });
 
@@ -427,8 +434,8 @@ describe('a pause', () => {
     expect(started.session.getView().depth).toBe(2);
   });
 
-  it('fills the progress dots as moments are found or missed', async () => {
-    momentsAt({ 3: 'pause', 7: 'silent' });
+  it('fills the progress dots as pauses are found or missed', async () => {
+    momentsAt({ 3: 'pause', 7: 'nothing' });
     const started = startSession();
     await advanceTo(started, 1);
     expect(started.session.getView().dots).toEqual(['todo', 'todo']);
@@ -437,9 +444,9 @@ describe('a pause', () => {
     expect(started.session.getView().dots).toEqual(['now', 'todo']);
     await started.board.playMove('d4e5');
     started.session.pauseDone({ outcomes: outcomes(true, false), resumePly: 4 });
-    await advanceTo(started, 7);
-    expect(started.session.getView().dots).toEqual(['bad', 'todo']);
-    started.board.userMove('d1d8');
+    await playUntilPhase(started, 'pause');
+    expect(started.session.getView().dots).toEqual(['bad', 'now']);
+    started.session.pauseDone({ outcomes: outcomes(true, true), resumePly: 8 });
     await flush();
     expect(started.session.getView().dots).toEqual(['bad', 'good']);
   });
@@ -468,7 +475,7 @@ describe('a silent check', () => {
     await flush();
     expect(started.deps.celebrate).toHaveBeenCalledWith('silent', expect.anything());
     expect(started.board.calls).toContain('play:d1d8');
-    expect(started.deps.toast).toHaveBeenCalledWith('This game continues with Qxd8+');
+    expect(started.deps.toast).toHaveBeenCalledWith('This game continues with Qxd8+.');
     expect(started.deps.recordMoment).toHaveBeenCalledWith(expect.objectContaining({ stars: 1 }));
   });
 
@@ -492,12 +499,12 @@ describe('a silent check', () => {
     expect(started.session.getView().history).toContain('Qxd8+');
   });
 
-  it('does not show a pause or a highlighted dot', async () => {
+  it('does not show a pause or a dot', async () => {
     momentsAt({ 3: 'silent' });
     const started = startSession();
     await advanceTo(started, 3);
     expect(started.session.getView().phase.kind).toBe('yourMove');
-    expect(started.session.getView().dots).toEqual(['todo']);
+    expect(started.session.getView().dots).toEqual([]);
   });
 });
 
