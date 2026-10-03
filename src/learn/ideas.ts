@@ -60,10 +60,18 @@ function sentence(lead: string, clause: string): string {
   return lead ? lead + clause : capitalize(clause);
 }
 
-/** " takes the bishop and" when the move also captures a piece. */
+/** Whether the opponent takes back on the square the tactic's move just captured on. */
+function takenBack(t: Tactic): boolean {
+  const move = t.moves[t.at];
+  return Boolean(move.captured) && t.moves[t.at + 1]?.to === move.to;
+}
+
+/** " takes the bishop and" (or " trades queens and") when the move also captures a piece. */
 function takesPiece(t: Tactic): string {
   const taken = t.moves[t.at].captured;
-  return taken && taken !== 'p' ? ` takes the ${NAME[taken]} and` : '';
+  if (!taken || taken === 'p') return '';
+  if (taken === 'q' && takenBack(t)) return ' trades queens and';
+  return ` takes the ${NAME[taken]} and`;
 }
 
 /** "your rook on e8", or just "your rook" when it is taken somewhere else. */
@@ -201,7 +209,10 @@ function removeDefenderIdea(t: Of<'remove-defender'>, { lead, move, ref }: Say):
   const guard = ref(t.defender);
   const guarded = ref(t.guarded);
   const falls = `then the ${NAME[t.guarded.type]} on ${t.guarded.square} falls`;
-  if (t.how === 'capture') return `${lead}${move} takes ${guard}, which guards ${guarded}, and ${falls}.`;
+  if (t.how === 'capture') {
+    const takes = takenBack(t) ? 'trades off' : 'takes';
+    return `${lead}${move} ${takes} ${guard}, which guards ${guarded}, and ${falls}.`;
+  }
   const takes = takesPiece(t);
   if (t.how === 'chase') return `${lead}${move}${takes} chases away ${guard}, which guards ${guarded}, and ${falls}.`;
   return `${lead}${move}${takes} lures ${guard} away from guarding ${guarded}, and ${falls}.`;
@@ -284,7 +295,7 @@ function threatIdea(t: Tactic, user: Color): string {
       if (t.how === 'created') return `${threatens}, pinning ${ref(pinned)} to ${ref(behind)}.`;
       if (t.how === 'attacked') return `${pin}, and ${opp} threatens to attack it with ${move}.`;
       if (t.how === 'exposed') return `${pin}, and ${opp} threatens to exploit it with ${move}.`;
-      return `${threatens}: ${ref(pinned)} can't take back because it's pinned to ${ref(behind)}.`;
+      return `${threatens}: ${ref(pinned)} can't safely take back because it's pinned to ${ref(behind)}.`;
     }
     case 'skewer':
       return `${threatens}, attacking ${ref(t.front)} with ${ref(t.back)} behind it on the same line.`;
@@ -363,7 +374,7 @@ function replyText(t: Tactic, user: Color): string {
     case 'trapped-piece':
       return `${move} traps ${ref(t.trapped)}`;
     case 'remove-defender':
-      if (t.how === 'capture') return `${move} takes ${ref(t.defender)}, which guards ${ref(t.guarded)}`;
+      if (t.how === 'capture') return `${move} ${takenBack(t) ? 'trades off' : 'takes'} ${ref(t.defender)}, which guards ${ref(t.guarded)}`;
       if (t.how === 'chase') return `${move} drives away ${ref(t.defender)}, which guards ${ref(t.guarded)}`;
       return `${move} lures ${ref(t.defender)} away from guarding ${ref(t.guarded)}`;
     case 'mate-threat':

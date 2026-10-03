@@ -116,7 +116,7 @@ describe('wins', () => {
     expect(theme('caro-kann-1400-0015#8').id).toBe('remove-defender');
     expect(piece('caro-kann-1400-0015#8', 'defender')).toEqual(['nf3']);
     expect(lesson('caro-kann-1400-0015#8').idea).toBe(
-      'Bxf3 takes the knight on f3, which guards the pawn on d4, and then the pawn on d4 falls.',
+      'Bxf3 trades off the knight on f3, which guards the pawn on d4, and then the pawn on d4 falls.',
     );
   });
 
