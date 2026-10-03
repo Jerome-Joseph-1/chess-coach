@@ -1,11 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
-import { boardSquares } from './board';
+import { boardSquares, moveList, playButton, tapSquare } from './board';
 
 test.use({ serviceWorkers: 'block' });
 
 async function openBoard(page: Page) {
   await page.goto('./#/play/italian/1400');
-  await expect(page.getByText('Your move', { exact: true })).toBeVisible();
+  await expect(playButton(page)).toBeVisible();
+  await expect(page.locator('.cm-chessboard .piece')).toHaveCount(32);
   return boardSquares(page);
 }
 
@@ -47,13 +48,22 @@ test('modifier keys pick the colour and a right-click on one square draws a circ
 });
 
 test('drawings do not block moving a piece, and playing a move clears them', async ({ page }) => {
-  const at = await openBoard(page);
-  await rightDrag(page, at('b1'), at('c3'));
-  await expect(page.locator('.cm-chessboard .arrow-draw-green')).toHaveCount(1);
+  await page.addInitScript(() => localStorage.setItem('cc.settings.v1', JSON.stringify({ depthOverride: 3 })));
+  await page.goto('./#/play/italian/1400');
+  await playButton(page).click();
+  await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  await expect(page.getByText('Tap the piece that matters most')).toBeVisible();
+  await tapSquare(page, 'd4');
+  await expect(page.getByText('Your move', { exact: true })).toBeVisible();
+  const at = await boardSquares(page);
 
-  await page.mouse.click(at('d2').x, at('d2').y);
-  await expect(page.locator('.cm-chessboard .marker-dot')).toHaveCount(2);
+  const drawn = page.locator('.cm-chessboard .arrow-draw-green');
+  await rightDrag(page, at('b1'), at('c3'));
+  await expect(drawn).toHaveCount(1);
   await page.mouse.click(at('d4').x, at('d4').y);
-  await expect(page.getByText('Black is thinking…')).toBeVisible();
-  await expect(page.locator('.cm-chessboard .arrow-draw-green')).toHaveCount(0);
+  await expect(page.locator('.cm-chessboard .marker-dot').first()).toBeVisible();
+  await page.mouse.click(at('e5').x, at('e5').y);
+  await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
+  await expect(drawn).toHaveCount(0);
+  await expect(moveList(page).last()).not.toHaveText('');
 });

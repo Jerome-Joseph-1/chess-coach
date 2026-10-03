@@ -24,25 +24,28 @@ async function expectBoardUncovered(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 }
 
-test('stage 1: spot it, step through the line and come back to the position', async ({ page }) => {
+test('stage 1: spot it, then the line plays itself and the game moves on', async ({ page }) => {
   await atStage(page, 1);
   await reachFirstPause(page);
   await expect(page.getByText('Step 1 of 1')).toBeVisible();
   await expectBoardUncovered(page);
 
   await page.getByRole('button', { name: "Yes, something's going on" }).click();
-  const back = page.getByRole('button', { name: 'Back to the position' });
-  await expect(back).toBeVisible();
-  await expect(back).toBeDisabled();
+  const caption = page.locator('.stepper-caption');
+  await expect(caption).not.toBeEmpty();
+  const first = await caption.textContent();
+  await expect(caption).not.toHaveText(first!, { timeout: 4000 });
   await expectBoardUncovered(page);
 
-  await page.getByRole('button', { name: 'Next move' }).click();
-  await expect(back).toBeEnabled();
-  await back.click();
-  await expect(back).toBeDisabled();
+  await page.getByRole('button', { name: 'Previous move' }).click();
+  await page.waitForTimeout(800);
+  const stopped = await caption.textContent();
+  await page.waitForTimeout(2000);
+  await expect(caption).toHaveText(stopped!);
+  await expect(page.getByRole('button', { name: 'Watch again' })).toBeVisible();
 
   await continueAfterPause(page);
-  await expect(moveList(page).filter({ hasText: /^d6$/ })).toBeVisible();
+  await expect(moveList(page).filter({ hasText: /dxe5$/ })).toBeVisible();
 });
 
 test('stage 3: point to the piece, then play the move', async ({ page }) => {
@@ -51,17 +54,35 @@ test('stage 3: point to the piece, then play the move', async ({ page }) => {
   await expect(page.getByText('Step 1 of 3')).toBeVisible();
 
   await page.getByRole('button', { name: "Yes, something's going on" }).click();
-  await expect(page.getByText('Which piece matters most?')).toBeVisible();
+  await expect(page.getByText('Tap the piece that matters most')).toBeVisible();
   await expectBoardUncovered(page);
   await tapSquare(page, 'd4');
 
-  await expect(page.getByText("What's your move?")).toBeVisible();
+  await expect(page.getByText('Your move', { exact: true })).toBeVisible();
   await expectBoardUncovered(page);
   await tapSquares(page, 'd4', 'e5');
 
   await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
   await expect(page.getByText('You spotted it and found the move')).toBeVisible();
   await expectBoardUncovered(page);
+});
+
+test('stage 3: hints show the piece, then the move', async ({ page }) => {
+  await atStage(page, 3);
+  await reachFirstPause(page);
+  await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  await page.getByRole('button', { name: 'Hint' }).click();
+  await tapSquare(page, 'd4');
+
+  await expect(page.getByText('Your move', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Hint' }).click();
+  await expect(page.getByText('Move the highlighted piece.')).toBeVisible();
+  await page.getByRole('button', { name: 'Show the move' }).click();
+  await expect(page.getByText('Play the move shown.')).toBeVisible();
+  await tapSquares(page, 'd4', 'e5');
+
+  await expect(page.getByText('Solved with a hint')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
 });
 
 test('a quiet answer on a key position shows what was there', async ({ page }) => {
