@@ -12,6 +12,14 @@ export const SITUATIONS = [
 
 export type Situation = (typeof SITUATIONS)[number]['id'];
 
+/** When a position has several right answers, the most urgent comes first. */
+const URGENCY: Situation[] = ['defend', 'attack', 'win', 'trap', 'quiet'];
+
+/** The right answer the coach speaks to when there are several. */
+export function mainSituation(answers: Situation[]): Situation {
+  return URGENCY.find((situation) => answers.includes(situation)) ?? 'quiet';
+}
+
 /** Every answer that counts as right for this key position; a turn that isn't critical accepts only "Nothing urgent". */
 export function situationsOf(game: Game, turnIndex: number): Situation[] {
   const turn = game.turns[turnIndex];

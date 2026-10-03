@@ -13,6 +13,7 @@ import {
   resultLine,
   spotNudge,
   spotRight,
+  spotShown,
   spotSub,
   stepLabel,
   winSentence,
@@ -121,6 +122,18 @@ describe('the answers to step 1', () => {
 
   it('speak to the most urgent answer when a position has several', () => {
     expect(spotNudge('trap', ['win', 'defend'])).toBe(spotNudge('trap', ['defend']));
+  });
+
+  it('show the right answer by its label, with one short line why and never the move', () => {
+    for (const { id, label } of SITUATIONS) {
+      const line = spotShown(italian1, 3, id);
+      expect(line).toMatch(new RegExp(`^Right answer: ${label}\\. [A-Z][^.]*\\.$`));
+      if (id !== 'defend') expect(line).not.toMatch(/[a-h][1-8]/);
+    }
+  });
+
+  it('say what the opponent threatens when the answer is to defend', () => {
+    expect(spotShown(italian1, 7, 'defend')).toBe('Right answer: Defend. Black threatens to take your knight on e5.');
   });
 });
 

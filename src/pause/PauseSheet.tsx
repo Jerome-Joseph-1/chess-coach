@@ -82,6 +82,8 @@ const WRONG_FLASH_MS = 600;
 const PUNISH_MIN_MS = 1800;
 /** A right answer stays on screen this long before the flow moves on. */
 const SETTLE_MS = 400;
+/** The right answer to step 1, shown after two wrong picks, stays this long so it can be found and read. */
+const SHOWN_MS = 2000;
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
@@ -233,7 +235,8 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
 
   useEffect(() => {
     if (!state.answered) return;
-    const id = window.setTimeout(() => send({ type: 'advance' }), SETTLE_MS);
+    const shown = state.phase === 'spot' && state.spotShown !== null;
+    const id = window.setTimeout(() => send({ type: 'advance' }), shown ? SHOWN_MS : SETTLE_MS);
     return () => window.clearTimeout(id);
   }, [state.answered]);
 
@@ -306,6 +309,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
             innerRef={choicesRef}
             answers={spotAnswers(ctx)}
             picked={state.spot}
+            shown={state.spotShown}
             settled={state.answered}
             onAnswer={(pick) => send({ type: 'spot', pick })}
           />

@@ -41,6 +41,18 @@ describe('the spot step', () => {
     expect(spotPromptFor(ctxAt(3), after(3, [spot('defend')])).sub).toBe('Is anything of yours actually attacked? Count the attackers.');
   });
 
+  it('shows the right answer and why after the second wrong pick, and keeps it in view on the play step', () => {
+    const shown = 'Right answer: Win material. One of your moves wins something.';
+    expect(spotPromptFor(ctxAt(3), after(3, [spot('quiet'), spot('defend')]))).toEqual({ sub: shown, tone: 'hint' });
+    expect(promptFor(italian1, after(3, [spot('quiet'), spot('defend'), advance]))).toEqual({ title: 'Your move', sub: shown, tone: 'neutral' });
+  });
+
+  it('says what the opponent threatens when the right answer was to defend', () => {
+    const both: FlowContext = { ...ctxAt(3), turnIndex: 7 };
+    const state = [spot('attack'), spot('trap')].reduce((s, e) => flowReducer(both, s, e), initialState(both));
+    expect(spotPromptFor(both, state).sub).toBe('Right answer: Defend. Black threatens to take your knight on e5.');
+  });
+
   it('keeps the confirmation in view on the play step until the user moves', () => {
     expect(promptFor(italian1, after(3, toSolve))).toEqual({
       title: 'Your move',

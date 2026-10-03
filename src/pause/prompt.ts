@@ -1,6 +1,6 @@
 import type { Game } from '../content/types';
 import { lessonFor } from '../learn';
-import { COPY, findNote, holdSub, replySub, spotNudge, spotRight, spotSub } from './copy';
+import { COPY, findNote, holdSub, replySub, spotNudge, spotRight, spotShown, spotSub } from './copy';
 import { spotAnswers, type FlowContext, type FlowState } from './flow';
 import { pieceInTrouble } from './hints';
 
@@ -49,6 +49,12 @@ function hintText(game: Game, state: FlowState): Partial<Prompt> | null {
   return { title: lessonFor(game, state.turn).hint, sub: subs[state.hint - 1] };
 }
 
+/** The answer to step 1 as the coach last said it: confirmed, or shown after two wrong picks. */
+function spotAnswerLine(game: Game, state: FlowState): string | null {
+  if (state.spotShown) return spotShown(game, state.turn, state.spotShown);
+  return state.spot ? spotRight(state.spot) : null;
+}
+
 function questionFor(game: Game, state: FlowState): Pick<Prompt, 'title' | 'sub'> {
   switch (state.phase) {
     case 'hold':
@@ -56,8 +62,8 @@ function questionFor(game: Game, state: FlowState): Pick<Prompt, 'title' | 'sub'
     case 'reply':
       return { title: COPY.holdTitle, sub: replySub(game) };
     default:
-      // The right answer to step 1 stays in view until the user moves or asks for a hint.
-      return { title: COPY.solveTitle, sub: state.spot ? spotRight(state.spot) : COPY.solveSub };
+      // The answer to step 1 stays in view until the user moves or asks for a hint.
+      return { title: COPY.solveTitle, sub: spotAnswerLine(game, state) ?? COPY.solveSub };
   }
 }
 
@@ -69,10 +75,11 @@ export function promptFor(game: Game, state: FlowState): Prompt {
   return { ...withHint, ...feedbackLine(game, state) };
 }
 
-/** Line of the spot step: what just happened, then how the answer went. */
+/** Line of the spot step: what just happened, then how the answer went, then the right answer after two misses. */
 export function spotPromptFor(ctx: FlowContext, state: FlowState): Line {
-  const { feedback, spot } = state;
+  const { feedback, spot, spotShown: shown } = state;
   if (feedback?.kind !== 'spot' || !spot) return { sub: spotSub(ctx.game, ctx.turnIndex), tone: 'neutral' };
+  if (shown) return { sub: spotShown(ctx.game, ctx.turnIndex, shown), tone: 'hint' };
   return feedback.correct ? { sub: spotRight(spot), tone: 'success' } : { sub: spotNudge(spot, spotAnswers(ctx)), tone: 'error' };
 }
 

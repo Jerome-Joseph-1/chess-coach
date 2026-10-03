@@ -107,17 +107,33 @@ test('a wrong answer at the spot step is only an error with a nudge, and the use
   await atStage(page, 3);
   await reachFirstPause(page);
 
-  await choiceButton(page, 'Nothing urgent').click();
-  await expect(page.getByText('Look again: check every capture and every attack.')).toBeVisible();
-  await expect(page.getByText(QUESTION)).toBeVisible();
   await choiceButton(page, 'Defend').click();
   await expect(page.getByText('Is anything of yours actually attacked? Count the attackers.')).toBeVisible();
+  await expect(page.getByText(QUESTION)).toBeVisible();
   await expect(page.locator('.pause-choice.is-wrong')).toHaveText('Defend');
 
   await winButton(page).click();
   await expect(page.locator('.pause-choice.is-right')).toHaveText('Win material');
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
   await expect(page.getByText(RIGHT_PICK)).toBeVisible();
+});
+
+test('after a second wrong answer the coach shows the right one, says why and moves on', async ({ page }) => {
+  await atStage(page, 3);
+  await reachFirstPause(page);
+
+  await choiceButton(page, 'Nothing urgent').click();
+  await expect(page.getByText('Look again: check every capture and every attack.')).toBeVisible();
+  await choiceButton(page, 'Defend').click();
+  const shown = 'Right answer: Win material. One of your moves wins something.';
+  await expect(page.getByText(shown)).toBeVisible();
+  await expect(page.locator('.pause-choice.is-right')).toHaveText('Win material');
+  await expect(page.locator('.pause-choice.is-wrong')).toHaveText('Defend');
+
+  await expect(page.getByText('Your move', { exact: true })).toBeVisible();
+  await expect(page.getByText(shown)).toBeVisible();
+  await tapSquares(page, 'd4', 'e5');
+  await expect(continueButton(page)).toBeVisible();
 });
 
 test('a wrong move is only an error and the piece goes back; the right one finishes it', async ({ page }) => {

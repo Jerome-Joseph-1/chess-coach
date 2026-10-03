@@ -1,10 +1,12 @@
 import type { Depth, Game, StepName, StepOutcome } from '../content/types';
-import { situationsOf, type Situation } from '../learn/situation';
+import { mainSituation, situationsOf, type Situation } from '../learn/situation';
 import { whyWrong, type WrongMove } from '../learn/whyWrong';
 import { fenAfter, uciOfSan } from './position';
 
 /** A move losing at most this much win% still holds the position. */
 export const HOLD_MAX = 2.5;
+/** Wrong picks on step 1 before the coach shows the right one. */
+const SPOT_TRIES = 2;
 /** Follow-up moves asked after the first one: none up to stage 3, one at stage 4, up to five at stage 5. */
 const HOLD_MOVES: Record<Depth, number> = { 1: 0, 2: 0, 3: 0, 4: 1, 5: 5 };
 
@@ -52,6 +54,8 @@ export interface FlowState {
   next: Phase | null;
   /** The user's latest answer to "What's going on here?". */
   spot: Situation | null;
+  /** The right answer to step 1, shown by the coach after the second wrong pick. */
+  spotShown: Situation | null;
   /** What the first answer to each settled question scored. */
   outcomes: StepOutcome[];
   /** The scripted move at the last turn is not on the board: a different but fine move ended the play-out. */
@@ -84,6 +88,7 @@ export function initialState(ctx: FlowContext): FlowState {
     answered: false,
     next: null,
     spot: null,
+    spotShown: null,
     outcomes: [],
     alt: false,
     hinted: false,
@@ -203,12 +208,19 @@ function isAsking(state: FlowState): boolean {
   return !state.answered && (state.phase === 'solve' || state.phase === 'hold');
 }
 
-/** A wrong answer is only an error: the question stays open and the first answer is what counts. */
+/**
+ * A first wrong answer is only an error and the question stays open; the second shows the right one and moves on.
+ * Only a right first answer counts as right.
+ */
 function answerSpot(ctx: FlowContext, state: FlowState, pick: Situation): FlowState {
-  const correct = spotAnswers(ctx).includes(pick);
-  if (!correct) return { ...state, spot: pick, tries: state.tries + 1, feedback: { kind: 'spot', correct } };
-  const outcomes: StepOutcome[] = [...state.outcomes, { step: 'spot', correct: state.tries === 0 }];
-  return settle(state, outcomes, ctx.type === 'pause' ? 'solve' : 'reveal', { kind: 'spot', correct }, { spot: pick });
+  const answers = spotAnswers(ctx);
+  const correct = answers.includes(pick);
+  const tries = correct ? state.tries : state.tries + 1;
+  const feedback: Feedback = { kind: 'spot', correct };
+  if (!correct && tries < SPOT_TRIES) return { ...state, spot: pick, tries, feedback };
+  const outcomes: StepOutcome[] = [...state.outcomes, { step: 'spot', correct: tries === 0 }];
+  const spotShown = correct ? null : mainSituation(answers);
+  return settle(state, outcomes, ctx.type === 'pause' ? 'solve' : 'reveal', feedback, { spot: pick, tries, spotShown });
 }
 
 /** A hint replaces whatever the last answer earned. */

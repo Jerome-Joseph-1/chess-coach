@@ -1,6 +1,6 @@
 import type { Game, Kind, Level, Side, StepOutcome, Turn } from '../content/types';
 import { holdShare } from '../game/grading';
-import type { Situation } from '../learn/situation';
+import { SITUATIONS, mainSituation, type Situation } from '../learn/situation';
 import { capturesIn, materialLoss, valueOf } from './captures';
 import { material, pieceValue } from './material';
 import { flipTurn, moveBefore, playLine, sanOf, type OpponentMove, type PlayedMove } from './position';
@@ -149,13 +149,31 @@ const NUDGES: Record<Situation, Partial<Record<Situation, string>>> = {
   },
 };
 
-/** When a position has several right answers, the nudge speaks to the most urgent. */
-const URGENCY: Situation[] = ['defend', 'attack', 'win', 'trap', 'quiet'];
-
-/** A nudge for a wrong pick that fits both the pick and what the position is really about. */
+/** A nudge for a wrong pick that fits both the pick and what the position is really about; several right answers get the most urgent. */
 export function spotNudge(pick: Situation, answers: Situation[]): string {
-  const real = URGENCY.find((situation) => answers.includes(situation)) ?? 'quiet';
-  return NUDGES[real][pick] ?? CHECK_TAKES;
+  return NUDGES[mainSituation(answers)][pick] ?? CHECK_TAKES;
+}
+
+/** Why the right answer to step 1 is right, in general terms: never the move. */
+const SPOT_WHY: Record<Situation, string> = {
+  win: 'One of your moves wins something.',
+  attack: 'Their king is in danger.',
+  defend: 'They threaten something of yours.',
+  trap: 'The natural move here is a mistake.',
+  quiet: 'Nothing is attacked and nothing can be won.',
+};
+
+/** What the opponent threatens to take, e.g. "Black threatens to take your knight on e5." */
+function threatNote(game: Game, turn: Turn): string | null {
+  const take = threatTake(game, turn);
+  return take ? `${opponentName(game)} threatens to take your ${PIECES[take.captured!]} on ${take.uci.slice(2, 4)}.` : null;
+}
+
+/** The right answer to step 1 and one line why, shown after the second wrong pick. */
+export function spotShown(game: Game, turnIndex: number, answer: Situation): string {
+  const label = SITUATIONS.find((s) => s.id === answer)!.label;
+  const why = (answer === 'defend' && threatNote(game, game.turns[turnIndex])) || SPOT_WHY[answer];
+  return `Right answer: ${label}. ${why}`;
 }
 
 function describeMove(who: string, move: OpponentMove): string {

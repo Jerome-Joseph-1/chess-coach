@@ -222,10 +222,39 @@ describe('the spot step', () => {
     expect(run(ctx, [advance], wrong)).toBe(wrong);
   });
 
-  it('lets the user keep trying, and scores the first answer', () => {
-    const state = run(ctx, [spot('quiet'), spot('trap'), spot('attack'), spot('defend'), spot('win'), advance]);
+  it('takes a right second pick, and scores the first answer', () => {
+    const state = run(ctx, [spot('quiet'), spot('win'), advance]);
     expect(state.phase).toBe('solve');
+    expect(state.spotShown).toBeNull();
     expect(state.outcomes).toEqual([{ step: 'spot', correct: false }]);
+  });
+
+  it('shows the right answer after the second wrong pick and moves on like a right pick, scored as missed', () => {
+    const shown = run(ctx, [spot('quiet'), spot('trap')]);
+    expect(shown.phase).toBe('spot');
+    expect(shown.answered).toBe(true);
+    expect(shown.spot).toBe('trap');
+    expect(shown.spotShown).toBe('win');
+    expect(shown.feedback).toEqual({ kind: 'spot', correct: false });
+    expect(shown.outcomes).toEqual([{ step: 'spot', correct: false }]);
+    expect(run(ctx, [spot('win')], shown)).toBe(shown);
+
+    const next = run(ctx, [advance], shown);
+    expect(next.phase).toBe('solve');
+    expect(next.spotShown).toBe('win');
+    expect(verdictOf(ctx, run(ctx, [move(scriptedUci(italian1, 3)), advance], next))).toBe('missed');
+  });
+
+  it('shows the most urgent answer of a position about two things', () => {
+    const both = ctxFor(italian1, 7, 3);
+    expect(run(both, [spot('attack'), spot('trap')]).spotShown).toBe('defend');
+  });
+
+  it('shows the answer to a quiet position too, then its reveal', () => {
+    const quiet = ctxFor(italian1, 11, 3, 'nothing');
+    const shown = run(quiet, [spot('win'), spot('defend')]);
+    expect(shown.spotShown).toBe('quiet');
+    expect(run(quiet, [advance], shown).phase).toBe('reveal');
   });
 
   it('scores a right first answer as right', () => {

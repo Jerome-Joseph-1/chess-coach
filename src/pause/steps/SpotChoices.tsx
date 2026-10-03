@@ -7,6 +7,8 @@ export interface SpotChoicesProps {
   answers: Situation[];
   /** The user's latest pick. */
   picked: Situation | null;
+  /** The right answer, shown by the coach after two wrong picks. */
+  shown: Situation | null;
   /** A right pick is in: the grid is done, otherwise a wrong one can be picked over. */
   settled: boolean;
   onAnswer: (pick: Situation) => void;
@@ -15,7 +17,8 @@ export interface SpotChoicesProps {
 
 type ChoiceState = 'idle' | 'right' | 'wrong' | 'dim';
 
-function stateOf(id: Situation, { answers, picked, settled }: SpotChoicesProps): ChoiceState {
+function stateOf(id: Situation, { answers, picked, shown, settled }: SpotChoicesProps): ChoiceState {
+  if (id === shown) return 'right';
   if (picked === null || (!settled && picked !== id)) return 'idle';
   if (picked !== id) return 'dim';
   return answers.includes(id) ? 'right' : 'wrong';
@@ -53,7 +56,7 @@ function Choice({ id, label, ...props }: SpotChoicesProps & { id: Situation; lab
 
 /**
  * Step 1's five answers under the question: two rows of two, then "Nothing urgent" across. Only the picked one
- * carries a mark, so every label fits on one line on the narrowest phones. A wrong pick is only an error.
+ * carries a mark, and the right one once the coach shows it, so every label fits on one line on the narrowest phones.
  */
 export function SpotChoices(props: SpotChoicesProps) {
   return (
