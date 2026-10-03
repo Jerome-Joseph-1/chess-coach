@@ -34,6 +34,7 @@ jobs:
           if [ -n "$tag" ]; then
             gh release download "$tag" --pattern 'content.tar.gz' --dir "$RUNNER_TEMP"
             tar -xzf "$RUNNER_TEMP/content.tar.gz" -C dist/content
+            npx vite-node scripts/build-course.ts dist/content --strict
           fi
       - uses: actions/upload-pages-artifact@v3
         with:
