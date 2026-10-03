@@ -6,14 +6,19 @@ import { italian1, italian2 } from './testGames';
 describe('revealLines', () => {
   const turn = italian1.turns[3];
 
-  it('offers the threat, the best line and the common mistake', () => {
+  it('offers the best line, the common mistake and the threat, in that order', () => {
     const lines = revealLines(italian1, 3);
-    expect(lines.map((l) => l.id)).toEqual(['threat', 'best', 'mistake']);
-    expect(lines.map((l) => l.label)).toEqual(['Their threat', 'Best line', 'Common mistake']);
+    expect(lines.map((l) => l.id)).toEqual(['best', 'mistake', 'threat']);
+    expect(lines.map((l) => l.label)).toEqual(['Best line', 'Common mistake', "Black's threat"]);
+  });
+
+  it("names the opponent after the user's side", () => {
+    const asBlack = { ...italian1, side: 'b' as const };
+    expect(revealLines(asBlack, 3).at(-1)?.label).toBe("White's threat");
   });
 
   it('starts the threat line with the opponent to move and no en passant square', () => {
-    const [threat] = revealLines(italian1, 3);
+    const threat = revealLines(italian1, 3).find((l) => l.id === 'threat')!;
     expect(threat.fen).toBe(flipTurn(turn.fen));
     expect(threat.fen.split(' ')[1]).toBe('b');
     expect(threat.fen.split(' ')[3]).toBe('-');
@@ -21,16 +26,16 @@ describe('revealLines', () => {
 
   it("adds the user's losing move with its refutation, and drops the mistake it repeats", () => {
     const lines = revealLines(italian1, 3, 'c4f7');
-    expect(lines.map((l) => l.id)).toEqual(['threat', 'best', 'yours']);
-    expect(lines[2].moves).toEqual(['c4f7', ...turn.refutations.c4f7]);
+    expect(lines.map((l) => l.id)).toEqual(['best', 'yours', 'threat']);
+    expect(lines[1].moves).toEqual(['c4f7', ...turn.refutations.c4f7]);
   });
 
   it('keeps the common mistake when the user played something else', () => {
-    expect(revealLines(italian1, 3, 'b1d2').map((l) => l.id)).toEqual(['threat', 'best', 'yours', 'mistake']);
+    expect(revealLines(italian1, 3, 'b1d2').map((l) => l.id)).toEqual(['best', 'yours', 'mistake', 'threat']);
   });
 
   it('skips the user line when no refutation is recorded', () => {
-    expect(revealLines(italian1, 3, 'd1e2').map((l) => l.id)).toEqual(['threat', 'best', 'mistake']);
+    expect(revealLines(italian1, 3, 'd1e2').map((l) => l.id)).toEqual(['best', 'mistake', 'threat']);
   });
 
   it('labels a later-turn miss as a refutation', () => {

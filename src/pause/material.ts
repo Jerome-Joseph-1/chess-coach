@@ -13,8 +13,3 @@ export function material(fen: string, side: Side): number {
   }
   return balance;
 }
-
-export function materialLabel(balance: number): string {
-  if (balance === 0) return 'Level';
-  return balance > 0 ? `You're +${balance}` : `You're −${-balance}`;
-}

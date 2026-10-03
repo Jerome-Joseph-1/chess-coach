@@ -1,10 +1,8 @@
-import { useRef } from 'preact/hooks';
 import type { BoardController } from '../../board/types';
-import type { Side, StepOutcome } from '../../content/types';
+import type { Side } from '../../content/types';
 import { Button } from '../../ui/Button';
 import { COPY } from '../copy';
 import { LineStepper, type LineOption } from '../LineStepper';
-import { Stars } from './Stars';
 
 export interface RevealStepProps {
   board: BoardController;
@@ -12,11 +10,10 @@ export interface RevealStepProps {
   homeFen: string;
   lines: LineOption[];
   initialLine: LineOption['id'];
-  outcomes: StepOutcome[];
   headline: string;
   /** Extra line under the headline, e.g. why the game goes on with a different move. */
   note?: string;
-  /** A repeat attempt: stars show, but the first try is what counts. */
+  /** A repeat attempt: the first try is what counts. */
   practice: boolean;
   /** The sheet is handing the board back; the stepper must stop moving it. */
   frozen?: boolean;
@@ -25,13 +22,11 @@ export interface RevealStepProps {
 }
 
 export function RevealStep(props: RevealStepProps) {
-  const starsRef = useRef<HTMLDivElement>(null);
   return (
     <div class="pause-reveal">
-      <Stars outcomes={props.outcomes} innerRef={starsRef} />
       <h2 class="pause-headline">{props.headline}</h2>
-      {props.note && <p class="pause-note">{props.note}</p>}
-      {props.practice && <p class="pause-note is-muted">{COPY.practice}</p>}
+      {props.note && <p class="pause-sub">{props.note}</p>}
+      {props.practice && <p class="pause-sub">{COPY.practice}</p>}
       <LineStepper
         board={props.board}
         homeFen={props.homeFen}

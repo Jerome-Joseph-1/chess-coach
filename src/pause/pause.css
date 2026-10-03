@@ -1,4 +1,4 @@
-/* Plain layout only: the look comes from tokens and will be restyled from the design. */
+/* The pause sheet: a floating layer, so it may cast a shadow. Everything inside is flat. */
 .pause-sheet {
   position: fixed;
   left: 0;
@@ -8,193 +8,123 @@
   max-width: 560px;
   margin: 0 auto;
   background: var(--surface);
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
-  box-shadow: 0 -1px 0 var(--line);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  box-shadow:
+    0 -1px 0 var(--hairline),
+    0 -12px 40px color-mix(in srgb, var(--text-strong) 10%, transparent);
+  animation: pause-rise var(--t-move) var(--spring) both;
+}
+@keyframes pause-rise {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
 }
 .pause-sheet-scroll {
-  max-height: 55vh;
-  max-height: 55dvh;
+  max-height: 56vh;
+  max-height: 56dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
   border-radius: inherit;
-  padding: 8px 16px calc(16px + var(--safe-bottom));
+  padding: 20px 16px calc(16px + var(--safe-bottom));
 }
-.pause-grabber {
-  width: 40px;
-  height: 5px;
-  margin: 0 auto 12px;
-  border-radius: 3px;
-  background: var(--line);
+.pause-phase {
+  animation: pause-phase var(--t-move) var(--spring) both;
+}
+@keyframes pause-phase {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
 }
 
-.pause-question,
+.pause-title {
+  font: var(--text-title);
+}
 .pause-headline {
-  font-size: var(--fs-lg);
-  line-height: 1.3;
+  font: var(--text-headline);
 }
-.pause-question {
-  font-size: var(--fs-xl);
-}
-.pause-help,
-.pause-note {
+.pause-sub {
   margin: 4px 0 0;
-  color: var(--muted);
-  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  font: var(--text-body);
 }
-.pause-note:not(.is-muted) {
-  color: var(--ink);
-}
-.pause-verdict {
-  min-height: 1.5em;
-  margin: 8px 0 0;
-  font-weight: 700;
-}
-.pause-verdict.is-good,
-.pause-badge.is-good {
-  color: var(--good);
-}
-.pause-verdict.is-bad,
-.pause-badge.is-bad {
-  color: var(--bad);
+.pause-foot {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  font: var(--text-caption);
+  text-align: center;
 }
 
-/* Spot answers */
-.pause-answers,
+/* Stage 1: two rows with a leading circle that becomes a check or a cross. */
+.pause-choices {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+.pause-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--text-strong);
+  font: var(--text-headline);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform var(--t-quick) var(--spring),
+    opacity var(--t-quick);
+}
+.pause-choice:active:not([aria-disabled='true']) {
+  transform: scale(0.985);
+}
+.pause-choice[aria-disabled='true'] {
+  cursor: default;
+}
+.pause-choice.is-dim {
+  opacity: 0.5;
+}
+.pause-ring {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Quiet reveal */
+.pause-quiet-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.pause-quiet-head .mark {
+  margin-top: 3px;
+}
+.pause-quiet .btn {
+  margin-top: 16px;
+}
+
+/* Reveal */
 .pause-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-top: 12px;
-}
-.pause-actions .btn-primary {
-  grid-column: span 1;
-}
-.pause-answer {
-  position: relative;
-  font-size: var(--fs-md);
-  padding: 0 8px;
-}
-/* The shared Button type has no `disabled`, so these use aria-disabled. */
-.pause-sheet .btn[aria-disabled='true'] {
-  opacity: 0.45;
-  cursor: default;
-}
-.pause-sheet .pause-answer[aria-disabled='true'].is-right,
-.pause-sheet .pause-answer[aria-disabled='true'].is-wrong {
-  opacity: 1;
-}
-.pause-answer.is-dim {
-  opacity: 0.5;
-}
-.pause-answer.is-right {
-  background: var(--good-soft);
-  box-shadow: 0 0 0 2px var(--good) inset, 0 4px 0 var(--good-lip);
-}
-.pause-answer.is-wrong {
-  background: var(--bad-soft);
-  box-shadow: 0 0 0 2px var(--bad) inset, 0 4px 0 var(--bad);
-}
-.pause-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: 0 0 0 2px currentColor;
-}
-.pause-answer .pause-badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
+  margin-top: 16px;
 }
 
-/* Slim prompt bar */
-.pause-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: var(--tap);
-}
-.pause-bar-text {
-  flex: 1;
-  margin: 0;
-  font-weight: 700;
-}
-.pause-skip {
-  min-height: var(--tap);
-  padding: 0 8px;
-  font-size: var(--fs-sm);
-}
-.pause-pips {
-  display: flex;
-  gap: 4px;
-}
-.pause-pip {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--line);
-}
-.pause-pip.is-good {
-  background: var(--good);
-}
-.pause-pip.is-bad {
-  background: var(--bad);
-}
-.pause-pip.is-now {
-  background: var(--accent);
-}
-.pause-spot .pause-pips {
-  margin-bottom: 8px;
-}
-
-/* Reveal */
-.pause-stars {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.pause-star {
-  width: 34px;
-  height: 34px;
-}
-.pause-stars.is-small .pause-star {
-  width: 26px;
-  height: 26px;
-}
-.pause-star.is-on {
-  color: var(--star);
-}
-.pause-star.is-off {
-  color: var(--line);
-}
-.pause-quiet-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-.pause-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 8px 0 12px;
-}
-.pause-chip {
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  font-size: var(--fs-sm);
-}
-.pause-chip b {
-  margin-right: 6px;
-}
-
-/* Line stepper. Not positioned itself, so the home pill anchors to the sheet and is not clipped by its scroll area. */
+/* Line stepper */
 .stepper {
-  margin: 12px 0;
+  margin-top: 12px;
+  touch-action: pan-y;
 }
 .stepper-tabs,
 .stepper-chips {
@@ -203,92 +133,145 @@
   overflow-x: auto;
   scrollbar-width: none;
 }
+.stepper-tabs {
+  margin: 0 -16px;
+  padding: 0 16px;
+}
 .stepper-chips {
-  flex: 1;
+  position: relative;
+  margin-top: 8px;
   touch-action: pan-x;
 }
 .stepper-tab {
-  flex: 0 0 auto;
-  min-height: var(--tap);
-  padding: 0 12px;
+  flex: none;
+  min-height: 40px;
+  padding: 0 14px;
   border: 0;
-  border-radius: var(--r-sm);
+  border-radius: 999px;
   background: transparent;
-  color: var(--muted);
-  font-weight: 700;
-  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  font: var(--text-callout);
+  cursor: pointer;
 }
 .stepper-tab.is-active {
   background: var(--surface-2);
-  color: var(--ink);
-}
-.stepper-moves {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.pause-sheet .stepper-nav {
-  flex: 0 0 var(--tap);
-  width: var(--tap);
-  padding: 0;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--text-strong);
 }
 .stepper-chip {
-  flex: 0 0 auto;
-  min-height: var(--tap);
+  flex: none;
+  min-height: 36px;
   padding: 0 10px;
   border: 0;
   border-radius: var(--r-sm);
   background: var(--surface-2);
-  font-weight: 700;
+  color: var(--text-muted);
+  font: var(--text-code);
+  cursor: pointer;
 }
 .stepper-chip small {
-  margin-right: 3px;
-  color: var(--muted);
-  font-weight: 400;
+  margin-right: 4px;
+  font: inherit;
+  opacity: 0.65;
 }
 .stepper-chip.is-mine {
-  box-shadow: 0 0 0 1px var(--accent) inset;
+  color: var(--text-strong);
 }
 .stepper-chip.is-current {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-.stepper-chip.is-current small {
-  color: inherit;
+  background: var(--action);
+  color: var(--on-action);
 }
 .stepper-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 12px;
+  min-height: 24px;
+  margin-top: 10px;
 }
 .stepper-caption {
   flex: 1;
-  min-height: 1.4em;
+  min-height: 18px;
   margin: 0;
-  color: var(--muted);
-  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  font: var(--text-caption);
 }
 .stepper-material {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  font-size: var(--fs-sm);
-  font-weight: 700;
+  color: var(--text-muted);
+  font: var(--text-caption);
   white-space: nowrap;
 }
-.stepper-home {
-  position: absolute;
-  bottom: calc(100% + 12px);
-  left: 50%;
-  transform: translateX(-50%);
-  min-height: var(--tap);
-  padding: 0 16px;
+.stepper-material .roll {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+/* Back to the position on the left, previous / counter / next on the right. */
+.stepper-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+.stepper-back,
+.stepper-nav {
   border: 0;
+  background: var(--surface-2);
+  color: var(--text-strong);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.stepper-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 16px 0 12px;
   border-radius: 999px;
-  background: var(--ink);
-  color: var(--bg);
-  font-weight: 700;
+  font: var(--text-callout);
   white-space: nowrap;
+}
+.stepper-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stepper-nav {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+.stepper-count {
+  min-width: 3.4em;
+  color: var(--text-muted);
+  font: var(--text-callout);
+  text-align: center;
+}
+.stepper-back:disabled,
+.stepper-nav:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+@media (max-width: 359px) {
+  .stepper-back {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+  .stepper-back-label {
+    display: none;
+  }
+}
+
+/* Missed silent check */
+.pause-lead {
+  margin: 8px 0 0;
+}
+.pause-actions-single {
+  grid-template-columns: 1fr;
 }

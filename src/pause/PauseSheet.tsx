@@ -1,15 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { BoardController } from '../board/types';
 import type { Depth, Game, StepOutcome } from '../content/types';
-import { Button } from '../ui/Button';
-import { celebrate, nudge, toast } from '../ui/rewards';
-import { COPY, continuesWith, findToast, guidedPrompt, headline, holdMissHeadline, percent } from './copy';
+import { confirm, nudge, toast } from '../ui/rewards';
+import {
+  COPY,
+  continuesWith,
+  findToast,
+  guidedTitle,
+  headline,
+  holdMissHeadline,
+  holdSub,
+  quietReveal,
+  replySub,
+  spotSub,
+} from './copy';
 import {
   finalFen,
   flowReducer,
   flowResult,
   initialState,
-  plannedSteps,
   replyUci,
   revealTurn,
   scriptedUci,
@@ -20,9 +29,9 @@ import {
   type Phase,
 } from './flow';
 import { openingLine, revealLines } from './lines';
-import { samePosition, sanOf, squaresOf } from './position';
+import { samePosition, squaresOf } from './position';
 import { Sheet } from './Sheet';
-import { PromptBar } from './steps/PromptBar';
+import { PromptStep } from './steps/PromptStep';
 import { QuietReveal } from './steps/QuietReveal';
 import { RevealStep } from './steps/RevealStep';
 import { SpotStep } from './steps/SpotStep';
@@ -38,6 +47,7 @@ export interface PauseSheetProps {
   /** Index into game.turns. */
   turnIndex: number;
   type: 'pause' | 'nothing';
+  /** How far this player takes a pause: 1 Notice, 2 Point, 3 Play, 4 Follow through, 5 Finish. */
   depth: Depth;
   board: BoardController;
   onDone: (result: PauseResult) => void;
@@ -45,15 +55,9 @@ export interface PauseSheetProps {
 
 const REPLY_MS = 500;
 const WRONG_FLASH_MS = 450;
-const BAR_PHASES: Phase[] = ['find', 'solve', 'hold', 'reply', 'guided'];
 
 function showPosition(board: BoardController, fen: string, animate: boolean): Promise<void> {
   return samePosition(board.fen(), fen) ? Promise.resolve() : board.setPosition(fen, animate);
-}
-
-function centerOf(el: Element | null | undefined) {
-  const box = el?.getBoundingClientRect();
-  return box && { x: box.left + box.width / 2, y: box.top + box.height / 2 };
 }
 
 /** How long a settled answer stays on screen before the flow moves on. */
@@ -72,38 +76,31 @@ function settleMs(state: FlowState): number {
   }
 }
 
-function barTone(state: FlowState): 'good' | 'bad' | undefined {
-  if (!state.answered) return undefined;
-  switch (state.feedback?.kind) {
-    case 'find':
-    case 'move':
-    case 'alt':
-    case 'guided':
-      return 'good';
-    case 'wrong':
-      return 'bad';
-    default:
-      return undefined;
-  }
+function findSub(state: FlowState): string {
+  if (state.feedback?.kind === 'hint') return COPY.findHint;
+  if (state.answered) return COPY.findRight;
+  return state.tries > 0 ? COPY.findRetry : COPY.findSub;
 }
 
-function barText(game: Game, state: FlowState): string {
+function moveSub(ask: string, state: FlowState): string {
+  if (state.answered) return state.feedback?.kind === 'wrong' ? COPY.notQuite : ask;
+  return state.tries > 0 ? COPY.oneMore : ask;
+}
+
+/** Title and one line for the stages that play on the board. */
+function promptFor(game: Game, state: FlowState): { title: string; sub: string } {
   const scripted = game.moves[game.turns[state.turn].ply];
-  const kind = state.feedback?.kind;
   switch (state.phase) {
     case 'find':
-      if (kind === 'hint') return COPY.findHint;
-      if (state.answered) return COPY.findDone;
-      return state.tries > 0 ? COPY.findRetry : COPY.findPrompt;
+      return { title: COPY.findTitle, sub: findSub(state) };
+    case 'solve':
+      return { title: COPY.solveTitle, sub: moveSub(COPY.solveSub, state) };
+    case 'hold':
+      return { title: COPY.holdTitle, sub: moveSub(holdSub(game), state) };
     case 'reply':
-      return COPY.replying;
-    case 'guided':
-      return guidedPrompt(scripted);
+      return { title: COPY.holdTitle, sub: replySub(game) };
     default:
-      if (kind === 'alt') return continuesWith(scripted);
-      if (state.answered) return kind === 'wrong' ? COPY.missed : COPY.solved;
-      if (state.tries > 0) return COPY.retry;
-      return state.phase === 'hold' ? COPY.holdPrompt : COPY.solvePrompt;
+      return { title: guidedTitle(scripted), sub: COPY.solveSub };
   }
 }
 
@@ -112,14 +109,13 @@ function buildReveal(ctx: FlowContext, state: FlowState) {
   const index = revealTurn(ctx, state);
   const turn = game.turns[index];
   const missedLate = state.missedUci !== null && index !== ctx.turnIndex;
-  const lines = revealLines(game, index, state.missedUci, missedLate ? 'refutation' : 'yours');
   const scripted = game.moves[game.turns[state.turn].ply];
   return {
     fen: turn.fen,
-    lines,
+    lines: revealLines(game, index, state.missedUci, missedLate ? 'refutation' : 'yours'),
     initial: missedLate ? ('refutation' as const) : openingLine(turn),
     text: missedLate && state.missedUci ? holdMissHeadline(game, index, state.missedUci) : headline(game, index),
-    note: state.alt ? `${COPY.altToast}. ${continuesWith(scripted)}` : undefined,
+    note: state.alt ? `${COPY.altToast} ${continuesWith(scripted)}` : undefined,
   };
 }
 
@@ -130,7 +126,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
   const sheetRef = useRef<HTMLDivElement>(null);
-  const barRef = useRef<HTMLDivElement>(null);
+  const shakeRef = useRef<HTMLDivElement>(null);
   const flash = useRef(0);
   const turn = game.turns[turnIndex];
 
@@ -154,55 +150,48 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
     return next !== before && kind !== 'wrong' && kind !== 'gentle';
   }
 
-  async function playForMe() {
-    const uci = scriptedUci(game, latest.current.turn);
-    board.disableInput();
-    await board.playMove(uci);
-    send({ type: 'move', uci });
-  }
-
   function react(feedback: Feedback) {
     window.clearTimeout(flash.current);
     switch (feedback.kind) {
       case 'spot':
-        if (feedback.correct) celebrate('step', centerOf(sheetRef.current?.querySelector('.pause-answer.is-picked')));
-        else nudge(sheetRef.current?.querySelector<HTMLElement>('.pause-answers'));
+        if (feedback.correct) confirm('step');
+        else nudge(sheetRef.current?.querySelector<HTMLElement>('.pause-choices'));
         break;
       case 'find':
         board.clearHighlights();
         board.highlight([feedback.square], feedback.correct ? 'good' : 'bad');
         if (feedback.correct) {
-          celebrate('step', board.squareCenter(feedback.square));
+          confirm('step', board.squareCenter(feedback.square));
         } else {
-          nudge(barRef.current);
+          nudge(shakeRef.current);
           flash.current = window.setTimeout(() => board.clearHighlights(), WRONG_FLASH_MS);
         }
         break;
       case 'hint':
         board.clearHighlights();
         board.highlight(turn.keySquares, 'hint');
-        nudge(barRef.current);
+        nudge(shakeRef.current);
         break;
       case 'move':
         board.disableInput();
-        celebrate('move', board.squareCenter(squaresOf(feedback.uci)[1]));
-        toast(findToast(game.turns[feedback.turn], game.level));
+        confirm('move', board.squareCenter(squaresOf(feedback.uci)[1]));
+        if (latest.current.phase === 'solve') toast(findToast(game.turns[feedback.turn], game.level));
         break;
       case 'alt':
         board.disableInput();
-        celebrate('alt', board.squareCenter(squaresOf(feedback.uci)[1]));
+        confirm('step', board.squareCenter(squaresOf(feedback.uci)[1]));
         toast(COPY.altToast);
         break;
       case 'guided':
         board.disableInput();
-        celebrate('step', board.squareCenter(squaresOf(feedback.uci)[1]));
+        confirm('step', board.squareCenter(squaresOf(feedback.uci)[1]));
         break;
       case 'wrong':
         if (latest.current.answered) board.disableInput();
-        nudge(barRef.current);
+        nudge(shakeRef.current);
         break;
       case 'gentle':
-        nudge(barRef.current);
+        nudge(shakeRef.current);
         break;
     }
   }
@@ -271,24 +260,17 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
     [],
   );
 
-  const planned = plannedSteps(ctx);
+  const sub = useMemo(() => spotSub(game, turnIndex), [game, turnIndex]);
   const reveal = useMemo(() => (view === 'reveal' ? buildReveal(ctx, state) : null), [view, state.attempt]);
 
   function content() {
     if (view === 'spot') {
-      return (
-        <SpotStep
-          expectUp={type === 'pause'}
-          picked={state.spotUp}
-          planned={planned}
-          outcomes={state.outcomes}
-          onAnswer={(up) => send({ type: 'spot', up })}
-        />
-      );
+      return <SpotStep sub={sub} expectYes={type === 'pause'} picked={state.spotUp} onAnswer={(yes) => send({ type: 'spot', up: yes })} />;
     }
-    if (view === 'reveal' && reveal && type === 'nothing') {
-      const chips = turn.human.slice(0, 5).map((h) => ({ san: sanOf(turn.fen, h.uci), percent: percent(h.share) }));
-      return <QuietReveal headline={reveal.text} level={game.level} chips={chips} onContinue={() => send({ type: 'continue' })} />;
+    if (view === 'reveal' && type === 'nothing') {
+      return (
+        <QuietReveal text={quietReveal(state.spotUp === true)} right={state.spotUp === false} onContinue={() => send({ type: 'continue' })} />
+      );
     }
     if (view === 'reveal' && reveal) {
       return (
@@ -299,7 +281,6 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
           homeFen={reveal.fen}
           lines={reveal.lines}
           initialLine={reveal.initial}
-          outcomes={state.outcomes}
           headline={reveal.text}
           note={reveal.note}
           practice={state.attempt > 0}
@@ -309,19 +290,12 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
         />
       );
     }
-    return (
-      <PromptBar text={barText(game, state)} tone={barTone(state)} planned={planned} outcomes={state.outcomes} innerRef={barRef}>
-        {view === 'guided' && (
-          <Button variant="ghost" class="pause-skip" onClick={playForMe}>
-            {COPY.playItForMe}
-          </Button>
-        )}
-      </PromptBar>
-    );
+    const { title, sub: line } = promptFor(game, state);
+    return <PromptStep title={title} sub={line} innerRef={shakeRef} />;
   }
 
   return (
-    <Sheet mode={BAR_PHASES.includes(view) ? 'bar' : 'card'} innerRef={sheetRef} label="Pause">
+    <Sheet innerRef={sheetRef} label="Pause">
       <div class="pause-phase" key={`${view}-${state.turn}-${state.attempt}`}>
         {content()}
       </div>

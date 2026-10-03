@@ -1,32 +1,30 @@
 import type { Game, Kind, Level, Turn } from '../content/types';
 import { HOLD_MAX } from './flow';
 import { material } from './material';
-import { flipTurn, playLine, sanOf, type PlayedMove } from './position';
+import { flipTurn, moveBefore, playLine, sanOf, type OpponentMove, type PlayedMove } from './position';
 
 export const COPY = {
-  spotQuestion: 'Anything here?',
-  spotHelp: 'Look at the board before you move.',
-  spotYes: "Something's up",
-  spotNo: 'All quiet',
-  spotRight: 'Right!',
-  spotWrong: 'Not this time.',
-  findPrompt: 'Where? Tap the piece that matters.',
-  findRetry: 'Not there. Try again.',
-  findDone: 'That one!',
-  findHint: "It's here.",
-  solvePrompt: 'Your move.',
-  holdPrompt: 'Keep going. Your move.',
-  retry: 'Not that one — one more try',
-  solved: 'Yes!',
-  missed: 'Not quite. Let’s look.',
-  replying: 'Watch the reply.',
-  altToast: 'That works too',
+  spotTitle: 'Is something important happening?',
+  spotYes: "Yes, something's going on",
+  spotNo: 'No, nothing special',
+  spotFooter: 'No clock. Take your time.',
+  findTitle: 'Which piece matters most?',
+  findSub: 'Tap it on the board.',
+  findRight: "That's the one.",
+  findRetry: 'Not quite. Try again.',
+  findHint: "It's marked on the board.",
+  solveTitle: "What's your move?",
+  solveSub: 'Play it on the board.',
+  notQuite: 'Not quite.',
+  oneMore: 'Not quite. One more try.',
+  holdTitle: 'Keep going',
+  altToast: 'That works too.',
+  goodFind: 'Good find.',
   tryAgain: 'Try again',
   next: 'Continue',
   practice: 'Practice round. Your first try counts.',
-  playItForMe: 'Play it for me',
   missTitle: 'You missed something',
-  backToPosition: 'Back to position',
+  backToPosition: 'Back to the position',
 } as const;
 
 const PIECES: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen' };
@@ -61,15 +59,46 @@ export function holdShare(turn: Turn): number {
 
 export function findToast(turn: Turn, level: Level): string {
   const share = holdShare(turn);
-  return share < 0.5 ? `Only ${percent(share)}% of ${level} players find this` : 'Nice find!';
+  return share < 0.5 ? `Only ${percent(share)}% of players rated ${level} find this.` : COPY.goodFind;
 }
 
-export function guidedPrompt(san: string): string {
+export function guidedTitle(san: string): string {
   return `Play it: ${san}`;
 }
 
 export function continuesWith(san: string): string {
   return `This game continues with ${san}.`;
+}
+
+export function holdSub(game: Game): string {
+  return `${opponentName(game)} has answered. What's your next move?`;
+}
+
+export function replySub(game: Game): string {
+  return `${opponentName(game)} is answering.`;
+}
+
+/** Step 1 reveal for a quiet position. */
+export function quietReveal(saidYes: boolean): string {
+  return saidYes
+    ? 'Actually, nothing special here. Any normal move is fine.'
+    : 'Right. Nothing special here — any normal move is fine.';
+}
+
+/** What the opponent just did, as the sub line of step 1. */
+export function spotSub(game: Game, turnIndex: number): string {
+  const move = moveBefore(game, game.turns[turnIndex].ply);
+  const look = 'Take a look before you move.';
+  return move ? `${describeMove(opponentName(game), move)} ${look}` : look;
+}
+
+function describeMove(who: string, move: OpponentMove): string {
+  if (move.recapture) return `${who} just took back on ${move.to}.`;
+  if (move.captured) return `${who} just took your ${PIECES[move.captured]} on ${move.to}.`;
+  if (move.promotion) return `${who} just promoted a pawn.`;
+  if (move.castle) return `${who} just castled.`;
+  if (move.check) return `${who} just put you in check.`;
+  return `${who} just played ${move.san}.`;
 }
 
 function lastIndexWhere(moves: PlayedMove[], test: (m: PlayedMove) => boolean): number {
@@ -100,14 +129,14 @@ function winSentence(game: Game, turn: Turn): string {
       .map((m) => m.san);
 
   const mate = lastIndexWhere(line, (m) => m.san.endsWith('#'));
-  if (mate >= 0) return `You could checkmate: ${listMoves(mine(mate))}.`;
+  if (mate >= 0) return `You could checkmate with ${listMoves(mine(mate))}.`;
 
   const lastTake = lastIndexWhere(line, (m) => m.captured !== null);
   const before = material(turn.fen, game.side);
   const gain = lastTake < 0 ? 0 : material(line[lastTake].after, game.side) - before;
   if (gain <= 0) return strongMove(turn);
   const verb = before < 0 && gain <= -before ? 'win back' : 'win';
-  return `You could ${verb} ${gainPhrase(gain)}: ${listMoves(mine(lastTake))}.`;
+  return `You could ${verb} ${gainPhrase(gain)} with ${listMoves(mine(lastTake))}.`;
 }
 
 /** The first move in the threat line that takes one of the user's pieces. */
@@ -117,12 +146,11 @@ function threatTake(game: Game, turn: Turn): PlayedMove | undefined {
 
 function defendSentence(game: Game, turn: Turn, also: boolean): string {
   const take = threatTake(game, turn);
-  const opponent = opponentName(game);
   if (!take) return strongMove(turn);
-  const threat = `...${take.san}, winning your ${PIECES[take.captured!]}`;
-  if (also) return `${opponent} also threatened ${threat}.`;
+  const target = `take your ${PIECES[take.captured!]} on ${take.uci.slice(2, 4)}`;
+  const lead = `${opponentName(game)} was ${also ? 'also ' : ''}threatening to ${target}.`;
   const best = turn.lines.best?.[0];
-  return best ? `${opponent} threatened ${threat}. ${sanOf(turn.fen, best)} deals with it.` : `${opponent} threatened ${threat}.`;
+  return best && !also ? `${lead} ${sanOf(turn.fen, best)} saves it.` : lead;
 }
 
 function trapSentence(game: Game, turn: Turn, also: boolean): string {
@@ -131,15 +159,19 @@ function trapSentence(game: Game, turn: Turn, also: boolean): string {
   if (!bait) return strongMove(turn);
   if (also) return `${bait.san} looks natural but loses material.`;
   const share = turn.human.find((h) => h.uci === bait.uci)?.share;
-  const popular = share ? ` — ${percent(share)}% of ${game.level} players play it —` : ',';
-  const answer = reply
-    ? `...${reply.san} ${reply.captured ? `wins your ${PIECES[reply.captured]}` : 'punishes it'}`
-    : 'it loses material';
-  return `${bait.san} looks natural${popular} but ${answer}.`;
+  const opponent = opponentName(game);
+  const look = bait.captured ? 'looks free' : 'looks fine';
+  const answer = reply?.captured
+    ? `${opponent} wins your ${PIECES[reply.captured]} with ...${reply.san}`
+    : reply
+      ? `${opponent} has ...${reply.san}`
+      : `${opponent} comes out ahead`;
+  const fall = share ? ` ${percent(share)}% of players rated ${game.level} fall for it.` : '';
+  return `${bait.san} ${look}, but ${answer}.${fall}`;
 }
 
-function quietSentence(game: Game, turn: Turn): string {
-  return `All quiet: ${percent(1 - turn.wrongShare)}% of the moves ${game.level} players choose here are fine.`;
+function quietSentence(): string {
+  return 'Nothing special. Any normal move is fine here.';
 }
 
 const SENTENCES: Record<Kind, (game: Game, turn: Turn, also: boolean) => string> = {
@@ -152,7 +184,7 @@ const KIND_ORDER: Kind[] = ['win', 'defend', 'trap'];
 /** One or two short sentences saying what the position asked for. Wins lead. */
 export function headline(game: Game, turnIndex: number): string {
   const turn = game.turns[turnIndex];
-  if (turn.label === 'nothing') return quietSentence(game, turn);
+  if (turn.label === 'nothing') return quietSentence();
   const [first, second] = KIND_ORDER.filter((kind) => turn.kinds.includes(kind));
   if (!first) return strongMove(turn);
   const lead = SENTENCES[first](game, turn, false);

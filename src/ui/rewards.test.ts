@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { particleCount, toUnit } from './confetti';
 import { patternFor } from './haptics';
+import { formatSigned } from './RollingNumber';
 import { VOICES } from './sound';
 
 describe('confetti', () => {
-  it('scales particles to the moment', () => {
-    expect(particleCount('step')).toBe(12);
-    expect(particleCount('alt')).toBe(20);
-    expect(particleCount('move')).toBe(40);
+  it('scales particles to the milestone', () => {
     expect(particleCount('silent')).toBe(120);
     expect(particleCount('levelup')).toBe(160);
     expect(particleCount('perfect')).toBe(200);
@@ -44,8 +42,14 @@ describe('sound voices', () => {
 
 describe('haptics', () => {
   it('gives every kind a short pattern', () => {
-    for (const kind of ['step', 'move', 'alt', 'silent', 'levelup', 'perfect', 'wrong'] as const) {
+    for (const kind of ['step', 'move', 'silent', 'levelup', 'perfect', 'wrong'] as const) {
       expect(patternFor(kind).length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('formatSigned', () => {
+  it('signs gains and losses and leaves zero bare', () => {
+    expect([2, 0, -3].map(formatSigned)).toEqual(['+2', '0', '−3']);
   });
 });

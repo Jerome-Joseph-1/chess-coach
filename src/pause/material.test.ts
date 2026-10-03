@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { material, materialLabel } from './material';
+import { material } from './material';
 import { italian1, italian2 } from './testGames';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -22,13 +22,5 @@ describe('material', () => {
     for (const game of [italian1, italian2]) {
       for (const turn of game.turns) expect(material(turn.fen, game.side)).toBe(turn.material);
     }
-  });
-});
-
-describe('materialLabel', () => {
-  it('reads level, ahead and behind', () => {
-    expect(materialLabel(0)).toBe('Level');
-    expect(materialLabel(1)).toBe("You're +1");
-    expect(materialLabel(-2)).toBe("You're −2");
   });
 });

@@ -1,5 +1,5 @@
 import confetti from 'canvas-confetti';
-import type { Celebration, Point } from './rewards';
+import type { Milestone, Point } from './rewards';
 
 interface Burst {
   count: number;
@@ -8,10 +8,7 @@ interface Burst {
   scalar: number;
 }
 
-const BURSTS: Record<Celebration, Burst> = {
-  step: { count: 12, spread: 40, velocity: 20, scalar: 0.7 },
-  alt: { count: 20, spread: 50, velocity: 26, scalar: 0.8 },
-  move: { count: 40, spread: 60, velocity: 32, scalar: 0.9 },
+const BURSTS: Record<Milestone, Burst> = {
   silent: { count: 120, spread: 90, velocity: 42, scalar: 1 },
   levelup: { count: 160, spread: 100, velocity: 48, scalar: 1 },
   perfect: { count: 200, spread: 120, velocity: 52, scalar: 1.1 },
@@ -19,7 +16,7 @@ const BURSTS: Record<Celebration, Burst> = {
 
 const CANNON_COUNT = 60;
 
-export function particleCount(kind: Celebration): number {
+export function particleCount(kind: Milestone): number {
   return BURSTS[kind].count;
 }
 
@@ -30,10 +27,10 @@ export function toUnit(point: Point, viewport: { width: number; height: number }
 
 function themeColors(): string[] {
   const style = getComputedStyle(document.documentElement);
-  return ['--good', '--star', '--accent'].map((name) => style.getPropertyValue(name).trim()).filter(Boolean);
+  return ['--success', '--warning', '--text-strong'].map((name) => style.getPropertyValue(name).trim()).filter(Boolean);
 }
 
-export function burst(kind: Celebration, at?: Point): void {
+export function burst(kind: Milestone, at?: Point): void {
   const origin = at ? toUnit(at, { width: innerWidth, height: innerHeight }) : { x: 0.5, y: 0.6 };
   const { count, spread, velocity, scalar } = BURSTS[kind];
   const base = { colors: themeColors(), disableForReducedMotion: true, zIndex: 1000, scalar };

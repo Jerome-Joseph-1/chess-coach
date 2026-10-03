@@ -26,7 +26,7 @@ export const VOICES: Record<SoundKind, Voice> = {
   move: { notes: [C5, E5, G5], gap: 0.065, length: 0.2, gain: 0.11, wave: 'triangle' },
   silent: { notes: [C5, E5, G5, C6], gap: 0.06, length: 0.22, gain: 0.11, wave: 'triangle' },
   levelup: { notes: [C5, E5, G5, C6], gap: 0, length: 0.8, gain: 0.07, wave: 'triangle' },
-  wrong: { notes: [150], gap: 0, length: 0.18, gain: 0.2, wave: 'sine', slideTo: 70 },
+  wrong: { notes: [150], gap: 0, length: 0.18, gain: 0.12, wave: 'sine', slideTo: 70 },
 };
 
 let context: AudioContext | null = null;

@@ -11,14 +11,15 @@
 }
 
 .toast {
+  max-width: 100%;
   padding: 10px 18px;
   border-radius: 999px;
-  background: var(--ink);
-  color: var(--bg);
-  font-weight: 700;
-  font-size: var(--fs-sm);
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--ink) 25%, transparent);
-  animation: toast-life 1.8s var(--ease-out) both;
+  background: var(--action);
+  color: var(--on-action);
+  font: var(--text-callout);
+  text-align: center;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--text-strong) 22%, transparent);
+  animation: toast-life 1.8s var(--spring) both;
 }
 
 /* Slides in over the first 260 ms, rests, then lifts away for the last 200 ms. */
@@ -34,6 +35,114 @@
   }
   100% {
     transform: translateY(-160%);
+    opacity: 0;
+  }
+}
+
+/* Check pop: the quiet confirmation for a right answer or move. */
+@keyframes mark-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--success);
+  color: var(--bg);
+  animation: mark-pop var(--t-move) var(--spring) both;
+}
+.mark.is-danger {
+  background: var(--danger);
+}
+.mark svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.check-pop {
+  position: fixed;
+  z-index: 1500;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: var(--success);
+  color: var(--bg);
+  pointer-events: none;
+  animation:
+    mark-pop var(--t-move) var(--spring) both,
+    check-pop-out 240ms ease-out 900ms forwards;
+}
+.check-pop svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@keyframes check-pop-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Rolling number: the old figure leaves and the new one arrives from the direction of the change. */
+.roll {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+.roll-in {
+  display: inline-block;
+  animation: roll-in var(--t-move) var(--spring) both;
+}
+.roll-out {
+  position: absolute;
+  inset: 0 auto auto 0;
+  animation: roll-out var(--t-move) var(--spring) both;
+}
+.roll[data-dir='down'] .roll-in {
+  --roll: -100%;
+}
+.roll[data-dir='up'] .roll-in {
+  --roll: 100%;
+}
+.roll[data-dir='down'] .roll-out {
+  --roll: 100%;
+}
+.roll[data-dir='up'] .roll-out {
+  --roll: -100%;
+}
+@keyframes roll-in {
+  from {
+    transform: translateY(var(--roll));
+    opacity: 0;
+  }
+}
+@keyframes roll-out {
+  to {
+    transform: translateY(var(--roll));
     opacity: 0;
   }
 }

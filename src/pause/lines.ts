@@ -1,8 +1,9 @@
 import type { Game, Turn } from '../content/types';
 import type { LineOption } from './LineStepper';
+import { opponentName } from './copy';
 import { flipTurn } from './position';
 
-/** Lines the reveal can step through for one turn; only the ones the content has. */
+/** Lines the reveal can step through for one turn, in tab order; only the ones the content has. */
 export function revealLines(
   game: Game,
   turnIndex: number,
@@ -13,7 +14,6 @@ export function revealLines(
   const { threat, best, mistake } = turn.lines;
   const answer = playedUci ? turn.refutations[playedUci] : undefined;
   const lines: LineOption[] = [];
-  if (threat?.length) lines.push({ id: 'threat', label: 'Their threat', fen: flipTurn(turn.fen), moves: threat });
   if (best?.length) lines.push({ id: 'best', label: 'Best line', fen: turn.fen, moves: best });
   if (playedUci && answer?.length) {
     lines.push({ id: playedId, label: 'Your move', fen: turn.fen, moves: [playedUci, ...answer] });
@@ -21,6 +21,9 @@ export function revealLines(
   const repeatsYours = mistake?.[0] === playedUci && answer?.length;
   if (mistake?.length && !repeatsYours) {
     lines.push({ id: 'mistake', label: 'Common mistake', fen: turn.fen, moves: mistake });
+  }
+  if (threat?.length) {
+    lines.push({ id: 'threat', label: `${opponentName(game)}'s threat`, fen: flipTurn(turn.fen), moves: threat });
   }
   return lines;
 }

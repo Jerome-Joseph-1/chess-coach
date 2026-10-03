@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { captionFor } from '../board/captions';
 import type { BoardController } from '../board/types';
 import type { Side } from '../content/types';
-import { Button } from '../ui/Button';
+import { RollingNumber, formatSigned } from '../ui/RollingNumber';
 import { COPY } from './copy';
 import { isOffHome, lineData, LineMotion, moveNumbers } from './lineMotion';
-import { material, materialLabel } from './material';
-import { ChevronIcon } from './steps/icons';
+import { material } from './material';
+import { ChevronIcon, ReturnIcon } from './steps/icons';
 
 export interface LineOption {
   id: 'threat' | 'best' | 'yours' | 'mistake' | 'refutation';
@@ -34,6 +34,17 @@ export function LineStepper(props: LineStepperProps) {
   return props.lines.length ? <Stepper {...props} /> : null;
 }
 
+/** Keeps the current move chip in view inside its scrolling row. */
+function useChipInView(row: { current: HTMLElement | null }, index: number) {
+  useEffect(() => {
+    const el = row.current;
+    const chip = el?.children[index - 1] as HTMLElement | undefined;
+    if (!el || !chip) return;
+    const left = chip.offsetLeft - (el.clientWidth - chip.offsetWidth) / 2;
+    el.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+  }, [index]);
+}
+
 function Stepper({ board, homeFen, userSide, lines, initial, frozen }: LineStepperProps) {
   const [lineId, setLineId] = useState(() => lines.find((l) => l.id === initial)?.id ?? lines[0].id);
   const line = lines.find((l) => l.id === lineId) ?? lines[0];
@@ -42,6 +53,7 @@ function Stepper({ board, homeFen, userSide, lines, initial, frozen }: LineStepp
   const [step, setStep] = useState(0);
   const motion = useRef<LineMotion>();
   const swipeFrom = useRef<{ x: number; y: number } | null>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
   motion.current ??= new LineMotion(board, homeFen, setStep);
   const m = motion.current;
 
@@ -50,6 +62,9 @@ function Stepper({ board, homeFen, userSide, lines, initial, frozen }: LineStepp
     if (frozen) m.stop();
   }, [frozen]);
   useEffect(() => () => m.stop(), []);
+
+  const at = Math.min(step, data.played.length);
+  useChipInView(chipsRef, at);
 
   function selectLine(id: LineOption['id']) {
     if (id === lineId) return;
@@ -66,9 +81,9 @@ function Stepper({ board, homeFen, userSide, lines, initial, frozen }: LineStepp
     if (Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(dy) * 1.5) m.goTo(m.heading + (dx < 0 ? 1 : -1));
   }
 
-  const at = Math.min(step, data.played.length);
   const caption = at > 0 ? captionFor(data.fens[at - 1], data.played[at - 1].uci, userSide) : '';
-  const balance = materialLabel(material(data.fens[at], userSide));
+  const balance = material(data.fens[at], userSide);
+  const atHome = !isOffHome(data.fens[at], homeFen);
 
   return (
     <div
@@ -91,46 +106,50 @@ function Stepper({ board, homeFen, userSide, lines, initial, frozen }: LineStepp
           </button>
         ))}
       </div>
-      <div class="stepper-moves">
-        <Button variant="secondary" class="stepper-nav" aria-label="Previous move" aria-disabled={at === 0} onClick={() => m.goTo(m.heading - 1)}>
-          <ChevronIcon dir="left" />
-        </Button>
-        <div class="stepper-chips">
-          {data.played.map((move, i) => (
-            <button
-              key={i}
-              type="button"
-              class={`stepper-chip${move.side === userSide ? ' is-mine' : ''}${i === at - 1 ? ' is-current' : ''}`}
-              onClick={() => m.goTo(i + 1)}
-            >
-              {numbers[i] && <small>{numbers[i]}</small>}
-              {move.san}
-            </button>
-          ))}
-        </div>
-        <Button
-          variant="secondary"
-          class="stepper-nav"
-          aria-label="Next move"
-          aria-disabled={at === data.played.length}
-          onClick={() => m.goTo(m.heading + 1)}
-        >
-          <ChevronIcon dir="right" />
-        </Button>
+      <div class="stepper-chips" ref={chipsRef}>
+        {data.played.map((move, i) => (
+          <button
+            key={i}
+            type="button"
+            class={`stepper-chip${move.side === userSide ? ' is-mine' : ''}${i === at - 1 ? ' is-current' : ''}`}
+            onClick={() => m.goTo(i + 1)}
+          >
+            {numbers[i] && <small>{numbers[i]}</small>}
+            {move.san}
+          </button>
+        ))}
       </div>
       <div class="stepper-foot">
         <p class="stepper-caption" aria-live="polite">
           {caption}
         </p>
-        <span class="stepper-material" key={balance}>
-          {balance}
+        <span class="stepper-material">
+          Material <RollingNumber value={balance} format={formatSigned} />
         </span>
       </div>
-      {isOffHome(data.fens[at], homeFen) && (
-        <button type="button" class="stepper-home" onClick={() => m.backToPosition()}>
-          {COPY.backToPosition}
+      <div class="stepper-controls">
+        <button type="button" class="stepper-back" disabled={atHome} aria-label={COPY.backToPosition} onClick={() => m.backToPosition()}>
+          <ReturnIcon />
+          <span class="stepper-back-label">{COPY.backToPosition}</span>
         </button>
-      )}
+        <div class="stepper-group">
+          <button type="button" class="stepper-nav" aria-label="Previous move" disabled={at === 0} onClick={() => m.goTo(m.heading - 1)}>
+            <ChevronIcon dir="left" />
+          </button>
+          <span class="stepper-count" aria-live="polite">
+            {at} of {data.played.length}
+          </span>
+          <button
+            type="button"
+            class="stepper-nav"
+            aria-label="Next move"
+            disabled={at === data.played.length}
+            onClick={() => m.goTo(m.heading + 1)}
+          >
+            <ChevronIcon dir="right" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

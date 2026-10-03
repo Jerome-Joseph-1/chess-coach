@@ -1,5 +1,5 @@
 import { Chess } from 'chess.js';
-import type { Side } from '../content/types';
+import type { Game, Side } from '../content/types';
 
 export interface PlayedMove {
   uci: string;
@@ -64,4 +64,41 @@ export function samePosition(a: string, b: string): boolean {
 
 export function squaresOf(uci: string): [string, string] {
   return [uci.slice(0, 2), uci.slice(2, 4)];
+}
+
+export interface OpponentMove {
+  san: string;
+  to: string;
+  /** Piece type taken (p, n, b, r, q), if any. */
+  captured: string | null;
+  /** Took on the square where the user's latest capture landed: material coming back. */
+  recapture: boolean;
+  castle: boolean;
+  promotion: boolean;
+  check: boolean;
+}
+
+/** The move just before the user's move at `ply`, played from the game's start. */
+export function moveBefore(game: Game, ply: number): OpponentMove | null {
+  const chess = new Chess();
+  try {
+    for (const san of [...game.start, ...game.moves.slice(0, ply)]) chess.move(san);
+  } catch {
+    return null;
+  }
+  const history = chess.history({ verbose: true });
+  const last = history.at(-1);
+  if (!last) return null;
+  // The user's moves sit on every second step back from the opponent's.
+  const mine = history.filter((_, i) => (history.length - 1 - i) % 2 === 1);
+  const lastTake = mine.findLast((m) => m.captured);
+  return {
+    san: last.san,
+    to: last.to,
+    captured: last.captured ?? null,
+    recapture: Boolean(last.captured && lastTake?.to === last.to),
+    castle: last.isKingsideCastle() || last.isQueensideCastle(),
+    promotion: Boolean(last.promotion),
+    check: last.san.includes('+') || last.san.includes('#'),
+  };
 }

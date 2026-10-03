@@ -1,66 +1,53 @@
-import type { StepName, StepOutcome } from '../../content/types';
-import { Button } from '../../ui/Button';
+import { CheckPop } from '../../ui/CheckPop';
 import { COPY } from '../copy';
-import { CheckIcon, CrossIcon } from './icons';
-import { Pips } from './Pips';
 
 export interface SpotStepProps {
-  /** The right answer is "Something's up". */
-  expectUp: boolean;
+  /** What the opponent just did, in plain words. */
+  sub: string;
+  /** The right answer is "Yes". */
+  expectYes: boolean;
   /** The user's answer, once given. */
   picked: boolean | null;
-  planned: StepName[];
-  outcomes: StepOutcome[];
-  onAnswer: (up: boolean) => void;
+  onAnswer: (yes: boolean) => void;
 }
 
-function answerClass(isUp: boolean, { expectUp, picked }: SpotStepProps): string {
-  if (picked === null) return '';
-  const isRight = isUp === expectUp;
-  const isPicked = picked === isUp;
-  const tone = isRight ? 'is-right' : isPicked ? 'is-wrong' : 'is-dim';
-  return isPicked ? `${tone} is-picked` : tone;
+type ChoiceState = 'idle' | 'right' | 'wrong' | 'dim';
+
+function stateOf(isYes: boolean, { expectYes, picked }: SpotStepProps): ChoiceState {
+  if (picked !== isYes) return picked === null ? 'idle' : 'dim';
+  return isYes === expectYes ? 'right' : 'wrong';
 }
 
-function Answer({ isUp, ...props }: SpotStepProps & { isUp: boolean }) {
-  const cls = answerClass(isUp, props);
+function Choice({ isYes, ...props }: SpotStepProps & { isYes: boolean }) {
+  const state = stateOf(isYes, props);
   return (
-    <Button
-      variant="secondary"
-      size="lg"
-      class={`pause-answer ${cls}`}
+    <button
+      type="button"
+      class={`pause-choice is-${state}`}
       aria-disabled={props.picked !== null}
-      onClick={() => props.picked === null && props.onAnswer(isUp)}
+      onClick={() => props.picked === null && props.onAnswer(isYes)}
     >
-      {isUp ? COPY.spotYes : COPY.spotNo}
-      {cls.includes('is-right') && (
-        <span class="pause-badge is-good">
-          <CheckIcon />
-        </span>
+      {state === 'right' || state === 'wrong' ? (
+        <CheckPop tone={state === 'right' ? 'success' : 'danger'} />
+      ) : (
+        <span class="pause-ring" aria-hidden="true" />
       )}
-      {cls.includes('is-wrong') && (
-        <span class="pause-badge is-bad">
-          <CrossIcon />
-        </span>
-      )}
-    </Button>
+      {isYes ? COPY.spotYes : COPY.spotNo}
+    </button>
   );
 }
 
+/** Stage 1: is something important happening? Two rows, then the flow moves on by itself. */
 export function SpotStep(props: SpotStepProps) {
-  const right = props.picked === props.expectUp;
   return (
     <div class="pause-spot">
-      <Pips planned={props.planned} outcomes={props.outcomes} />
-      <h2 class="pause-question">{COPY.spotQuestion}</h2>
-      <p class="pause-help">{COPY.spotHelp}</p>
-      <div class="pause-answers">
-        <Answer isUp={true} {...props} />
-        <Answer isUp={false} {...props} />
+      <h2 class="pause-title">{COPY.spotTitle}</h2>
+      <p class="pause-sub">{props.sub}</p>
+      <div class="pause-choices" role="group" aria-label={COPY.spotTitle}>
+        <Choice isYes={true} {...props} />
+        <Choice isYes={false} {...props} />
       </div>
-      <p class={`pause-verdict ${props.picked === null ? '' : right ? 'is-good' : 'is-bad'}`} aria-live="polite">
-        {props.picked === null ? '' : right ? COPY.spotRight : COPY.spotWrong}
-      </p>
+      <p class="pause-foot">{COPY.spotFooter}</p>
     </div>
   );
 }

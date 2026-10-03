@@ -34,9 +34,9 @@ export function MissCard({ game, turnIndex, playedUci, board, onContinue }: Miss
   return (
     <Sheet innerRef={sheetRef} label={COPY.missTitle}>
       <div class="pause-reveal">
-        <h2 class="pause-headline">{COPY.missTitle}</h2>
-        <p class="pause-note">{headline(game, turnIndex)}</p>
-        <p class="pause-note is-muted">You played {sanOf(turn.fen, playedUci)}.</p>
+        <h2 class="pause-title">{COPY.missTitle}</h2>
+        <p class="pause-headline pause-lead">{headline(game, turnIndex)}</p>
+        <p class="pause-sub">You played {sanOf(turn.fen, playedUci)}.</p>
         <LineStepper
           board={board}
           homeFen={turn.fen}
@@ -45,7 +45,7 @@ export function MissCard({ game, turnIndex, playedUci, board, onContinue }: Miss
           initial={openingLine(turn)}
           frozen={leaving}
         />
-        <div class="pause-actions">
+        <div class="pause-actions pause-actions-single">
           <Button variant="primary" size="lg" onClick={leave}>
             {COPY.next}
           </Button>

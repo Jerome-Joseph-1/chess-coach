@@ -34,7 +34,11 @@ function fakeBoard(start: string) {
 }
 
 const turn = italian1.turns[7];
-const [threat, best, mistake] = revealLines(italian1, 7).map((l) => lineData(l.fen, l.moves));
+const lineOf = (id: string) => {
+  const line = revealLines(italian1, 7).find((l) => l.id === id)!;
+  return lineData(line.fen, line.moves);
+};
+const [threat, best, mistake] = [lineOf('threat'), lineOf('best'), lineOf('mistake')];
 
 function setup(line = best) {
   const fake = fakeBoard(turn.fen);
