@@ -314,8 +314,10 @@ function freeReason(c: Context, t: Of<'free-piece'>, board: Chess, side: LineUp,
 function freeWin(c: Context, t: Of<'free-piece'>): string {
   const take = t.moves[0];
   const wins = { undefended: 'it for free', cheaper: `it, even if ${c.them} takes back`, outnumbered: 'it' }[t.reason];
-  const next = attackedTargets(new Chess(take.after), take.to, take.piece, c.user).filter((p) => p.type !== 'k');
-  const also = next.length > 1 ? ` From ${take.to}, it also attacks ${listOf(next.map((p) => c.ref({ ...p, color: otherColor(c.user) })))}.` : '';
+  // What the capturing piece hits next only matters if it can stay there.
+  const stays = !isLoose(take.after, take.to);
+  const next = stays ? attackedTargets(new Chess(take.after), take.to, take.piece, c.user).filter((p) => p.type !== 'k') : [];
+  const also = next.length ? ` From ${take.to}, it also attacks ${listOf(next.map((p) => c.ref({ ...p, color: otherColor(c.user) })))}.` : '';
   return `So ${take.san} wins ${wins}.${also}`;
 }
 
@@ -944,7 +946,7 @@ function mateText(c: Context, mate: Move, box: Box): string {
   return `${move} gives check${out} the king has no way out.${safe ? ` ${safe}` : ''}`;
 }
 
-/** "Your bishop on c4 guards the queen, so the king can't take it." "The pawn on f7 can't take it: your bishop on b3 pins it." */
+/** "The king can't take your queen: your bishop on c4 guards it." "The pawn on f7 can't take it: your bishop on b3 pins it." */
 function whyNotTaken(c: Context, mate: Move): string {
   const after = new Chess(mate.after);
   const enemy = otherColor(c.user);
@@ -953,7 +955,7 @@ function whyNotTaken(c: Context, mate: Move): string {
   const takers = after.attackers(mate.to, enemy);
   if (takers.includes(king.square)) {
     const guard = after.attackers(mate.to, c.user).map((s) => pieceOn(after, s)!)[0];
-    if (guard) return `${capitalize(c.ref(guard))} guards your ${piece}, so the king can't take it.`;
+    if (guard) return `The king can't take your ${piece}: ${c.ref(guard)} guards it.`;
   }
   const pinned = takers.map((s) => pinOn(after, s)).find((pin) => pin?.pinner.color === c.user && pin.behind.type === 'k');
   return pinned ? `${capitalize(c.ref(pinned.pinned))} can't take it: ${c.ref(pinned.pinner)} pins it.` : '';

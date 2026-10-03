@@ -290,7 +290,7 @@ describe('the patterns', () => {
     expect(texts(forced).slice(0, 3)).toEqual([
       "Qg4+ starts a forced mate. Black's best try is Kh7.",
       'The king is short of squares: only h8 is free.',
-      'Qg7 gives check and covers h8, so the king has no way out. Your knight on f5 guards your queen, so the king can\'t take it.',
+      'Qg7 gives check and covers h8, so the king has no way out. The king can\'t take your queen: your knight on f5 guards it.',
     ]);
     expect(forced.at(-1)!.line).toEqual(['g4g7']);
   });
