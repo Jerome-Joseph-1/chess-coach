@@ -91,6 +91,12 @@ def kinds_and_keys(board, a, user, scripted, last_move):
     return kinds, sorted(keys), lines, mistake
 
 
+def refutation(board, pv):
+    """The answer to a bad move, followed until the captures stop so any material it costs shows in the line."""
+    line, _ = quiet_line(board, pv)
+    return line[1:]
+
+
 def turn_record(board, a, user, scripted, last_move, trigger):
     record = {
         "fen": board.fen(),
@@ -101,7 +107,7 @@ def turn_record(board, a, user, scripted, last_move, trigger):
         "source": a["source"],
         "human": [{"uci": m, "share": round(pr, 3)} for m, pr in sorted(a["p"].items(), key=lambda kv: -kv[1]) if pr >= 0.02][:6],
         "grades": {m: round(l, 1) for m, l in a["loss"].items()},
-        "refutations": {m: a["pvs"][m][1:5] for m, l in a["loss"].items() if l >= LOSS and len(a["pvs"].get(m, [])) > 1},
+        "refutations": {m: refutation(board, a["pvs"][m]) for m, l in a["loss"].items() if l >= LOSS and len(a["pvs"].get(m, [])) > 1},
         "bestWin": round(a["best"], 1),
         "material": material(board, user),
         "lines": {},

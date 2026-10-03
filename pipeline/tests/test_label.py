@@ -3,7 +3,7 @@ import pytest
 
 from chessutil import passed
 from helpers import FakeAnalyst, fen_after, uci_line
-from label import analyse, most_common_mistake, scripted_move, turn_record
+from label import analyse, most_common_mistake, refutation, scripted_move, turn_record
 
 ITALIAN = "e4 e5 Nf3 Nc6 Bc4 Nf6"
 HANGING_QUEEN = "rnb1kbnr/ppp1pppp/8/3q4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3"
@@ -202,3 +202,11 @@ def test_record_lists_likely_moves_and_refutations_of_costly_ones():
     assert record["refutations"] == {"c4f7": ["e8f7", "f3e5"]}
     assert record["grades"]["c4f7"] == 40.0
     assert record["inCheck"] is False
+
+
+def test_refutation_follows_the_answer_until_the_captures_stop():
+    board = chess.Board()
+    pv = ["e2e4", "d7d5", "e4d5", "d8d5", "b1c3", "d5a5", "d2d4", "g8f6", "c1d2"]
+    assert refutation(board, pv) == pv[1:6]
+    trade = ["e2e4", "d7d5", "g1f3", "b8c6", "f1b5", "c8g4", "e4d5", "g4f3", "d5c6"]
+    assert refutation(board, trade) == trade[1:]
