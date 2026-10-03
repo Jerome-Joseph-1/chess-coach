@@ -1,16 +1,17 @@
-/* The variations met: the name over its plan, in a list card like the other screens. */
+/* The variations met: each name over its plan, in a list card like the Course's lessons. */
 .variation {
   align-items: flex-start;
 }
 .variation .row-main {
   gap: 2px;
 }
-.variation-name {
-  color: var(--text-strong);
+.variation .row-sub {
+  text-wrap: pretty;
 }
 .variations-empty {
   margin: 0;
   padding: 16px;
+  border-radius: 16px;
   color: var(--text-muted);
   font: var(--text-caption);
 }
