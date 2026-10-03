@@ -7,7 +7,7 @@ import { CrossFade } from '../../pause/CrossFade';
 import { boardSize } from '../../pause/fit';
 import type { PauseOutcome, PauseStage } from '../../pause/PauseSheet';
 import { Icon } from '../../pause/steps/icons';
-import { getSettings, recordDrill, recordLearned, recordLessonDone } from '../../progress/store';
+import { getSettings, recordDrill, recordLearned, recordLessonDone, scheduleDrill } from '../../progress/store';
 import { navigate } from '../../router';
 import { pickLesson, type LessonPositions } from '../select';
 import { positionKey, type UnitId } from '../types';
@@ -73,7 +73,10 @@ export function LessonScreen({ opening, unit }: LessonScreenProps) {
 
   function drillDone({ drills }: LessonPositions, result: PauseOutcome) {
     const correct = result.verdict === 'found';
-    recordDrill(opening, unit, { key: positionKey(drills[drillAt].ref), correct, at: Date.now() });
+    const { ref } = drills[drillAt];
+    const at = Date.now();
+    recordDrill(opening, unit, { key: positionKey(ref), correct, at });
+    scheduleDrill({ opening, level: getSettings().levels[opening], drillSet: ref.set, gameId: ref.gameId, ply: ref.ply }, correct, at);
     setResults((all) => [...all, correct]);
     if (drillAt + 1 < drills.length) {
       setDrillAt(drillAt + 1);

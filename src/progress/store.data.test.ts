@@ -148,6 +148,29 @@ describe('lessons, opening notes and answer flags', () => {
     expect(practice.practice).toBe(true);
   });
 
+  it('brings a missed practice position back without counting it as a game, and keeps it across a reload', async () => {
+    const store = await openStore();
+    const drill = { opening: 'italian' as const, level: 1400 as const, drillSet: 'italian-1400', gameId: 'italian-1400-0007', ply: 21 };
+    store.scheduleDrill(drill, false, noon());
+    store.scheduleDrill({ ...drill, ply: 23 }, true, noon());
+    const reloaded = await openStore();
+    expect(reloaded.dueReviews('italian', 1400, noon(1))).toEqual([{ ...drill, type: 'pause', box: 0, due: noon(1) }]);
+    expect(reloaded.hasPlayed()).toBe(false);
+    expect(reloaded.getSetStats('italian', 1400).games).toBe(0);
+    reloaded.scheduleDrill(drill, true, noon(1));
+    expect(reloaded.dueReviews('italian', 1400, noon(4))).toMatchObject([{ drillSet: 'italian-1400', box: 1 }]);
+  });
+
+  it('drops a practice position apart from the game review of the same position', async () => {
+    const store = await openStore();
+    store.recordMoment(moment({ ply: 5, outcomes: [{ step: 'spot', correct: false }], stars: 0 }));
+    store.scheduleDrill({ opening: 'italian', level: 1400, drillSet: 'italian-1400', gameId: moment().gameId, ply: 5 }, false, noon());
+    store.dropReview('italian', 1400, moment().gameId, 5);
+    expect(store.dueReviews('italian', 1400, noon(9)).map((r) => r.drillSet)).toEqual(['italian-1400']);
+    store.dropDrillReview('italian-1400', moment().gameId, 5);
+    expect(store.dueReviews('italian', 1400, noon(9))).toEqual([]);
+  });
+
   it('drops one review and keeps the others', async () => {
     const store = await openStore();
     store.recordMoment(moment({ ply: 5, outcomes: [{ step: 'spot', correct: false }], stars: 0 }));

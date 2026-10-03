@@ -193,7 +193,9 @@ function parseReview(raw: unknown): StoredReview | null {
   const { gameId, ply, box, due } = raw;
   if (!set || !type || typeof gameId !== 'string' || !isNumber(ply) || !isNumber(due)) return null;
   if (!isNumber(box) || !BOXES[box]) return null;
-  return { ...set, gameId, ply, box, due, type };
+  const review: StoredReview = { ...set, gameId, ply, box, due, type };
+  if (typeof raw.drillSet === 'string' && SET_KEY_FORMAT.test(raw.drillSet)) review.drillSet = raw.drillSet;
+  return review;
 }
 
 function parseWindowEntry(raw: unknown): WindowEntry | null {

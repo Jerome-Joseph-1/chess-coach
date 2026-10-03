@@ -34,10 +34,25 @@ function nextBox(current: StoredReview | undefined, m: MomentResult): number | n
 /** Applies one answer to the review list: schedules, advances or retires the moment's item. */
 export function updateReviews(reviews: StoredReview[], m: MomentResult): StoredReview[] {
   const key = reviewKey(m);
-  const current = reviews.find((r) => reviewKey(r) === key);
+  const current = reviews.find((r) => !r.drillSet && reviewKey(r) === key);
   const box = nextBox(current, m);
   const rest = reviews.filter((r) => r !== current);
   return box === null ? rest : [...rest, place(m, box)];
+}
+
+/** A lesson's practice position on the review list: the set its game is in, and the level whose Today shows it. */
+export type DrillSpot = Pick<ReviewItem, 'opening' | 'level' | 'gameId' | 'ply'> & { drillSet: string };
+
+const sameDrill = (r: StoredReview, d: DrillSpot) => r.drillSet === d.drillSet && r.gameId === d.gameId && r.ply === d.ply;
+
+/** Applies a practice answer: a miss puts the position on the list for tomorrow; a right one moves it up, if it is listed. */
+export function updateDrillReviews(reviews: StoredReview[], drill: DrillSpot, right: boolean, at: number): StoredReview[] {
+  const current = reviews.find((r) => sameDrill(r, drill));
+  const box = right ? (current ? BOXES[current.box].next : null) : MISSED_BOX;
+  const rest = reviews.filter((r) => r !== current);
+  if (box === null) return rest;
+  const { opening, level, gameId, ply, drillSet } = current ?? drill;
+  return [...rest, { opening, level, gameId, ply, drillSet, type: 'pause', box, due: at + BOXES[box].days * DAY_MS }];
 }
 
 // A review made only of problems would tell the user something is always there.

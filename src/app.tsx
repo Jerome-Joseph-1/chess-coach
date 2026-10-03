@@ -1,6 +1,8 @@
 import { OPENINGS } from './content/catalog';
 import type { Level, OpeningId } from './content/types';
 import { LessonScreen } from './course/lesson/LessonScreen';
+import { PracticeReview } from './course/lesson/PracticeReview';
+import { setOf } from './course/select';
 import { isUnitId } from './course/units';
 import { useRoute } from './router';
 import { About } from './screens/About';
@@ -31,6 +33,10 @@ export function App() {
     return (
       <Game key={route} opening={play[1] as OpeningId} level={Number(play[2]) as Level} review={parseReview(query)} />
     );
+  }
+  const practice = path.match(/^\/practice\/([a-z-]+-\d+)\/([\w-]+)\/(\d+)$/);
+  if (practice && setOf(practice[1])) {
+    return <PracticeReview key={route} set={practice[1]} gameId={practice[2]} ply={Number(practice[3])} />;
   }
   const lesson = path.match(/^\/lesson\/([a-z-]+)\/([a-z-]+)$/);
   if (lesson && isOpeningId(lesson[1]) && isUnitId(lesson[2])) {

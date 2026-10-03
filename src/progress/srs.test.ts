@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MomentResult } from '../content/types';
 import type { StoredReview } from './model';
-import { dueItems, updateReviews } from './srs';
+import { dueItems, updateDrillReviews, updateReviews, type DrillSpot } from './srs';
 import { DAY, moment, noon, wrong } from './testkit';
 
 function answer(reviews: StoredReview[], m: MomentResult): StoredReview[] {
@@ -49,6 +49,44 @@ describe('scheduling', () => {
   it('treats a partly wrong answer as a miss', () => {
     const m = moment({ outcomes: [{ step: 'spot', correct: true }, { step: 'find', correct: false }] });
     expect(answer([], m)[0].box).toBe(0);
+  });
+});
+
+describe('practice positions from lessons', () => {
+  // A 1100 position practised in a 1400 lesson: it comes back on the 1400 Today.
+  const drill: DrillSpot = { opening: 'italian', level: 1400, drillSet: 'italian-1100', gameId: 'italian-1100-0042', ply: 27 };
+  const practise = (reviews: StoredReview[], right: boolean, at = noon()) => updateDrillReviews(reviews, drill, right, at);
+
+  it('lists a missed position for tomorrow, marked as practice, and nothing for a right first answer', () => {
+    expect(practise([], true)).toEqual([]);
+    expect(practise([], false)).toEqual([{ ...drill, type: 'pause', box: 0, due: noon(1) }]);
+  });
+
+  it('moves a listed position up the ladder like any review, and starts it over after a miss', () => {
+    let reviews = practise([], false);
+    const gaps: (number | undefined)[] = [];
+    for (let day = 1; reviews.length > 0 && day < 100; day += 1) {
+      const at = reviews[0].due;
+      reviews = practise(reviews, true, at);
+      gaps.push(dueIn(reviews, at));
+    }
+    expect(gaps).toEqual([3, 7, 21, undefined]);
+    reviews = practise(practise(practise([], false), true, noon(1)), false, noon(4));
+    expect(reviews).toEqual([{ ...drill, type: 'pause', box: 0, due: noon(5) }]);
+  });
+
+  it('keeps a practice position apart from the same position met in a game', () => {
+    const game = moment({ gameId: drill.gameId, level: 1100, ply: drill.ply });
+    const both = answer(practise([], false), wrong({ ...game }));
+    expect(both).toHaveLength(2);
+    expect(answer(both, game).filter((r) => r.drillSet)).toEqual(practise([], false));
+    expect(practise(both, true, noon(1)).filter((r) => !r.drillSet)).toEqual(both.filter((r) => !r.drillSet));
+  });
+
+  it('is due on the Today of the lesson level', () => {
+    const reviews = practise([], false);
+    expect(dueItems(reviews, [], 'italian', 1400, noon(1)).map((r) => r.drillSet)).toEqual(['italian-1100']);
+    expect(dueItems(reviews, [], 'italian', 1100, noon(1))).toEqual([]);
   });
 });
 

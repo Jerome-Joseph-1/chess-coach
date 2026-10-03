@@ -17,5 +17,7 @@ describe('routes', () => {
   it('builds the play and review routes the router expects', () => {
     expect(playPath('caro-kann', 1700)).toBe('/play/caro-kann/1700');
     expect(reviewPath({ opening: 'italian', level: 1400, gameId: 'italian-1400-0001', ply: 7 })).toBe('/play/italian/1400?review=italian-1400-0001:7');
+    const drill = { opening: 'italian' as const, level: 1400 as const, gameId: 'italian-1100-0042', ply: 27, drillSet: 'italian-1100' };
+    expect(reviewPath(drill)).toBe('/practice/italian-1100/italian-1100-0042/27');
   });
 });

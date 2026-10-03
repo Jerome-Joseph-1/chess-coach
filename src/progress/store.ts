@@ -16,7 +16,7 @@ import {
   type Progress,
   type StoredSettings,
 } from './model';
-import { dueItems, updateReviews } from './srs';
+import { dueItems, updateDrillReviews, updateReviews, type DrillSpot } from './srs';
 import { setStats, stageProgress, weekStats, type RateCount, type SetStats, type WeekStats } from './stats';
 import { KEYS, isRecord, migrate, readJson, removeKey, writeJson } from './storage';
 
@@ -155,7 +155,21 @@ export function gamesPlayedSince(opening: OpeningId, at: number): number {
 
 export function dropReview(opening: OpeningId, level: Level, gameId: string, ply: number): void {
   const p = state();
-  p.reviews = p.reviews.filter((r) => !(r.opening === opening && r.level === level && r.gameId === gameId && r.ply === ply));
+  p.reviews = p.reviews.filter((r) => r.drillSet || !(r.opening === opening && r.level === level && r.gameId === gameId && r.ply === ply));
+  persist();
+}
+
+/** Schedules a lesson's practice position by its answer: a miss or a hinted find comes back, a right answer moves it on. */
+export function scheduleDrill(drill: DrillSpot, right: boolean, at: number): void {
+  const p = state();
+  p.reviews = updateDrillReviews(p.reviews, drill, right, at);
+  persist();
+}
+
+/** Takes a practice position that is no longer in the course off the review list. */
+export function dropDrillReview(drillSet: string, gameId: string, ply: number): void {
+  const p = state();
+  p.reviews = p.reviews.filter((r) => !(r.drillSet === drillSet && r.gameId === gameId && r.ply === ply));
   persist();
 }
 

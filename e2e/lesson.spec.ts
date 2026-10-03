@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { continueButton, rememberCard, tapSquares } from './board';
+import { continueButton, hintButton, rememberCard, tapSquares } from './board';
 
 // The test course: free pieces teach with game 0001 at ply 19 (Rxe6+) and practise at ply 3 (dxe5);
 // traps have an example (the Nxe5 trap, answered by h3) and no practice positions.
@@ -95,6 +95,46 @@ test('a unit without practice positions goes from the example straight to the su
   await expect(page.getByText('You will meet this pattern again in your next games.')).toBeVisible();
   const saved = await storedLesson(page, 'traps');
   expect(saved).toMatchObject({ learnedAt: expect.any(Number), doneAt: expect.any(Number), drills: [] });
+});
+
+test('a practice position solved with a hint comes back on Today and is asked again as practice', async ({ page }) => {
+  const stored = () => page.evaluate(() => JSON.parse(localStorage.getItem('cc.progress.v1')!));
+  await page.goto('./#/lesson/italian/free-piece');
+  await showExample(page).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await tapSquares(page, 'e1', 'e6');
+  await expect(rememberCard(page)).toBeVisible({ timeout: 10_000 });
+  await continueButton(page).click();
+  await expect(page.getByText('Practice 1 of 1')).toBeVisible();
+  await hintButton(page).click();
+  await tapSquares(page, 'd4', 'e5');
+  await expect(page.getByText('Solved with a hint')).toBeVisible();
+  await continueButton(page).click();
+  await expect(page.getByRole('heading', { name: '0 of 1' })).toBeVisible();
+  const missed = { opening: 'italian', level: 1400, gameId: 'italian-1400-0001', ply: 3, drillSet: 'italian-1400', type: 'pause', box: 0 };
+  expect((await stored()).reviews).toEqual([{ ...missed, due: expect.any(Number) }]);
+
+  // A day later it is due.
+  await page.evaluate(() => {
+    const progress = JSON.parse(localStorage.getItem('cc.progress.v1')!);
+    progress.reviews[0].due = Date.now() - 1;
+    localStorage.setItem('cc.progress.v1', JSON.stringify(progress));
+  });
+  await page.goto('./#/');
+  await page.reload();
+  await page.getByRole('link', { name: 'Review 1 position you missed' }).click();
+  await expect(page).toHaveURL(/#\/practice\/italian-1400\/italian-1400-0001\/3$/);
+  await expect(page.getByRole('heading', { name: 'Free pieces', level: 1 })).toBeVisible();
+  await expect(page.getByText('Play the best move on the board.')).toBeVisible();
+  await tapSquares(page, 'd4', 'e5');
+  await expect(page.getByText('You found the move')).toBeVisible();
+  await continueButton(page).click();
+
+  await expect(page).toHaveURL(/#\/$/);
+  const after = await stored();
+  expect(after.reviews).toEqual([{ ...missed, box: 1, due: expect.any(Number) }]);
+  expect(after.games ?? []).toEqual([]);
+  expect(after.moments ?? []).toEqual([]);
 });
 
 test('the back button returns to the course', async ({ page }) => {

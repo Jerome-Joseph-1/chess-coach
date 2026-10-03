@@ -116,6 +116,8 @@ export interface ReviewItem {
   ply: number;
   box: number;
   due: number;
+  /** Set for a lesson's practice position, which comes back as practice rather than in its game: the set its game is in. */
+  drillSet?: string;
 }
 
 export interface Settings {
