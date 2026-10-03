@@ -55,3 +55,8 @@ export function sideName(opening: OpeningId): string {
 export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
+
+/** The material lead in words for a player bar, e.g. "Black is ahead by 2 points of material". */
+export function leadLabel(name: string, lead: number): string {
+  return `${name === 'You' ? 'You are' : `${name} is`} ahead by ${plural(lead, 'point')} of material`;
+}

@@ -223,6 +223,18 @@ test('after a key position the user can stop, look back, step on, continue and t
   await expect.poll(() => moveList(page).count()).toBeGreaterThan(live);
 });
 
+test('the player ahead in material shows by how much', async ({ page }) => {
+  await playQuietGame(page, 3);
+  await playButton(page).click();
+  await expect(page.getByRole('button', { name: 'Finish' })).toBeVisible({ timeout: RUN_MS });
+  // 3...Nxe4 took a pawn: Black is a point up.
+  const lead = page.locator('.game-player.is-opponent .game-lead');
+  await expect(lead).toContainText('Up');
+  await expect(lead.locator('.roll-in')).toHaveText('1');
+  await expect(lead.locator('.sr-only')).toHaveText('Black is ahead by 1 point of material');
+  await expect(page.locator('.game-player.is-you .game-lead')).toBeHidden();
+});
+
 test('a short quiet game plays to its end and waits for Finish', async ({ page }) => {
   await playQuietGame(page, 6);
   await playButton(page).click();

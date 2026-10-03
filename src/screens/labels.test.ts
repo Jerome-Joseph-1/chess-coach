@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STAT_LABELS, playPath, ratingLine, reviewPath, sideLine } from './shared/labels';
+import { STAT_LABELS, leadLabel, playPath, ratingLine, reviewPath, sideLine } from './shared/labels';
 
 describe('opening wording', () => {
   it('says which side you play and who you face', () => {
@@ -10,6 +10,11 @@ describe('opening wording', () => {
 
   it('names the parts of the week in plain words', () => {
     expect(STAT_LABELS).toEqual({ win: 'Chances to win', defend: 'Threats', trap: 'Traps', nothing: 'Quiet' });
+  });
+
+  it('says who is ahead in material and by how much', () => {
+    expect(leadLabel('Black', 2)).toBe('Black is ahead by 2 points of material');
+    expect(leadLabel('You', 1)).toBe('You are ahead by 1 point of material');
   });
 });
 

@@ -1,11 +1,6 @@
 import { useRef } from 'preact/hooks';
 import './rewards.css';
 
-export function formatSigned(n: number): string {
-  if (n === 0) return '0';
-  return n > 0 ? `+${n}` : `−${-n}`;
-}
-
 export interface RollingNumberProps {
   value: number;
   format?: (n: number) => string;

@@ -258,8 +258,10 @@
   }
 }
 .game-lead {
+  flex: none;
   color: var(--text-muted);
-  font: var(--text-code);
+  font: var(--text-caption);
+  font-variant-numeric: tabular-nums;
 }
 .game-lead.is-level {
   visibility: hidden;

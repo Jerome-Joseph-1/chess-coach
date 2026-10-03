@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { particleCount, toUnit } from './confetti';
 import { patternFor } from './haptics';
-import { formatSigned } from './RollingNumber';
 import { rewardFor, type Celebration } from './rewards';
 import { VOICES } from './sound';
 
@@ -64,11 +63,5 @@ describe('haptics', () => {
     for (const kind of ['step', 'move', 'silent', 'levelup', 'perfect', 'wrong'] as const) {
       expect(patternFor(kind).length).toBeGreaterThan(0);
     }
-  });
-});
-
-describe('formatSigned', () => {
-  it('signs gains and losses and leaves zero bare', () => {
-    expect([2, 0, -3].map(formatSigned)).toEqual(['+2', '0', '−3']);
   });
 });

@@ -1,7 +1,8 @@
 import type { Color, PieceSymbol } from 'chess.js';
 import pieceSprite from 'cm-chessboard/assets/pieces/standard.svg?no-inline';
 import { lostPieces, materialLead } from '../../game/material';
-import { formatSigned, RollingNumber } from '../../ui/RollingNumber';
+import { RollingNumber } from '../../ui/RollingNumber';
+import { leadLabel } from '../shared/labels';
 
 /** The newest capture the board reported, so its piece can pop as it lands in the tray. */
 export interface FreshCapture {
@@ -56,7 +57,10 @@ export function PlayerBar({ role, name, detail, fen, color, fresh }: PlayerBarPr
       <Tray fen={fen} color={color} fresh={fresh} />
       {/* Stays mounted while level, so the first lead rolls in from zero. */}
       <span class={`game-lead${lead > 0 ? '' : ' is-level'}`} aria-hidden={lead <= 0}>
-        <RollingNumber value={Math.max(0, lead)} format={formatSigned} />
+        <span aria-hidden="true">
+          Up <RollingNumber value={Math.max(0, lead)} />
+        </span>
+        <span class="sr-only">{leadLabel(name, lead)}</span>
       </span>
     </div>
   );
