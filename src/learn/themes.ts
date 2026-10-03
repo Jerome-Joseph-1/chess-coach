@@ -85,9 +85,14 @@ function defendTheme(turn: Turn, side: Color): Theme | null {
 
 function baitTheme(turn: Turn, side: Color): Theme | null {
   const line = turn.lines.mistake ?? (turn.mistakeMove ? [turn.mistakeMove] : []);
-  const [move] = playLine(turn.fen, line.slice(0, 1));
+  return line.length ? punishment(turn.fen, line[0], line.slice(1), side) : null;
+}
+
+/** How the opponent punishes the user's move `uci` from `fen` with `line`, their reply first; null when `uci` is illegal. */
+export function punishment(fen: string, uci: string, line: readonly string[], side: Color): Theme | null {
+  const [move] = playLine(fen, [uci]);
   if (!move) return null;
-  const tactic = tacticIn(move.after, line.slice(1), otherColor(side), [move]);
+  const tactic = tacticIn(move.after, line, otherColor(side), [move]);
   const opened = tactic ? openedLine(move, tactic) : null;
   const bait: Bait = { move, kind: baitKind(move, tactic, opened), opened };
   const pieces: ThemePiece[] = [{ ...pieceOn(new Chess(move.after), move.to)!, role: 'mover' }];
@@ -97,7 +102,7 @@ function baitTheme(turn: Turn, side: Color): Theme | null {
     pattern: tactic?.id,
     bait,
     pieces: tactic ? [...pieces, ...tacticPieces(tactic)] : pieces,
-    moves: tactic ? keyMoves(tactic) : line.slice(1, 2),
+    moves: tactic ? keyMoves(tactic) : line.slice(0, 1),
   };
 }
 
