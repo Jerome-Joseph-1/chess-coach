@@ -1,54 +1,38 @@
-import type { ComponentChildren } from 'preact';
+import { useEffect, useState } from 'preact/hooks';
+import { Icon, type IconName } from '../screens/shared/icons';
 import './tabbar.css';
 
 export type Tab = 'today' | 'progress' | 'settings';
 
-const ICON = { fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const;
-
-const TABS: { id: Tab; href: string; label: string; icon: ComponentChildren }[] = [
-  {
-    id: 'today',
-    href: '#/',
-    label: 'Today',
-    icon: (
-      <>
-        <circle cx="12" cy="12" r="4" />
-        <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" />
-      </>
-    ),
-  },
-  {
-    id: 'progress',
-    href: '#/progress',
-    label: 'Progress',
-    icon: <path d="M5 20v-6M12 20V6M19 20v-10" />,
-  },
-  {
-    id: 'settings',
-    href: '#/settings',
-    label: 'Settings',
-    icon: (
-      <>
-        <path d="M4 7h9M19 7h1M4 17h1M11 17h9" />
-        <circle cx="16" cy="7" r="2.5" />
-        <circle cx="8" cy="17" r="2.5" />
-      </>
-    ),
-  },
+const TABS: { id: Tab; href: string; label: string; icon: IconName }[] = [
+  { id: 'today', href: '#/', label: 'Today', icon: 'home' },
+  { id: 'progress', href: '#/progress', label: 'Progress', icon: 'chart' },
+  { id: 'settings', href: '#/settings', label: 'Settings', icon: 'sliders' },
 ];
 
-/** Floating pill with the three places of the app; the current one sits on a raised pill. */
+// Every screen draws its own bar, so the pill remembers where it last sat in order to slide from there.
+let lastTab: Tab | null = null;
+
+const indexOf = (tab: Tab) => TABS.findIndex((t) => t.id === tab);
+
+/** The bar docked at the bottom; one pill marks the current place and slides when it changes. */
 export function TabBar({ current }: { current: Tab }) {
+  const [from] = useState(() => lastTab ?? current);
+  useEffect(() => {
+    lastTab = current;
+  }, [current]);
+
   return (
     <nav class="tabbar" aria-label="Main">
-      {TABS.map((tab) => (
-        <a key={tab.id} class="tabbar-item" href={tab.href} aria-current={tab.id === current ? 'page' : undefined}>
-          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" {...ICON}>
-            {tab.icon}
-          </svg>
-          <span>{tab.label}</span>
-        </a>
-      ))}
+      <div class="tabbar-tabs" style={{ '--i': indexOf(current), '--from': indexOf(from) }}>
+        <span class={`tabbar-pill ${from === current ? '' : 'tabbar-pill--slide'}`} aria-hidden="true" />
+        {TABS.map((tab) => (
+          <a key={tab.id} class="tabbar-item" href={tab.href} aria-current={tab.id === current ? 'page' : undefined}>
+            <Icon name={tab.icon} size={24} />
+            <span>{tab.label}</span>
+          </a>
+        ))}
+      </div>
     </nav>
   );
 }

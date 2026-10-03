@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Turn } from '../../content/types';
 import { moment, wrong } from '../../progress/testkit';
-import { handledWell, kindPhrase, momentSub, momentTitle, momentTone } from './moments';
+import { coachNote, handledWell, kindPhrase, momentSub, momentTitle, momentTone } from './moments';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -49,7 +49,7 @@ describe('key position titles', () => {
   it('puts the move number in front', () => {
     expect(momentTitle(moment({ moveNo: 11, kinds: ['trap'] }))).toBe('Move 11 · Avoid the trap');
     expect(momentTitle(moment({ moveNo: 7, kinds: ['win'] }), undefined, 'Trapped piece')).toBe('Move 7 · Trapped piece');
-    expect(momentTitle(moment({ moveNo: 20, type: 'nothing' }), undefined, 'Quiet position')).toBe('Move 20 · Nothing special');
+    expect(momentTitle(moment({ moveNo: 20, type: 'nothing' }), undefined, 'Quiet position')).toBe('Move 20 · Nothing here');
   });
 
   it('survives a line that does not fit the position', () => {
@@ -58,24 +58,46 @@ describe('key position titles', () => {
 });
 
 describe('key position results', () => {
-  const half = [{ step: 'spot' as const, correct: true }, { step: 'find' as const, correct: false }];
+  const half = [
+    { step: 'spot' as const, correct: true },
+    { step: 'find' as const, correct: false },
+  ];
 
   it('says how each kind of position went', () => {
-    expect(momentSub(moment({ outcomes: [{ step: 'spot', correct: true }, { step: 'find', correct: true }, { step: 'solve', correct: true }] }))).toBe('Spotted it and found the move');
+    expect(
+      momentSub(
+        moment({
+          outcomes: [
+            { step: 'spot', correct: true },
+            { step: 'find', correct: true },
+            { step: 'solve', correct: true },
+          ],
+        }),
+      ),
+    ).toBe('Spotted it and found the move');
     expect(momentSub(moment({ type: 'silent', outcomes: [{ step: 'solve', correct: true }] }))).toBe('Found it without a hint');
-    expect(momentSub(moment({ type: 'nothing', kinds: [] }))).toBe('Right, nothing special');
-    expect(momentSub(wrong())).toBe('Missed it');
+    expect(momentSub(moment({ type: 'nothing', kinds: [] }))).toBe('Right, it was quiet');
+    expect(momentSub(wrong())).toBe('Missed it · saved for review');
   });
 
   it('only claims what the stage asked for', () => {
     expect(momentSub(moment())).toBe('Spotted it');
-    expect(momentSub(moment({ outcomes: [{ step: 'spot', correct: true }, { step: 'find', correct: true }] }))).toBe('Spotted it and found the piece');
+    expect(
+      momentSub(
+        moment({
+          outcomes: [
+            { step: 'spot', correct: true },
+            { step: 'find', correct: true },
+          ],
+        }),
+      ),
+    ).toBe('Spotted it and found the piece');
   });
 
   it('counts a half-right answer and a missed check as missed', () => {
-    expect(momentSub(moment({ outcomes: half }))).toBe('Missed it');
-    expect(momentSub(wrong({ type: 'silent' }))).toBe('Missed it');
-    expect(momentSub(wrong({ type: 'nothing', kinds: [] }))).toBe('Missed it');
+    expect(momentSub(moment({ outcomes: half }))).toBe('Missed it · saved for review');
+    expect(momentSub(wrong({ type: 'silent' }))).toBe('Missed it · saved for review');
+    expect(momentSub(wrong({ type: 'nothing', kinds: [] }))).toBe('Missed it · saved for review');
   });
 
   it('marks right, quiet and missed rows', () => {
@@ -95,5 +117,20 @@ describe('handled well', () => {
 
   it('is 0 of 0 for a game without key positions', () => {
     expect(handledWell([])).toEqual({ right: 0, total: 0 });
+  });
+});
+
+describe('coach note', () => {
+  it('praises a clean game, quiet positions included', () => {
+    expect(coachNote([moment(), moment({ type: 'nothing', kinds: [] })])).toBe('Clean game: every key position handled well.');
+  });
+
+  it('names the moves worth another look', () => {
+    expect(coachNote([moment(), wrong({ moveNo: 22 })])).toBe('Good game. Worth another look: move 22.');
+    expect(coachNote([wrong({ moveNo: 7 }), wrong({ moveNo: 11 }), wrong({ moveNo: 15 })])).toBe('A tough one. Worth another look: moves 7, 11 and 15.');
+  });
+
+  it('says nothing without key positions', () => {
+    expect(coachNote([])).toBeNull();
   });
 });

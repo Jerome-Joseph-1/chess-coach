@@ -13,7 +13,7 @@ interface OpponentRatingsProps {
 /** How strong the opponents are, one choice per opening. */
 export function OpponentRatings({ levels, onChange }: OpponentRatingsProps) {
   return (
-    <section aria-labelledby="opponents-title">
+    <section class="section-block" aria-labelledby="opponents-title">
       <h2 id="opponents-title" class="section-label">
         Opponents
       </h2>

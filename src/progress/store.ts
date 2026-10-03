@@ -16,7 +16,7 @@ import {
   type StoredSettings,
 } from './model';
 import { dueItems, updateReviews } from './srs';
-import { setStats, weekStats, type SetStats, type WeekStats } from './stats';
+import { setStats, stageProgress, weekStats, type RateCount, type SetStats, type WeekStats } from './stats';
 import { KEYS, isRecord, migrate, readJson, removeKey, writeJson } from './storage';
 
 export type { StoredSettings } from './model';
@@ -154,6 +154,17 @@ export function getWeekStats(now: number): WeekStats {
   return weekStats(state().moments, now);
 }
 
+/** Every recorded answer, oldest first; replays included, so filter before counting. */
+export function getMoments(): readonly MomentResult[] {
+  return state().moments;
+}
+
+/** How close the set is to its next stage; null when the stage is chosen by hand in Settings. */
+export function getStageProgress(opening: OpeningId, level: Level): RateCount | null {
+  if (getSettings().depthOverride) return null;
+  return stageProgress(state().depth[setKey(opening, level)]?.window ?? []);
+}
+
 export function getActiveDays(): Set<string> {
   return new Set(state().days);
 }
@@ -188,5 +199,6 @@ export function isInstallHintDismissed(): boolean {
 }
 
 export function dismissInstallHint(): void {
-  writeJson(KEYS.ui, { v: 1, installHintDismissed: true });
+  const ui = readJson(KEYS.ui);
+  writeJson(KEYS.ui, { ...(isRecord(ui) ? ui : {}), v: 1, installHintDismissed: true });
 }

@@ -1,6 +1,9 @@
 .switch-row {
   min-height: 64px;
 }
+.settings .row-main {
+  gap: 2px;
+}
 .switch {
   position: relative;
   flex: none;
@@ -17,7 +20,7 @@
   border-radius: inherit;
   background: var(--action);
   opacity: 0;
-  transition: opacity var(--t-quick) linear;
+  transition: opacity var(--d-quick) linear;
 }
 .switch-knob {
   position: absolute;
@@ -27,7 +30,7 @@
   height: 27px;
   border-radius: 50%;
   background: var(--text-muted);
-  transition: transform var(--t-move) var(--spring);
+  transition: transform var(--d-base) var(--spring);
 }
 [aria-checked='true'] .switch::before {
   opacity: 1;
@@ -39,14 +42,14 @@
 
 .row-danger,
 .row-danger .row-main > span:first-child {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .confirm {
   display: grid;
   gap: 8px;
   padding: 16px;
-  animation: rise var(--t-move) var(--spring) backwards;
+  animation: rise-in var(--d-base) var(--spring) backwards;
 }
 .confirm h3 {
   font: var(--text-headline);
@@ -65,12 +68,12 @@
   padding: 0 12px;
 }
 .btn.danger {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .settings-status,
 .settings-hint {
-  margin: 8px 4px 0;
+  margin: 0;
   color: var(--text-muted);
   font: var(--text-caption);
 }
@@ -79,11 +82,16 @@
 }
 
 .about-row {
-  margin-top: 24px;
+  min-height: 64px;
+  margin-top: 8px;
+  border-radius: 16px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .confirm {
-    animation: none;
+    animation-name: fade-in;
+  }
+  .switch-knob {
+    transition: none;
   }
 }

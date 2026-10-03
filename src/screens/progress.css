@@ -1,50 +1,86 @@
-.set-head {
+.stat-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.stat-tile {
   display: grid;
   gap: 4px;
-  padding: 20px 16px 16px;
+  padding: 14px;
+  border-radius: 16px;
 }
-.set-head h2 {
-  font: var(--text-title);
+.stat-tile p {
+  margin: 0;
+}
+.stat-tile .eyebrow {
+  color: var(--text-muted);
+}
+.stat-value {
+  color: var(--text-strong);
+  font: 600 26px/32px var(--font);
   letter-spacing: -0.01em;
 }
-.set-head p {
-  margin: 0 0 12px;
+.stat-caption {
+  color: var(--text-muted);
+  font: 400 12px/16px var(--font);
 }
-.set-progress > .list,
-.not-started {
-  border-top: 1px solid var(--hairline);
-}
-.not-started {
+
+.pattern-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
   margin: 0;
-  padding: 16px;
-  font: var(--text-callout);
+  padding: 0;
+  list-style: none;
 }
-.set-progress .stage-line {
-  flex: 1;
+.pattern-card {
+  display: grid;
+  padding: 14px;
+  border-radius: 16px;
 }
-.rates-title {
-  margin: 20px 16px 8px;
+.pattern-card p {
+  margin: 0;
 }
-.rates-title + .list {
-  border-top: 1px solid var(--hairline);
-}
-.rate-head {
+.pattern-card-top {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
-.rate-head .muted {
+.pattern-card-name {
+  color: var(--text-strong);
+  font: 600 15px/20px var(--font);
+  letter-spacing: -0.002em;
+}
+.pattern-card .pattern-card-count {
+  margin-bottom: 10px;
+  color: var(--text-muted);
   font: var(--text-caption);
 }
-.rate-row {
-  gap: 10px;
+
+.progress-note {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 16px;
+  border-radius: 16px;
+  font: var(--text-callout);
+}
+.progress-note h2 {
+  font: var(--text-headline);
+  font-weight: 600;
+}
+.progress-note p {
+  margin: 0;
+  font: var(--text-caption);
 }
 
 .activity,
 .progress-empty {
-  padding: 20px;
+  padding: 16px;
+  border-radius: 16px;
 }
-.activity h2,
 .progress-empty h2 {
   font: var(--text-headline);
   font-weight: 600;
@@ -56,7 +92,7 @@
   grid-auto-flow: column;
   gap: 6px;
   width: min(100%, 288px);
-  margin: 16px 0 14px;
+  margin: 4px 0 14px;
 }
 .day {
   aspect-ratio: 1;

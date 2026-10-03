@@ -1,81 +1,108 @@
-import { useState } from 'preact/hooks';
-import { LEVELS, OPENINGS, type Opening } from '../content/catalog';
-import type { Level } from '../content/types';
+import type { OpeningId } from '../content/types';
 import { dayKey, lastWeeks } from '../progress/days';
-import { STAT_KINDS, percent, type RateCount, type SetStats } from '../progress/stats';
-import { dueReviews, getActiveDays, getDepth, getSetStats, getSettings, hasPlayed } from '../progress/store';
+import { STAGES, stageNumber } from '../progress/depth';
+import { weekStats, type PatternStat, type RateCount } from '../progress/stats';
+import { getActiveDays, getDepth, getMoments, getSetStats, getSettings, getStageProgress, hasPlayed } from '../progress/store';
 import { navigate } from '../router';
 import { Button } from '../ui/Button';
 import { TabBar } from '../ui/TabBar';
-import { OPENING_TITLES, STAT_LABELS, ratingLine, sideLine } from './shared/labels';
-import { Segmented } from './shared/Segmented';
-import { StageLine } from './shared/StageLine';
+import { OPENING_SHORT, sideName } from './shared/labels';
+import { OpeningSwitch, useOpening } from './shared/OpeningSwitch';
+import { LevelBar, LevelWord, PatternTile, useRolledCount } from './shared/PatternParts';
+import { PATTERNS, usePatternStats, type PatternId } from './shared/patterns';
 import './shared/screen.css';
 import './progress.css';
 
 const WEEKS = 8;
-const LEVEL_OPTIONS = LEVELS.map((value) => ({ value, label: String(value) }));
 
-function RateRow({ label, count }: { label: string; count: RateCount }) {
-  const rate = percent(count);
+function StatTile({ eyebrow, value, caption }: { eyebrow: string; value: string; caption: string }) {
   return (
-    <li class="row row-stack rate-row">
-      <div class="rate-head">
-        <span>{label}</span>
-        <span class="muted">{rate === null ? 'Nothing yet' : `${count.right} of ${count.total} · ${rate}%`}</span>
+    <div class="card stat-tile">
+      <p class="eyebrow">{eyebrow}</p>
+      <p class="stat-value">{value}</p>
+      <p class="stat-caption">{caption}</p>
+    </div>
+  );
+}
+
+function stageTile(opening: OpeningId): { eyebrow: string; value: string; caption: string } {
+  const { levels } = getSettings();
+  const stage = stageNumber(getDepth(opening, levels[opening]));
+  const progress = getStageProgress(opening, levels[opening]);
+  const eyebrow = `Stage ${stage} of ${STAGES.length}`;
+  if (!progress) return { eyebrow, value: `${stage} / ${STAGES.length}`, caption: 'stage chosen in Settings' };
+  if (stage === STAGES.length) return { eyebrow, value: `${stage} / ${STAGES.length}`, caption: 'the last stage' };
+  return { eyebrow, value: `${progress.right} / ${progress.total}`, caption: 'right to move up' };
+}
+
+function Stats({ opening }: { opening: OpeningId }) {
+  const week: RateCount = weekStats(
+    getMoments().filter((m) => m.opening === opening),
+    Date.now(),
+  ).total;
+  return (
+    <div class="stat-tiles">
+      <StatTile eyebrow="This week" value={`${week.right} / ${week.total}`} caption="positions handled well" />
+      <StatTile {...stageTile(opening)} />
+    </div>
+  );
+}
+
+function PatternCard({ stat, index }: { stat: PatternStat<PatternId>; index: number }) {
+  const right = useRolledCount(stat.count, index);
+  const verb = stat.pattern === 'quiet' ? 'right' : 'found';
+  return (
+    <li class="card pattern-card">
+      <div class="pattern-card-top">
+        <PatternTile pattern={stat.pattern} small />
+        <LevelWord level={stat.level} />
       </div>
-      <div class="meter" role="img" aria-label={rate === null ? `${label}: nothing yet` : `${label}: ${rate}% right`}>
-        <div class="meter-fill" style={{ '--r': (rate ?? 0) / 100 }} />
-      </div>
+      <p class="pattern-card-name">{PATTERNS[stat.pattern].name}</p>
+      <p class="pattern-card-count">
+        {right} of {stat.count.total} {verb}
+      </p>
+      <LevelBar count={stat.count} level={stat.level} index={index} />
     </li>
   );
 }
 
-function SetDetails({ opening, level, stats }: { opening: Opening; level: Level; stats: SetStats }) {
-  const due = dueReviews(opening.id, level, Date.now()).length;
+function Patterns({ opening }: { opening: OpeningId }) {
+  const stats = usePatternStats(opening);
   return (
-    <>
-      <ul class="list">
-        <li class="row">
-          <span>Games played</span>
-          <span class="row-value">{stats.games}</span>
-        </li>
-        <li class="row">
-          <StageLine depth={getDepth(opening.id, level)} />
-        </li>
-        <li class="row">
-          <span>Reviews due</span>
-          <span class="row-value">
-            {due > 0 && <span class="due-dot" aria-hidden="true" />}
-            {due}
-          </span>
-        </li>
-      </ul>
-      <h3 class="section-label rates-title">What you got right</h3>
-      <ul class="list">
-        {STAT_KINDS.map((kind) => (
-          <RateRow key={`${level}-${kind}`} label={STAT_LABELS[kind]} count={stats.byKind[kind]} />
-        ))}
-      </ul>
-    </>
+    <section class="section-block" aria-labelledby="patterns-title">
+      <div class="section-head">
+        <h2 id="patterns-title" class="section-label">
+          Patterns
+        </h2>
+        <span class="section-note">Last 30 days</span>
+      </div>
+      {stats?.length === 0 && <p class="card progress-note muted">No key positions in the last 30 days.</p>}
+      {stats && stats.length > 0 && (
+        <ul class="pattern-grid">
+          {stats.map((stat, i) => (
+            <PatternCard key={stat.pattern} stat={stat} index={i} />
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
-function SetProgress({ opening, initialLevel }: { opening: Opening; initialLevel: Level }) {
-  const [level, setLevel] = useState(initialLevel);
-  const stats = getSetStats(opening.id, level);
-  const titleId = `${opening.id}-progress`;
+function OpeningProgress({ opening }: { opening: OpeningId }) {
+  const started = getSetStats(opening, getSettings().levels[opening]).games > 0;
+  if (!started) {
+    return (
+      <section class="card progress-note" aria-label={OPENING_SHORT[opening]}>
+        <h2>Not started yet</h2>
+        <p class="muted">Play the {OPENING_SHORT[opening]} and your stage and patterns show up here.</p>
+      </section>
+    );
+  }
   return (
-    <section class="card set-progress" aria-labelledby={titleId}>
-      <div class="set-head">
-        <h2 id={titleId}>{OPENING_TITLES[opening.id]}</h2>
-        <p class="muted">
-          {sideLine(opening.id)} · {ratingLine(level)}
-        </p>
-        <Segmented label={`${OPENING_TITLES[opening.id]} level`} options={LEVEL_OPTIONS} value={level} onChange={setLevel} />
-      </div>
-      {stats.games > 0 ? <SetDetails opening={opening} level={level} stats={stats} /> : <p class="not-started muted">Not started yet</p>}
-    </section>
+    <>
+      <Stats opening={opening} />
+      <Patterns opening={opening} />
+    </>
   );
 }
 
@@ -84,16 +111,23 @@ function Activity() {
   const played = getActiveDays();
   const today = dayKey(now);
   return (
-    <section class="card activity" aria-labelledby="activity-title">
-      <h2 id="activity-title">Last {WEEKS} weeks</h2>
-      <div class="activity-grid" role="img" aria-label={`Days you played in the last ${WEEKS} weeks`}>
-        {lastWeeks(now, WEEKS)
-          .flat()
-          .map((day) => (
-            <i key={day} class={`day ${played.has(day) ? 'day--on' : ''} ${day > today ? 'day--future' : ''} ${day === today ? 'day--today' : ''}`} />
-          ))}
+    <section class="section-block" aria-labelledby="activity-title">
+      <div class="section-head">
+        <h2 id="activity-title" class="section-label">
+          Days played
+        </h2>
+        <span class="section-note">Last {WEEKS} weeks</span>
       </div>
-      <p class="muted">Each square is a day you played.</p>
+      <div class="card activity">
+        <div class="activity-grid" role="img" aria-label={`Days you played in the last ${WEEKS} weeks`}>
+          {lastWeeks(now, WEEKS)
+            .flat()
+            .map((day) => (
+              <i key={day} class={`day ${played.has(day) ? 'day--on' : ''} ${day > today ? 'day--future' : ''} ${day === today ? 'day--today' : ''}`} />
+            ))}
+        </div>
+        <p class="muted">Each filled square is a day you played.</p>
+      </div>
     </section>
   );
 }
@@ -102,31 +136,31 @@ function EmptyProgress() {
   return (
     <section class="card progress-empty">
       <h2>Your progress shows up here</h2>
-      <p class="muted">Play a game and this page fills in: what you got right, your stage and what to review.</p>
+      <p class="muted">Play a game and this page fills in: your stage and the patterns you find.</p>
       <Button onClick={() => navigate('/')}>Play a game</Button>
     </section>
   );
 }
 
 export function Progress() {
-  const { levels } = getSettings();
+  const [opening, setOpening] = useOpening();
   return (
     <main class="screen screen--tabs">
-      <header class="topbar">
-        <h1 class="screen-title">Progress</h1>
+      <header class="large-head">
+        <p class="eyebrow">
+          {OPENING_SHORT[opening]} · {sideName(opening)}
+        </p>
+        <h1 class="large-title">Progress</h1>
       </header>
-      <div class="stack">
-        {hasPlayed() ? (
-          <>
-            {OPENINGS.map((opening) => (
-              <SetProgress key={opening.id} opening={opening} initialLevel={levels[opening.id]} />
-            ))}
-            <Activity />
-          </>
-        ) : (
-          <EmptyProgress />
-        )}
-      </div>
+      {hasPlayed() ? (
+        <div class="stack">
+          <OpeningSwitch value={opening} onChange={setOpening} />
+          <OpeningProgress key={opening} opening={opening} />
+          <Activity />
+        </div>
+      ) : (
+        <EmptyProgress />
+      )}
       <TabBar current="progress" />
     </main>
   );

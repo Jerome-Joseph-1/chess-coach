@@ -7,7 +7,7 @@ import { Button } from '../ui/Button';
 import { TabBar } from '../ui/TabBar';
 import { OpponentRatings } from './settings/OpponentRatings';
 import { downloadJson } from './shared/download';
-import { Chevron } from './shared/icons';
+import { Icon, type IconName } from './shared/icons';
 import { Segmented } from './shared/Segmented';
 import './shared/screen.css';
 import './settings.css';
@@ -52,6 +52,20 @@ function Switch({ label, hint, checked, onChange }: { label: string; hint: strin
       </span>
       <span class="switch" aria-hidden="true">
         <span class="switch-knob" />
+      </span>
+    </button>
+  );
+}
+
+function ActionRow({ icon, title, sub, danger = false, onClick }: { icon: IconName; title: string; sub: string; danger?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" class={`row ${danger ? 'row-danger' : ''}`} onClick={onClick}>
+      <span class={`tile ${danger ? 'tile--missed' : ''}`} aria-hidden="true">
+        <Icon name={icon} />
+      </span>
+      <span class="row-main">
+        <span>{title}</span>
+        <span class="row-sub">{sub}</span>
       </span>
     </button>
   );
@@ -125,100 +139,101 @@ export function Settings() {
   const stageChoice: StageChoice = settings.depthOverride ?? 'auto';
 
   return (
-    <main class="screen screen--tabs">
-      <header class="topbar">
-        <h1 class="screen-title">Settings</h1>
+    <main class="screen screen--tabs settings">
+      <header class="large-head">
+        <h1 class="large-title">Settings</h1>
       </header>
 
-      <section aria-labelledby="look-title">
-        <h2 id="look-title" class="section-label">
-          Preferences
-        </h2>
-        <ul class="card list">
-          <li class="row row-stack">
-            <span>Theme</span>
-            <Segmented label="Theme" options={THEME_OPTIONS} value={settings.theme} onChange={chooseTheme} />
-          </li>
-          <li class="row row-stack">
-            <span>Board</span>
-            <Segmented label="Board" options={BOARD_OPTIONS} value={settings.board} onChange={chooseBoard} />
-          </li>
-          <li>
-            <Switch label="Sound" hint="Move sounds, and a chime when you get it right" checked={settings.sound} onChange={(sound) => update({ sound })} />
-          </li>
-          <li>
-            <Switch label="Haptics" hint="A small tap on your phone" checked={settings.haptics} onChange={(haptics) => update({ haptics })} />
-          </li>
-          <li>
-            <Switch label="Quick games (about 3 key positions)" hint="A shorter game when you are short on time" checked={settings.quick} onChange={(quick) => update({ quick })} />
-          </li>
-        </ul>
-      </section>
+      <div class="stack">
+        <section class="section-block" aria-labelledby="look-title">
+          <h2 id="look-title" class="section-label">
+            Preferences
+          </h2>
+          <ul class="card list">
+            <li class="row row-stack">
+              <span>Theme</span>
+              <Segmented label="Theme" options={THEME_OPTIONS} value={settings.theme} onChange={chooseTheme} />
+            </li>
+            <li class="row row-stack">
+              <span>Board</span>
+              <Segmented label="Board" options={BOARD_OPTIONS} value={settings.board} onChange={chooseBoard} />
+            </li>
+            <li>
+              <Switch label="Sound" hint="Move sounds, and a chime when you get it right" checked={settings.sound} onChange={(sound) => update({ sound })} />
+            </li>
+            <li>
+              <Switch label="Haptics" hint="A small tap on your phone" checked={settings.haptics} onChange={(haptics) => update({ haptics })} />
+            </li>
+            <li>
+              <Switch
+                label="Quick games (about 3 key positions)"
+                hint="A shorter game when you are short on time"
+                checked={settings.quick}
+                onChange={(quick) => update({ quick })}
+              />
+            </li>
+          </ul>
+        </section>
 
-      <section aria-labelledby="stage-title">
-        <h2 id="stage-title" class="section-label">
-          Practice
-        </h2>
-        <div class="card">
-          <div class="row row-stack">
-            <span>Stage</span>
-            <Segmented
-              label="Stage"
-              options={STAGE_OPTIONS}
-              value={stageChoice}
-              onChange={(choice) => update({ depthOverride: choice === 'auto' ? undefined : choice })}
-            />
-            <span class="row-sub">{stageHint(stageChoice)}</span>
+        <section class="section-block" aria-labelledby="stage-title">
+          <h2 id="stage-title" class="section-label">
+            Practice
+          </h2>
+          <div class="card list">
+            <div class="row row-stack">
+              <span>Stage</span>
+              <Segmented
+                label="Stage"
+                options={STAGE_OPTIONS}
+                value={stageChoice}
+                onChange={(choice) => update({ depthOverride: choice === 'auto' ? undefined : choice })}
+              />
+              <span class="row-sub">{stageHint(stageChoice)}</span>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <OpponentRatings levels={settings.levels} onChange={(opening, level) => update({ levels: { ...settings.levels, [opening]: level } })} />
+        <OpponentRatings levels={settings.levels} onChange={(opening, level) => update({ levels: { ...settings.levels, [opening]: level } })} />
 
-      <section aria-labelledby="data-title">
-        <h2 id="data-title" class="section-label">
-          Your progress
-        </h2>
-        <ul class="card list">
-          <li>
-            <button type="button" class="row" onClick={exportData}>
-              <span class="row-main">
-                <span>Back up progress</span>
-                <span class="row-sub">Save a copy as a file</span>
-              </span>
-            </button>
-          </li>
-          <li>
-            <button type="button" class="row" onClick={() => fileInput.current?.click()}>
-              <span class="row-main">
-                <span>Restore from a file</span>
-                <span class="row-sub">Load a copy you saved before</span>
-              </span>
-            </button>
-            <input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={importFile} />
-          </li>
-          <li>
-            {confirming ? (
-              <ResetConfirm onCancel={() => setConfirming(false)} onConfirm={erase} />
-            ) : (
-              <button type="button" class="row row-danger" onClick={() => setConfirming(true)}>
-                <span class="row-main">
-                  <span>Reset progress</span>
-                  <span class="row-sub">Erase games, stages and reviews on this device</span>
-                </span>
-              </button>
-            )}
-          </li>
-        </ul>
-        <p class="settings-status" role="status">
-          {status}
-        </p>
-      </section>
+        <section class="section-block" aria-labelledby="data-title">
+          <h2 id="data-title" class="section-label">
+            Your progress
+          </h2>
+          <ul class="card list">
+            <li>
+              <ActionRow icon="download" title="Back up progress" sub="Save a copy as a file" onClick={exportData} />
+            </li>
+            <li>
+              <ActionRow icon="upload" title="Restore from a file" sub="Load a copy you saved before" onClick={() => fileInput.current?.click()} />
+              <input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={importFile} />
+            </li>
+            <li>
+              {confirming ? (
+                <ResetConfirm onCancel={() => setConfirming(false)} onConfirm={erase} />
+              ) : (
+                <ActionRow
+                  icon="erase"
+                  title="Reset progress"
+                  sub="Erase games, stages and reviews on this device"
+                  danger
+                  onClick={() => setConfirming(true)}
+                />
+              )}
+            </li>
+          </ul>
+          <p class="settings-status" role="status">
+            {status}
+          </p>
+        </section>
 
-      <a class="card row about-row" href="#/about">
-        <span class="row-main">About and licences</span>
-        <Chevron />
-      </a>
+        <a class="card row about-row" href="#/about">
+          <span class="tile" aria-hidden="true">
+            <Icon name="info" />
+          </span>
+          <span class="row-main">About and licences</span>
+          <Icon name="chevron" class="chevron" />
+        </a>
+      </div>
       <TabBar current="settings" />
     </main>
   );

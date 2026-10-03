@@ -1,8 +1,56 @@
+/* Room for the dock: a 52px button, its padding and some air. */
+.recap {
+  padding-bottom: 112px;
+}
+
+.nav-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 4px -12px 12px;
+}
+.nav-button {
+  position: absolute;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: var(--text-strong);
+  touch-action: manipulation;
+  transition: transform var(--d-press) var(--ease-leave);
+}
+.nav-button:active {
+  transform: scale(0.92);
+  background: var(--surface-2);
+}
+.nav-title {
+  display: grid;
+  justify-items: center;
+  padding: 0 52px;
+  text-align: center;
+}
+.nav-title h1 {
+  font: 600 16px/20px var(--font);
+  letter-spacing: -0.002em;
+}
+.nav-title p {
+  margin: 0;
+  color: var(--text-muted);
+  font: var(--text-label);
+}
+
 .summary {
-  padding: 20px;
+  display: grid;
+  gap: 2px;
+}
+.summary p {
+  margin: 0;
 }
 .summary-number {
-  margin: 0;
   color: var(--text-strong);
   font: var(--text-number);
   letter-spacing: -0.02em;
@@ -10,82 +58,153 @@
 .summary-of {
   color: var(--text-muted);
 }
-.summary .muted {
-  margin: 4px 0 0;
-  font: var(--text-caption);
-}
-.result-bar {
-  display: flex;
-  gap: 4px;
-  margin-top: 20px;
-}
-.result-bar i {
-  flex: 1;
-  height: 5px;
-  border-radius: 999px;
-  animation: seg-in var(--t-move) var(--spring) backwards;
-  animation-delay: calc(var(--i, 0) * 50ms);
-}
-.result-bar .right {
-  background: var(--success);
-}
-.result-bar .missed {
-  background: var(--danger);
+.summary-label {
+  color: var(--text);
+  font: var(--text-headline);
 }
 .summary .welcome {
-  margin-top: 16px;
+  margin-top: 12px;
 }
+
+/* One disc per key position; each fills in turn, 80ms after the one before. */
+.pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 10px;
+}
+.pip {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--surface-3);
+}
+.pip::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--pip);
+  animation: pip-fill var(--d-base) var(--spring) var(--delay) both;
+}
+.pip svg {
+  position: relative;
+  color: var(--bg);
+  stroke-width: 3;
+  animation: pip-fill var(--d-base) var(--spring) var(--delay) both;
+}
+.pip--right {
+  --pip: var(--success);
+}
+.pip--missed {
+  --pip: var(--danger);
+}
+@keyframes pip-fill {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
 .recap-quiet {
   margin: 0;
   padding: 20px 16px;
   text-align: center;
 }
 
-.recap .list > li {
-  animation: rise var(--t-move) var(--spring) backwards;
-  animation-delay: calc(var(--i, 0) * 50ms);
-}
-.moment {
+.coach-note {
+  display: flex;
+  align-items: flex-start;
   gap: 10px;
-  min-height: 64px;
-  padding-inline: 14px;
 }
-.moment-title {
-  color: var(--text-strong);
-}
-.mark {
+.coach-mark {
   display: grid;
   flex: none;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
+  background: var(--coach);
 }
-.mark--right {
-  background: var(--success);
-  color: var(--bg);
+.coach-mark svg {
+  width: 26px;
+  height: 26px;
 }
-.mark--missed {
-  background: var(--danger);
-  color: var(--bg);
+.coach-bubble {
+  display: grid;
+  flex: 1;
+  gap: 6px;
+  padding: 12px 14px 14px;
+  border-radius: 4px 18px 18px;
+  background: var(--surface-2);
 }
-.mark--quiet {
-  box-shadow: inset 0 0 0 1.5px var(--text-muted);
+.coach-bubble p {
+  margin: 0;
+  color: var(--text);
+  font: var(--text-body);
+  text-wrap: pretty;
+}
+.coach-bubble .eyebrow {
   color: var(--text-muted);
+  font: var(--text-eyebrow);
 }
-/* The status colours are pale on white, so the small text mixes in some ink. */
-.moment-sub--right {
-  color: color-mix(in srgb, var(--success) 65%, var(--text-strong));
+
+.moment {
+  min-height: 64px;
 }
-.moment-sub--missed {
-  color: color-mix(in srgb, var(--danger) 70%, var(--text-strong));
+.moment-title {
+  color: var(--text-strong);
+  font: var(--text-callout);
+}
+a.moment {
+  padding-right: 12px;
 }
 .moment-again {
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--surface-2);
   color: var(--text-strong);
-  font: var(--text-caption);
-  font-weight: 500;
+  font: 500 13px/18px var(--font);
   white-space: nowrap;
+}
+
+/* The same dock every screen ends in: one ink pill, a grey one beside it. */
+.dock {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  gap: 12px;
+  padding: 12px max(16px, calc((100% - 528px) / 2)) calc(12px + var(--safe-bottom));
+  border-top: 1px solid var(--hairline);
+  background: var(--bg);
+}
+.dock .btn-primary {
+  flex: 1;
+  width: auto;
+  font-weight: 600;
+}
+.dock-today {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  padding: 0 24px;
+  text-decoration: none;
+}
+.dock-today:active {
+  transform: scale(0.97);
 }
 
 .recap-empty {
@@ -102,16 +221,12 @@
   margin: 0 0 12px;
 }
 
-@keyframes seg-in {
-  from {
-    opacity: 0;
-    transform: scaleX(0.4);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .result-bar i,
-  .recap .list > li {
-    animation: none;
+  .pip::before,
+  .pip svg {
+    animation-name: fade-in;
+  }
+  .nav-button:active {
+    transform: none;
   }
 }

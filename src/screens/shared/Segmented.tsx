@@ -1,8 +1,15 @@
 import './screen.css';
 
+export interface SegmentedOption<T> {
+  value: T;
+  label: string;
+  /** A quieter word after the label, e.g. the side you play. */
+  hint?: string;
+}
+
 export interface SegmentedProps<T extends string | number> {
   label: string;
-  options: { value: T; label: string }[];
+  options: SegmentedOption<T>[];
   value: T;
   onChange: (value: T) => void;
 }
@@ -16,6 +23,7 @@ export function Segmented<T extends string | number>({ label, options, value, on
       {options.map((o) => (
         <button key={o.value} type="button" aria-pressed={o.value === value} onClick={() => onChange(o.value)}>
           {o.label}
+          {o.hint && <span class="segmented-hint">{o.hint}</span>}
         </button>
       ))}
     </div>

@@ -1,38 +1,33 @@
-import { useState } from 'preact/hooks';
 import { OPENINGS } from '../content/catalog';
-import type { OpeningId } from '../content/types';
-import { dueReviews, getDepth, getLastGame, getSettings, getWeekStats, welcomeBack } from '../progress/store';
+import type { RateCount } from '../progress/stats';
+import { dueReviews, getSettings, getWeekStats, welcomeBack } from '../progress/store';
 import { InstallHint } from '../ui/InstallHint';
 import { TabBar } from '../ui/TabBar';
-import { OpeningCard } from './home/OpeningCard';
 import { ReviewsRow } from './home/ReviewsRow';
+import { UpNextCard } from './home/UpNextCard';
 import { useSetStatus } from './home/useSetStatus';
-import { WeekLine } from './home/WeekLine';
-import { Segmented } from './shared/Segmented';
+import { YourPatterns } from './home/YourPatterns';
+import { OpeningSwitch, useOpening } from './shared/OpeningSwitch';
 import './shared/screen.css';
 import './home.css';
 
-const OPENING_OPTIONS = OPENINGS.map((o) => ({ value: o.id, label: o.name }));
-
-/** The opening you played last, or the first one. */
-function initialOpening(): OpeningId {
-  return getLastGame()?.opening ?? OPENINGS[0].id;
+function weekLine(week: RateCount): string {
+  return week.total === 0 ? 'Play a game to see your progress here.' : `${week.right} of ${week.total} key positions handled well this week`;
 }
 
 export function Home() {
-  const [featured, setFeatured] = useState(initialOpening);
+  const [opening, setOpening] = useOpening();
   const { levels } = getSettings();
-  const level = levels[featured];
-  const status = useSetStatus(featured, level);
+  const level = levels[opening];
+  const status = useSetStatus(opening, level);
   const now = Date.now();
   const due = OPENINGS.flatMap((o) => dueReviews(o.id, levels[o.id], now));
 
   return (
     <main class="screen screen--tabs today">
-      <header class="topbar">
-        <h1 class="wordmark">
-          Chess Coach<span class="wordmark-dot">.</span>
-        </h1>
+      <header class="large-head">
+        <h1 class="large-title">Today</h1>
+        <p class="large-sub">{weekLine(getWeekStats(now).total)}</p>
       </header>
       <InstallHint />
       {welcomeBack(now) && (
@@ -42,10 +37,10 @@ export function Home() {
         </p>
       )}
       <div class="stack">
-        <OpeningCard opening={featured} level={level} stage={getDepth(featured, level)} status={status} />
-        <Segmented label="Opening" options={OPENING_OPTIONS} value={featured} onChange={setFeatured} />
+        <OpeningSwitch value={opening} onChange={setOpening} />
+        <UpNextCard opening={opening} level={level} status={status} />
         <ReviewsRow due={due} />
-        <WeekLine total={getWeekStats(now).total} />
+        <YourPatterns opening={opening} />
       </div>
       <TabBar current="today" />
     </main>

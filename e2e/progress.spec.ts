@@ -56,12 +56,14 @@ async function seed(page: Page, progress: unknown) {
 }
 
 test.describe('Today', () => {
-  test('shows the opening to play with one Play button', async ({ page }) => {
+  test('shows the next game with one Play button', async ({ page }) => {
     await page.goto('./');
-    await expect(page.getByRole('heading', { name: 'Chess Coach.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Today', level: 1 })).toBeVisible();
     const card = page.getByRole('region', { name: 'Italian Game' });
-    await expect(card.getByText('You play White · Opponents rated 1400')).toBeVisible();
-    await expect(card.getByText('Stage 1 of 3: Spot it, then play it')).toBeVisible();
+    await expect(card.getByText('Up next · Game 1')).toBeVisible();
+    await expect(card.getByText('You play White · opponents 1400')).toBeVisible();
+    await expect(card.getByText('Stage 1 of 3 · Spot it, then play it')).toBeVisible();
+    await expect(card.getByText('0 of 15 right')).toBeVisible();
     await expect(card.getByRole('button', { name: 'Play', exact: true })).toBeEnabled();
     await expect(page.locator('main .btn-primary')).toHaveCount(1);
     await expect(page.getByText('Download for offline')).toHaveCount(0);
@@ -75,7 +77,7 @@ test.describe('Today', () => {
 
     await switcher.getByRole('button', { name: 'Caro-Kann' }).click();
     const card = page.getByRole('region', { name: 'Caro-Kann Defense' });
-    await expect(card.getByText('You play Black · Opponents rated 1400')).toBeVisible();
+    await expect(card.getByText('You play Black · opponents 1400')).toBeVisible();
     await expect(card.getByRole('button', { name: 'Coming soon' })).toBeDisabled();
 
     await switcher.getByRole('button', { name: 'Italian' }).click();
@@ -95,7 +97,7 @@ test.describe('Today', () => {
     const moments = [moment(3, true), moment(7, true), moment(15, false, { kinds: ['trap'] }), moment(19, true, { type: 'nothing', kinds: [] })];
     await seed(page, savedProgress(moments));
     await page.reload();
-    await expect(page.getByText('3 of 4 key positions right this week')).toBeVisible();
+    await expect(page.getByText('3 of 4 key positions handled well this week')).toBeVisible();
     await expect(page.getByText(/Chances to win/)).toHaveCount(0);
     await expect(page.getByText('Not started')).toHaveCount(0);
   });
@@ -104,8 +106,47 @@ test.describe('Today', () => {
     const due = { opening: 'italian', level: 1400, gameId: GAME, ply: 7, type: 'pause', box: 0, due: Date.now() - DAY };
     await seed(page, savedProgress([moment(7, false)], { reviews: [due, { ...due, ply: 15 }] }));
     await page.goto('./');
-    await page.getByRole('link', { name: 'Review 2 positions you missed' }).click();
+    const row = page.getByRole('link', { name: 'Review 2 positions you missed' });
+    await expect(row).toContainText('About 2 minutes · from 1 game');
+    await row.click();
     await expect(page).toHaveURL(new RegExp(`#/play/italian/1400\\?review=${GAME}:7$`));
+  });
+
+  test('highlights the reviews once a day', async ({ page }) => {
+    const due = { opening: 'italian', level: 1400, gameId: GAME, ply: 7, type: 'pause', box: 0, due: Date.now() - DAY };
+    await seed(page, savedProgress([moment(7, false)], { reviews: [due] }));
+    await page.goto('./');
+    await expect(page.locator('.reviews-row')).toHaveClass(/reviews-row--glow/);
+    await page.reload();
+    await expect(page.locator('.reviews-row')).toBeVisible();
+    await expect(page.locator('.reviews-row')).not.toHaveClass(/reviews-row--glow/);
+  });
+
+  test('names your patterns with a word, a count and a meter', async ({ page }) => {
+    const moments = [
+      ...[0, 1, 2, 3].map(() => moment(3, true)),
+      ...[true, false, false].map((right) => moment(15, right)),
+      ...[true, false].map((right) => moment(7, right)),
+      moment(23, true, { type: 'nothing', kinds: [] }),
+    ];
+    await seed(page, savedProgress(moments));
+    await page.goto('./');
+    const patterns = page.getByRole('region', { name: 'Your patterns' });
+    const rows = patterns.getByRole('listitem');
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(0)).toContainText('Free pieces');
+    await expect(rows.nth(0)).toContainText('Strong');
+    await expect(rows.nth(0)).toContainText('4 of 4');
+    await expect(rows.nth(1)).toContainText('Trapped piece');
+    await expect(rows.nth(1)).toContainText('Needs work');
+    await expect(rows.nth(1)).toContainText('1 of 3');
+    await expect(rows.nth(2)).toContainText('Remove the defender');
+    await expect(rows.nth(2)).toContainText('Learning');
+    await expect(patterns.getByText('Nothing here')).toHaveCount(0);
+    await expect(patterns.locator('.bar-fill')).toHaveCount(3);
+
+    await patterns.getByRole('link', { name: 'See all' }).click();
+    await expect(page.getByRole('heading', { name: 'Progress', level: 1 })).toBeVisible();
   });
 
   test('welcomes you back after two quiet days', async ({ page }) => {
@@ -128,14 +169,17 @@ test.describe('Today', () => {
   test('the tab bar moves between Today, Progress and Settings', async ({ page }) => {
     await page.goto('./');
     const tabs = page.getByRole('navigation', { name: 'Main' });
+    const pill = tabs.locator('.tabbar-pill');
     await expect(tabs.getByRole('link', { name: 'Today' })).toHaveAttribute('aria-current', 'page');
+    await expect(pill).not.toHaveClass(/tabbar-pill--slide/);
     await tabs.getByRole('link', { name: 'Progress' }).click();
     await expect(page.getByRole('heading', { name: 'Progress', level: 1 })).toBeVisible();
     await expect(tabs.getByRole('link', { name: 'Progress' })).toHaveAttribute('aria-current', 'page');
+    await expect(pill).toHaveClass(/tabbar-pill--slide/);
     await tabs.getByRole('link', { name: 'Settings' }).click();
     await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
     await tabs.getByRole('link', { name: 'Today' }).click();
-    await expect(page.getByRole('heading', { name: 'Chess Coach.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Today', level: 1 })).toBeVisible();
   });
 });
 
@@ -170,14 +214,15 @@ test.describe('Settings', () => {
     await expect(caroKann.getByRole('button', { name: '2000' })).toHaveAttribute('aria-pressed', 'true');
 
     await page.goto('./');
-    await expect(page.getByText('You play White · Opponents rated 1700')).toBeVisible();
+    await expect(page.getByText('You play White · opponents 1700')).toBeVisible();
   });
 
   test('a manual stage replaces the automatic one on Today', async ({ page }) => {
     await page.goto('./#/settings');
     await page.getByRole('button', { name: '2', exact: true }).click();
     await page.goto('./');
-    await expect(page.getByText('Stage 2 of 3: Play the follow-up too')).toBeVisible();
+    await expect(page.getByText('Stage 2 of 3 · Play the follow-up too')).toBeVisible();
+    await expect(page.getByText('Set in Settings')).toBeVisible();
   });
 
   test('reset asks for confirmation inside the page', async ({ page }) => {
@@ -228,11 +273,11 @@ test.describe('Saved progress', () => {
       await page.goto('./');
       await page.reload();
       await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-      await expect(page.getByText('2 of 3 key positions right this week')).toBeVisible();
+      await expect(page.getByText('2 of 3 key positions handled well this week')).toBeVisible();
 
       await page.goto('./#/progress');
       await page.reload();
-      await expect(page.getByRole('region', { name: 'Italian Game' }).getByText('Games played')).toBeVisible();
+      await expect(page.locator('.stat-tile').filter({ hasText: 'This week' })).toContainText('2 / 3');
 
       await page.goto('./#/recap');
       await page.reload();
@@ -263,21 +308,37 @@ test.describe('Recap', () => {
     await seed(page, savedProgress(keyPositions()));
     await page.goto('./#/recap');
     await expect(page.getByRole('heading', { name: 'Game complete' })).toBeVisible();
+    await expect(page.getByText('Italian Game · Opponents rated 1400')).toBeVisible();
     const summary = page.getByRole('region', { name: 'Result' });
     await expect(summary.getByText('4 of 5')).toBeVisible();
     await expect(summary.getByText('key positions handled well')).toBeVisible();
-    await expect(summary.locator('.result-bar i')).toHaveCount(5);
-    await expect(summary.locator('.result-bar .missed')).toHaveCount(1);
+    await expect(summary.locator('.pip')).toHaveCount(5);
+    await expect(summary.locator('.pip--missed')).toHaveCount(1);
+    await expect(page.getByText('Good game. Worth another look: move 11.')).toBeVisible();
 
     const list = page.getByRole('list', { name: 'Key positions' });
     await expect(list.getByText('Move 5 · Free piece')).toBeVisible();
     await expect(list.getByText('Move 11 · Trapped piece')).toBeVisible();
-    await expect(list.getByText('Move 15 · Nothing special')).toBeVisible();
+    await expect(list.getByText('Move 15 · Nothing here')).toBeVisible();
     await expect(list.getByText('Spotted it', { exact: true })).toBeVisible();
     await expect(list.getByText('Found it without a hint')).toBeVisible();
     await expect(list.getByText('Spotted it and found the move')).toBeVisible();
-    await expect(list.getByText('Missed it')).toBeVisible();
-    await expect(list.getByText('Right, nothing special')).toBeVisible();
+    await expect(list.getByText('Missed it · saved for review')).toBeVisible();
+    await expect(list.getByText('Right, it was quiet')).toBeVisible();
+  });
+
+  test('counts the score up and fills the pips in turn', async ({ page }) => {
+    await seed(page, savedProgress(keyPositions()));
+    await page.goto('./#/recap');
+    const number = page.locator('.summary-number');
+    const shown: string[] = [];
+    await expect(async () => {
+      shown.push((await number.textContent()) ?? '');
+      expect(shown.at(-1)).toBe('4 of 5');
+    }).toPass({ intervals: [16] });
+    expect(shown[0]).not.toBe('4 of 5');
+    const delays = await page.locator('.pip').evaluateAll((pips) => pips.map((p) => getComputedStyle(p, '::before').animationDelay));
+    expect(delays).toEqual(['0.24s', '0.32s', '0.4s', '0.48s', '0.56s']);
   });
 
   test('"See it again" is only on a miss and opens that position', async ({ page }) => {
@@ -290,13 +351,17 @@ test.describe('Recap', () => {
     await expect(page).toHaveURL(new RegExp(`#/play/italian/1400\\?review=${GAME}:15$`));
   });
 
-  test('has one ink button and a close button', async ({ page }) => {
+  test('has one ink button, a way back to Today and a close button', async ({ page }) => {
     await seed(page, savedProgress(keyPositions()));
     await page.goto('./#/recap');
-    await expect(page.locator('main .btn')).toHaveCount(1);
+    await expect(page.locator('main .btn-primary')).toHaveCount(1);
     await expect(page.locator('main .btn-primary')).toHaveText('Next game');
     await page.getByRole('link', { name: 'Close' }).click();
-    await expect(page.getByRole('heading', { name: 'Chess Coach.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Today', level: 1 })).toBeVisible();
+
+    await page.goto('./#/recap');
+    await page.getByRole('link', { name: 'Today' }).click();
+    await expect(page.getByRole('heading', { name: 'Today', level: 1 })).toBeVisible();
 
     await page.goto('./#/recap');
     await page.getByRole('button', { name: 'Next game' }).click();
@@ -320,6 +385,7 @@ test.describe('Recap', () => {
 
     const card = page.getByRole('dialog', { name: 'New stage unlocked: Spot it, then play it' });
     await expect(card.getByText('Spot the moment, then play the best move')).toBeVisible();
+    await expect(card.locator('.levelup-dots .on')).toHaveCount(1);
     await card.getByRole('button', { name: 'Got it' }).click();
     await expect(card).toBeHidden();
     await expect(page.getByRole('heading', { name: 'Game complete' })).toBeVisible();
@@ -342,18 +408,26 @@ test.describe('Recap', () => {
 });
 
 test.describe('Progress', () => {
-  test('shows games, stage, reviews and the activity grid', async ({ page }) => {
-    await seed(page, savedProgress([moment(3, true), moment(7, false)]));
+  test('shows the week, the stage, a card per pattern and the activity grid', async ({ page }) => {
+    await seed(page, savedProgress([moment(3, true), moment(7, false), moment(23, true, { type: 'nothing', kinds: [] })]));
     await page.goto('./#/progress');
     await expect(page.getByRole('heading', { name: 'Progress', level: 1 })).toBeVisible();
-    const italian = page.getByRole('region', { name: 'Italian Game' });
-    await expect(italian.getByText('Games played')).toBeVisible();
-    await expect(italian.getByText('Stage 1 of 3: Spot it, then play it')).toBeVisible();
-    await expect(italian.getByText('Reviews due')).toBeVisible();
-    await expect(italian.getByRole('img', { name: 'Chances to win: 50% right' })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Caro-Kann Defense' }).getByText('Not started yet')).toBeVisible();
+    await expect(page.getByText('Italian Game · White')).toBeVisible();
+    await expect(page.locator('.stat-tile').filter({ hasText: 'This week' })).toContainText('2 / 3');
+    await expect(page.locator('.stat-tile').filter({ hasText: 'Stage 1 of 3' })).toContainText('0 / 15');
+
+    const cards = page.getByRole('region', { name: 'Patterns' }).getByRole('listitem');
+    await expect(cards).toHaveCount(3);
+    await expect(cards.filter({ hasText: 'Free pieces' })).toContainText('1 of 1 found');
+    await expect(cards.filter({ hasText: 'Remove the defender' })).toContainText('0 of 1 found');
+    await expect(cards.filter({ hasText: 'Nothing here' })).toContainText('1 of 1 right');
+    await expect(cards.first()).toContainText('Learning');
     await expect(page.getByRole('img', { name: /Days you played/ })).toBeVisible();
     await expect(page.getByText(/streak/i)).toHaveCount(0);
+
+    await page.getByRole('group', { name: 'Opening' }).getByRole('button', { name: 'Caro-Kann' }).click();
+    await expect(page.getByText('Caro-Kann · Black')).toBeVisible();
+    await expect(page.getByText('Not started yet')).toBeVisible();
   });
 
   test('has an empty state before the first game', async ({ page }) => {
@@ -399,7 +473,8 @@ test.describe('Today on an iPhone 14', () => {
   test('fits on one screen when nothing is due', async ({ page }) => {
     await seed(page, savedProgress([moment(3, true), moment(7, false)]));
     await page.goto('./');
-    await expect(page.getByText('1 of 2 key positions right this week')).toBeVisible();
+    await expect(page.getByText('1 of 2 key positions handled well this week')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Your patterns' })).toBeVisible();
     const hidden = await page.evaluate(() => document.documentElement.scrollHeight - document.documentElement.clientHeight);
     expect(hidden).toBeLessThanOrEqual(0);
   });
@@ -413,4 +488,21 @@ test('About lists the data and licences', async ({ page }) => {
   }
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+});
+
+test.describe('Reduced motion', () => {
+  test.use({ contextOptions: { reducedMotion: 'reduce' } });
+
+  test('shows the score at once and fades instead of moving', async ({ page }) => {
+    await seed(page, savedProgress([moment(3, true), moment(7, false)]));
+    await page.goto('./#/recap');
+    await expect(page.locator('.summary-number')).toHaveText('1 of 2');
+    const pip = await page.locator('.pip').first().evaluate((p) => getComputedStyle(p, '::before').animationName);
+    expect(pip).toBe('fade-in');
+
+    await page.getByRole('link', { name: 'Close' }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Progress' }).click();
+    const pill = await page.locator('.tabbar-pill').evaluate((p) => getComputedStyle(p).animationName);
+    expect(pill).toBe('tabbar-fade');
+  });
 });

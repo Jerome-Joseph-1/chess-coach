@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dayKey, daysBetween, lastWeeks, startOfDay } from './days';
-import { percent, setStats, weekStats } from './stats';
+import { patternLevel, patternStats, percent, setStats, stageProgress, weekStats } from './stats';
 import { moment, noon, wrong } from './testkit';
 
 describe('set stats', () => {
@@ -93,5 +93,65 @@ describe('week stats', () => {
 
   it('is empty before anything is played', () => {
     expect(weekStats([], now).total).toEqual({ right: 0, total: 0 });
+  });
+});
+
+describe('pattern stats', () => {
+  const patternAt: Record<number, string> = { 1: 'fork', 3: 'fork', 5: 'pin', 7: 'fork', 9: 'quiet' };
+  const patternOf = (m: { ply: number }) => patternAt[m.ply] ?? null;
+
+  it('groups first attempts by pattern, most seen first', () => {
+    const stats = patternStats(
+      [
+        moment({ ply: 1 }),
+        wrong({ ply: 3 }),
+        moment({ ply: 5 }),
+        moment({ ply: 7 }),
+        moment({ ply: 9, type: 'nothing', kinds: [] }),
+        moment({ ply: 5, review: true }),
+        wrong({ ply: 1, practice: true }),
+        moment({ ply: 11 }),
+      ],
+      patternOf,
+    );
+    expect(stats.map((s) => [s.pattern, s.count])).toEqual([
+      ['fork', { right: 2, total: 3 }],
+      ['pin', { right: 1, total: 1 }],
+      ['quiet', { right: 1, total: 1 }],
+    ]);
+  });
+
+  it('is empty before anything is played', () => {
+    expect(patternStats([], patternOf)).toEqual([]);
+  });
+
+  it('calls a pattern strong at 75% right once it has been seen four times', () => {
+    expect(patternLevel({ right: 3, total: 4 })).toBe('strong');
+    expect(patternLevel({ right: 5, total: 8 })).toBe('learning');
+    expect(patternLevel({ right: 3, total: 3 })).toBe('learning');
+  });
+
+  it('says needs work under 50% once it has been seen three times', () => {
+    expect(patternLevel({ right: 1, total: 3 })).toBe('needs-work');
+    expect(patternLevel({ right: 2, total: 4 })).toBe('learning');
+    expect(patternLevel({ right: 0, total: 2 })).toBe('learning');
+  });
+
+  it('puts the level on every group', () => {
+    const moments = [1, 3, 7].map((ply) => wrong({ ply }));
+    expect(patternStats(moments, patternOf)[0].level).toBe('needs-work');
+  });
+});
+
+describe('stage progress', () => {
+  const entries = (held: number, missed: number) => [
+    ...Array.from({ length: held }, (_, i) => ({ key: `h${i}`, held: true })),
+    ...Array.from({ length: missed }, (_, i) => ({ key: `m${i}`, held: false })),
+  ];
+
+  it('counts right answers towards the 15 that move you up', () => {
+    expect(stageProgress([])).toEqual({ right: 0, total: 15 });
+    expect(stageProgress(entries(9, 4))).toEqual({ right: 9, total: 15 });
+    expect(stageProgress(entries(18, 2))).toEqual({ right: 15, total: 15 });
   });
 });

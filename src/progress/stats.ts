@@ -1,5 +1,6 @@
 import type { Kind, Level, MomentResult, OpeningId } from '../content/types';
 import { startOfDay } from './days';
+import { MOVE_UP_AT, type WindowEntry } from './depth';
 import { isRight } from './moments';
 import type { PlayedGame } from './model';
 
@@ -79,4 +80,40 @@ export function weekStats(moments: MomentResult[], now: number): WeekStats {
     tally(stats.parts[part], isRight(m));
   }
   return stats;
+}
+
+export type PatternLevel = 'strong' | 'learning' | 'needs-work';
+
+export interface PatternStat<P extends string = string> {
+  pattern: P;
+  count: RateCount;
+  level: PatternLevel;
+}
+
+const STRONG = { rate: 0.75, seen: 4 };
+const NEEDS_WORK = { rate: 0.5, seen: 3 };
+
+/** A word for where a pattern stands; a few positions are not enough to call it either way. */
+export function patternLevel({ right, total }: RateCount): PatternLevel {
+  if (total >= STRONG.seen && right >= STRONG.rate * total) return 'strong';
+  if (total >= NEEDS_WORK.seen && right < NEEDS_WORK.rate * total) return 'needs-work';
+  return 'learning';
+}
+
+/** First attempts grouped by the pattern each position teaches, most seen first. */
+export function patternStats<P extends string>(moments: MomentResult[], patternOf: (m: MomentResult) => P | null): PatternStat<P>[] {
+  const counts = new Map<P, RateCount>();
+  for (const m of moments) {
+    const pattern = m.review || m.practice ? null : patternOf(m);
+    if (!pattern) continue;
+    const count = counts.get(pattern) ?? emptyCount();
+    counts.set(pattern, count);
+    tally(count, isRight(m));
+  }
+  return [...counts].map(([pattern, count]) => ({ pattern, count, level: patternLevel(count) })).sort((a, b) => b.count.total - a.count.total);
+}
+
+/** Right answers among the stage's latest positions, counted towards the number that moves you up. */
+export function stageProgress(window: WindowEntry[]): RateCount {
+  return { right: Math.min(window.filter((e) => e.held).length, MOVE_UP_AT), total: MOVE_UP_AT };
 }

@@ -160,6 +160,15 @@ describe('depth', () => {
     store.saveSettings({ ...store.getSettings(), depthOverride: undefined });
     expect(store.getDepth('italian', 1400)).toBe(1);
   });
+
+  it('counts right answers towards the next stage, and nothing while the stage is set by hand', async () => {
+    const store = await openStore();
+    await playPauses(store, 9, 12);
+    expect(store.getStageProgress('italian', 1400)).toEqual({ right: 9, total: 15 });
+    expect(store.getStageProgress('italian', 1700)).toEqual({ right: 0, total: 15 });
+    store.saveSettings({ ...store.getSettings(), depthOverride: 4 });
+    expect(store.getStageProgress('italian', 1400)).toBeNull();
+  });
 });
 
 describe('welcome back', () => {

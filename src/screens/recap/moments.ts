@@ -56,8 +56,8 @@ export function kindPhrase(m: MomentResult, turn?: Turn): string {
 
 /** "Move 7 · Trapped piece": the pattern when the game file named one, else the kind in plain words. */
 export function momentTitle(m: MomentResult, turn?: Turn, pattern?: string): string {
-  const name = m.type !== 'nothing' && pattern ? pattern : kindPhrase(m, turn);
-  return `Move ${m.moveNo} · ${name}`;
+  if (m.type === 'nothing') return `Move ${m.moveNo} · Nothing here`;
+  return `Move ${m.moveNo} · ${pattern ?? kindPhrase(m, turn)}`;
 }
 
 export function momentTone(m: MomentResult): MomentTone {
@@ -67,8 +67,8 @@ export function momentTone(m: MomentResult): MomentTone {
 
 export function momentSub(m: MomentResult): string {
   const tone = momentTone(m);
-  if (tone === 'missed') return 'Missed it';
-  if (tone === 'quiet') return 'Right, nothing special';
+  if (tone === 'missed') return 'Missed it · saved for review';
+  if (tone === 'quiet') return 'Right, it was quiet';
   if (m.type === 'silent') return 'Found it without a hint';
   return FOUND[m.outcomes.at(-1)?.step ?? 'spot'];
 }
@@ -76,4 +76,18 @@ export function momentSub(m: MomentResult): string {
 /** How many of the game's key positions went right. Quiet positions and silent checks count like any other. */
 export function handledWell(moments: MomentResult[]): RateCount {
   return { right: moments.filter(isRight).length, total: moments.length };
+}
+
+function moveList(moves: number[]): string {
+  if (moves.length === 1) return `move ${moves[0]}`;
+  return `moves ${moves.slice(0, -1).join(', ')} and ${moves.at(-1)}`;
+}
+
+/** The coach's one-line take on the game: how it went and which moves to look at again. */
+export function coachNote(moments: MomentResult[]): string | null {
+  if (moments.length === 0) return null;
+  const missed = moments.filter((m) => !isRight(m)).map((m) => m.moveNo);
+  if (missed.length === 0) return 'Clean game: every key position handled well.';
+  const again = `Worth another look: ${moveList(missed)}.`;
+  return missed.length === moments.length ? `A tough one. ${again}` : `Good game. ${again}`;
 }
