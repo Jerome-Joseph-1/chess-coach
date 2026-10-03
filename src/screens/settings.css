@@ -84,7 +84,7 @@
 .about-row {
   min-height: 64px;
   margin-top: 8px;
-  border-radius: 16px;
+  border-radius: var(--r-row);
 }
 
 @media (prefers-reduced-motion: reduce) {

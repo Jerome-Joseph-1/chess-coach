@@ -6,7 +6,8 @@ import { getActiveDays, getDepth, getMoments, getSetStats, getSettings, getStage
 import { navigate } from '../router';
 import { Button } from '../ui/Button';
 import { TabBar } from '../ui/TabBar';
-import { OPENING_SHORT, sideName } from './shared/labels';
+import { EmptyCard } from './shared/EmptyCard';
+import { OPENING_SHORT } from './shared/labels';
 import { OpeningSwitch, useOpening } from './shared/OpeningSwitch';
 import { LevelBar, LevelWord, PatternTile, useRolledCount } from './shared/PatternParts';
 import { PATTERNS, usePatternStats, type PatternId } from './shared/patterns';
@@ -76,7 +77,7 @@ function Patterns({ opening }: { opening: OpeningId }) {
         </h2>
         <span class="section-note">Last 30 days</span>
       </div>
-      {stats?.length === 0 && <p class="card progress-note muted">No key positions in the last 30 days.</p>}
+      {stats?.length === 0 && <EmptyCard text="No key positions in the last 30 days." />}
       {stats && stats.length > 0 && (
         <ul class="pattern-grid">
           {stats.map((stat, i) => (
@@ -92,10 +93,11 @@ function OpeningProgress({ opening }: { opening: OpeningId }) {
   const started = getSetStats(opening, getSettings().levels[opening]).games > 0;
   if (!started) {
     return (
-      <section class="card progress-note" aria-label={OPENING_SHORT[opening]}>
-        <h2>Not started yet</h2>
-        <p class="muted">Play the {OPENING_SHORT[opening]} and your stage and patterns show up here.</p>
-      </section>
+      <EmptyCard
+        label={OPENING_SHORT[opening]}
+        title="Not started yet"
+        text={`Play the ${OPENING_SHORT[opening]} and your stage and patterns show up here.`}
+      />
     );
   }
   return (
@@ -134,11 +136,9 @@ function Activity() {
 
 function EmptyProgress() {
   return (
-    <section class="card progress-empty">
-      <h2>Your progress shows up here</h2>
-      <p class="muted">Play a game and this page fills in: your stage and the patterns you find.</p>
+    <EmptyCard title="Your progress shows up here" text="Play a game and this page fills in: your stage and the patterns you find.">
       <Button onClick={() => navigate('/')}>Play a game</Button>
-    </section>
+    </EmptyCard>
   );
 }
 
@@ -147,20 +147,20 @@ export function Progress() {
   return (
     <main class="screen screen--tabs">
       <header class="large-head">
-        <p class="eyebrow">
-          {OPENING_SHORT[opening]} · {sideName(opening)}
-        </p>
         <h1 class="large-title">Progress</h1>
+        <p class="large-sub">Your stage, patterns and days played.</p>
       </header>
-      {hasPlayed() ? (
-        <div class="stack">
-          <OpeningSwitch value={opening} onChange={setOpening} />
-          <OpeningProgress key={opening} opening={opening} />
-          <Activity />
-        </div>
-      ) : (
-        <EmptyProgress />
-      )}
+      <div class="stack">
+        <OpeningSwitch value={opening} onChange={setOpening} />
+        {hasPlayed() ? (
+          <>
+            <OpeningProgress key={opening} opening={opening} />
+            <Activity />
+          </>
+        ) : (
+          <EmptyProgress />
+        )}
+      </div>
       <TabBar current="progress" />
     </main>
   );

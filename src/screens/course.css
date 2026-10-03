@@ -50,10 +50,3 @@
   background: var(--surface-2);
   color: var(--text-muted);
 }
-
-.course-note {
-  margin: 0;
-  padding: 16px;
-  border-radius: 16px;
-  font: var(--text-caption);
-}

@@ -210,20 +210,6 @@ a.moment {
   transform: scale(0.97);
 }
 
-.recap-empty {
-  display: grid;
-  justify-items: center;
-  gap: 12px;
-  padding-top: 18vh;
-  text-align: center;
-}
-.recap-empty h1 {
-  font: var(--text-title);
-}
-.recap-empty p {
-  margin: 0 0 12px;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .pip::before,
   .pip svg {

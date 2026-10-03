@@ -142,6 +142,7 @@ export function Settings() {
     <main class="screen screen--tabs settings">
       <header class="large-head">
         <h1 class="large-title">Settings</h1>
+        <p class="large-sub">How the app looks, sounds and plays.</p>
       </header>
 
       <div class="stack">

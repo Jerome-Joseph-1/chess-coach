@@ -1,5 +1,6 @@
 import type { OpeningId } from '../content/types';
 import { noteSeenCount } from '../progress/store';
+import { EmptyCard } from '../screens/shared/EmptyCard';
 import { variationsMet, variationsOf } from '.';
 import './variations.css';
 
@@ -19,7 +20,7 @@ export function VariationsMet({ opening }: { opening: OpeningId }) {
         )}
       </div>
       {met.length === 0 ? (
-        <p class="card variations-empty">Play a few games to meet the main lines.</p>
+        <EmptyCard text="Play a few games to meet the main lines." />
       ) : (
         <ul class="card list">
           {met.map(({ id, name, plan }, i) => (

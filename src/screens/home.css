@@ -1,5 +1,4 @@
-.today > .welcome {
-  margin-bottom: 16px;
+.today .welcome {
   animation: rise-in var(--d-base) var(--spring) backwards;
 }
 
@@ -40,7 +39,7 @@
 .up-next-tile {
   width: 56px;
   height: 56px;
-  border-radius: 14px;
+  border-radius: var(--r-row);
 }
 /* The quiet second way out of the lesson card; the button stays the one action. */
 .up-next-instead {
@@ -64,16 +63,6 @@
   width: 80px;
   height: 80px;
   border-radius: 8px;
-  --sq-light: #ebecd0;
-  --sq-dark: #779556;
-}
-:root[data-board='brown'] .mini-board {
-  --sq-light: #f0d9b5;
-  --sq-dark: #b58863;
-}
-:root[data-board='gray'] .mini-board {
-  --sq-light: var(--board-light);
-  --sq-dark: var(--board-dark);
 }
 .mini-board .sq-light {
   fill: var(--sq-light);
@@ -127,7 +116,7 @@
 
 .reviews-row {
   min-height: 64px;
-  border-radius: 16px;
+  border-radius: var(--r-row);
 }
 .row-title {
   color: var(--text-strong);
@@ -162,7 +151,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .today > .welcome {
+  .today .welcome {
     animation-name: fade-in;
   }
   .reviews-row--glow {

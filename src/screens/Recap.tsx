@@ -12,6 +12,7 @@ import { celebrate } from '../ui/rewards';
 import { playSound } from '../ui/sound';
 import { coachNote, handledWell, momentSub, momentTitle, momentTone, type MomentTone } from './recap/moments';
 import { dockDelay, pipDelay, rowDelay, scoreDuration, PIP_START_MS } from './recap/timeline';
+import { EmptyCard } from './shared/EmptyCard';
 import { Icon, type IconName } from './shared/icons';
 import { OPENING_TITLES, playPath, ratingLine, reviewPath } from './shared/labels';
 import { loadGameOnce } from './shared/patterns';
@@ -168,17 +169,7 @@ function RecapBody({ game, bonus }: { game: GameSummary; bonus: boolean }) {
 
   return (
     <main class="screen recap">
-      <header class="nav-bar">
-        <a class="nav-button" href="#/" aria-label="Close">
-          <Icon name="cross" size={24} />
-        </a>
-        <div class="nav-title">
-          <h1>Game complete</h1>
-          <p>
-            {OPENING_TITLES[game.opening]} · {ratingLine(game.level)}
-          </p>
-        </div>
-      </header>
+      <RecapNav title="Game complete" sub={`${OPENING_TITLES[game.opening]} · ${ratingLine(game.level)}`} />
 
       <div class="stack">
         <Summary moments={game.moments} bonus={bonus} />
@@ -211,16 +202,28 @@ function RecapBody({ game, bonus }: { game: GameSummary; bonus: boolean }) {
   );
 }
 
+/** The recap's nav bar: close back to Today, the title over what it is about. */
+function RecapNav({ title, sub }: { title: string; sub: string }) {
+  return (
+    <header class="nav-bar">
+      <a class="nav-button" href="#/" aria-label="Close">
+        <Icon name="cross" size={24} />
+      </a>
+      <div class="nav-title">
+        <h1>{title}</h1>
+        <p>{sub}</p>
+      </div>
+    </header>
+  );
+}
+
 function EmptyRecap() {
   return (
     <main class="screen recap">
-      <div class="recap-empty">
-        <h1>No game to look back on yet</h1>
-        <p class="muted">Finish a game and the recap shows up here.</p>
-        <Button size="lg" onClick={() => navigate('/')}>
-          Back to Today
-        </Button>
-      </div>
+      <RecapNav title="Recap" sub="Your last game" />
+      <EmptyCard title="No game to look back on yet" text="Finish a game and the recap shows up here.">
+        <Button onClick={() => navigate('/')}>Play a game</Button>
+      </EmptyCard>
     </main>
   );
 }

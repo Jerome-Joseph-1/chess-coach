@@ -29,16 +29,16 @@ export function Home() {
         <h1 class="large-title">Today</h1>
         <p class="large-sub">{weekLine(getWeekStats(now).total)}</p>
       </header>
-      <InstallHint />
-      {welcomeBack(now) && (
-        <p class="welcome welcome--card">
-          <span class="due-dot" aria-hidden="true" />
-          Welcome back: your next game counts double
-        </p>
-      )}
       <div class="stack">
         <OpeningSwitch value={opening} onChange={setOpening} />
+        {welcomeBack(now) && (
+          <p class="welcome welcome--card">
+            <span class="due-dot" aria-hidden="true" />
+            Welcome back: your next game counts double
+          </p>
+        )}
         <UpNextCard opening={opening} level={level} status={status} />
+        <InstallHint />
         <ReviewsRow due={due} />
         <YourPatterns opening={opening} />
       </div>

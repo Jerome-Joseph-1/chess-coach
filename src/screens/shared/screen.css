@@ -117,8 +117,30 @@
 }
 /* Lists sit in slightly tighter cards, with rules inset like the text. */
 .list.card {
-  border-radius: 16px;
+  border-radius: var(--r-row);
 }
+/* Before there is anything to show: one card pattern for every empty state, with at most one action. */
+.empty-card {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 16px;
+  border-radius: var(--r-row);
+}
+.empty-title {
+  font: var(--text-headline);
+  font-weight: 600;
+}
+.empty-text {
+  margin: 0;
+  color: var(--text-muted);
+  font: var(--text-caption);
+  text-wrap: pretty;
+}
+.empty-card .btn {
+  margin-top: 12px;
+}
+
 .list > * {
   position: relative;
 }
@@ -172,7 +194,7 @@ a.row:active {
   place-items: center;
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   background: var(--surface-3);
   color: var(--text-strong);
 }

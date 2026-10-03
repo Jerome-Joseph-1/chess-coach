@@ -1,7 +1,18 @@
-.board-host {
-  /* green by default; Settings sets data-board on the page */
+/* The board's squares, green by default; Settings sets data-board on the page. Mini boards and trays share them. */
+:root {
   --sq-light: #ebecd0;
   --sq-dark: #779556;
+}
+:root[data-board='brown'] {
+  --sq-light: #f0d9b5;
+  --sq-dark: #b58863;
+}
+:root[data-board='gray'] {
+  --sq-light: var(--board-light);
+  --sq-dark: var(--board-dark);
+}
+
+.board-host {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
@@ -13,14 +24,6 @@
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-}
-:root[data-board='brown'] .board-host {
-  --sq-light: #f0d9b5;
-  --sq-dark: #b58863;
-}
-:root[data-board='gray'] .board-host {
-  --sq-light: var(--board-light);
-  --sq-dark: var(--board-dark);
 }
 
 .cm-chessboard.coach .board .square.white {

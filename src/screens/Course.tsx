@@ -6,16 +6,18 @@ import { VariationsMet } from '../opening/VariationsMet';
 import { getLessons, getSettings } from '../progress/store';
 import { TabBar } from '../ui/TabBar';
 import { Icon } from './shared/icons';
-import { lessonPath, OPENING_SHORT, plural, sideName } from './shared/labels';
+import { EmptyCard } from './shared/EmptyCard';
+import { lessonPath, plural } from './shared/labels';
 import { OpeningSwitch, useOpening } from './shared/OpeningSwitch';
 import { UNIT_ICONS } from './shared/unitIcons';
 import './shared/screen.css';
 import './course.css';
 
-function introLine(rows: UnitRow[], gamesLeft: number): string {
-  if (rows.length > 0 && rows.every((r) => r.status === 'done')) return 'Every lesson done. Open one to go over it again.';
-  if (gamesLeft > 0) return `Next lesson after ${plural(gamesLeft, 'more game')}.`;
-  return 'One pattern per lesson, then two games to use it.';
+/** The one line under the title; short enough to stay on one line on the narrowest phone. */
+function introLine(rows: UnitRow[] | null, gamesLeft: number): string {
+  if (rows?.length && rows.every((r) => r.status === 'done')) return 'Every lesson done: open one to go over it.';
+  if (rows?.length && gamesLeft > 0) return `Next lesson after ${plural(gamesLeft, 'more game')}.`;
+  return 'Learn a pattern, then use it in two games.';
 }
 
 function Status({ row }: { row: UnitRow }) {
@@ -68,7 +70,7 @@ function UnitItem({ row, opening, index }: { row: UnitRow; opening: OpeningId; i
 }
 
 function Lessons({ rows, opening }: { rows: UnitRow[]; opening: OpeningId }) {
-  if (!rows.length) return <p class="card course-note muted">Lessons for this level are on the way.</p>;
+  if (!rows.length) return <EmptyCard text="Lessons for this level are on the way." />;
   const done = rows.filter((r) => r.status === 'done').length;
   return (
     <section class="section-block" aria-labelledby="lessons-title">
@@ -97,13 +99,8 @@ export function Course() {
   return (
     <main class="screen screen--tabs">
       <header class="large-head">
-        <p class="eyebrow">
-          {OPENING_SHORT[opening]} · {sideName(opening)}
-        </p>
         <h1 class="large-title">Course</h1>
-        {rows && rows.length > 0 && (
-          <p class="large-sub">{introLine(rows, gamesUntilLesson(lessons, gamesSinceLastLesson(opening)))}</p>
-        )}
+        <p class="large-sub">{introLine(rows, gamesUntilLesson(lessons, gamesSinceLastLesson(opening)))}</p>
       </header>
       <div class="stack">
         <OpeningSwitch value={opening} onChange={setOpening} />

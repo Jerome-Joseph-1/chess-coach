@@ -8,10 +8,3 @@
 .variation .row-sub {
   text-wrap: pretty;
 }
-.variations-empty {
-  margin: 0;
-  padding: 16px;
-  border-radius: 16px;
-  color: var(--text-muted);
-  font: var(--text-caption);
-}
