@@ -78,7 +78,7 @@ function startSession(options: { games?: Game[]; review?: { gameId: string; ply:
     getDepth: vi.fn(() => options.depth ?? (1 as Depth)),
     isQuick: vi.fn(() => false),
     playedGameIds: vi.fn(() => options.played ?? []),
-    recordMoment: vi.fn((): { depthChanged?: Depth } => ({})),
+    recordMoment: vi.fn<SessionDeps['recordMoment']>(() => ({})),
     recordGame: vi.fn<SessionDeps['recordGame']>(),
     celebrate: vi.fn(),
     toast: vi.fn(),
@@ -134,6 +134,50 @@ const movesPlayed = ({ session }: Started) => session.getView().history.length -
 
 const outcomes = (...correct: boolean[]): StepOutcome[] =>
   correct.map((c, i) => ({ step: (['spot', 'find', 'solve', 'hold'] as const)[i], correct: c }));
+
+async function startReady(options: Parameters<typeof startSession>[0] = {}): Promise<Started> {
+  const started = startSession(options);
+  await flush();
+  return started;
+}
+
+/** Steps forward `times` moves, one tap each. */
+async function stepForward({ session }: Started, times = 1): Promise<void> {
+  for (let i = 0; i < times; i++) {
+    session.stepForward();
+    await flush();
+  }
+}
+
+async function stepBack({ session }: Started, times = 1): Promise<void> {
+  for (let i = 0; i < times; i++) {
+    session.stepBack();
+    await flush();
+  }
+}
+
+/** How many scripted moves the board shows. */
+const shownPly = ({ session }: Started) => session.getView().shown - session.getView().game!.start.length;
+
+const positionAfter = (game: Game, plies: number): string => {
+  const chess = new Chess();
+  [...game.start, ...game.moves.slice(0, plies)].forEach((san) => chess.move(san));
+  return chess.fen();
+};
+
+/** Lets gated autoplay run until a key position opens. */
+async function beatsUntilPause(started: Started, beat: () => Promise<void>): Promise<void> {
+  for (let guard = 0; guard < 50 && started.session.getView().phase.kind !== 'pause'; guard++) await beat();
+}
+
+/** Answers the open key position and, with the beats gated, stops autoplay `moves` moves later. */
+async function answerAndStopAfter(started: Started, beat: () => Promise<void>, resumePly: number, moves: number): Promise<void> {
+  started.session.pauseDone({ outcomes: outcomes(true, false), resumePly });
+  await flush();
+  for (let i = 1; i < moves; i++) await beat();
+  started.session.pausePlayback();
+  await beat();
+}
 
 beforeEach(() => {
   vi.mocked(chooseMoments).mockReset();
@@ -290,6 +334,7 @@ describe('autoplay', () => {
       await beat();
       expect(started.session.getView().phase.kind).toBe('ready');
       started.session.play();
+      await flush();
       expect(started.session.getView().phase).toEqual({ kind: 'pause', turnIndex: 1, type: 'pause' });
     });
 
@@ -405,6 +450,299 @@ describe('a pause', () => {
     started.session.pauseDone({ outcomes: outcomes(true, true), resumePly: 7 });
     await flush();
     expect(started.session.getView().dots).toEqual(['bad', 'good']);
+  });
+});
+
+describe('stepping through the moves', () => {
+  const game = () => fixtureGame(GAME_1);
+
+  it('steps back one move at a time, sliding the pieces back, down to the start', async () => {
+    const started = await startReady();
+    await stepForward(started, 3);
+    const { session, board } = started;
+
+    await stepBack(started);
+    expect(board.calls.at(-1)).toBe('set:true');
+    expect(board.fen()).toBe(positionAfter(game(), 2));
+    expect(board.lastMove).toBe('d2d4');
+    expect(shownPly(started)).toBe(2);
+    expect(session.getView().fen).toBe(board.fen());
+    expect(session.getView().history).toHaveLength(8);
+    expect(session.getView().controls.back).toBe(true);
+
+    await stepBack(started, 2);
+    expect(board.fen()).toBe(positionAfter(game(), 0));
+    expect(board.lastMove).toBeNull();
+    expect(session.getView().controls.back).toBe(false);
+
+    const callsBefore = board.calls.length;
+    await stepBack(started);
+    expect(board.calls).toHaveLength(callsBefore);
+  });
+
+  it('steps forward again through the moves already played, animating each', async () => {
+    const started = await startReady();
+    await stepForward(started, 3);
+    await stepBack(started, 2);
+
+    await stepForward(started);
+    expect(started.board.calls.at(-1)).toBe('play:d2d4');
+    expect(shownPly(started)).toBe(2);
+    expect(started.board.fen()).toBe(positionAfter(game(), 2));
+    expect(started.session.getView().history).toHaveLength(8);
+  });
+
+  it('plays the next scripted move by hand once the board is back at the live position', async () => {
+    const started = await startReady();
+    await stepForward(started, 2);
+    await stepBack(started);
+    await stepForward(started);
+    expect(started.session.getView().returning).toBe(false);
+
+    await stepForward(started);
+    expect(started.board.calls.at(-1)).toBe('play:f6e4');
+    expect(started.session.getView().history.at(-1)).toBe('Nxe4');
+    expect(shownPly(started)).toBe(3);
+    expect(started.session.getView().phase).toEqual({ kind: 'ready' });
+    expect(started.deps.wait).not.toHaveBeenCalled();
+  });
+
+  it('opens a key position the next move reaches, then plays on once it is answered', async () => {
+    momentsAt({ 3: 'pause' });
+    const started = await startReady();
+    await stepForward(started, 3);
+    expect(started.session.getView().phase).toEqual({ kind: 'pause', turnIndex: 1, type: 'pause' });
+
+    const beat = gateBeats(started);
+    started.session.pauseDone({ outcomes: outcomes(true), resumePly: 3 });
+    await flush();
+    expect(started.board.calls.at(-1)).toBe('play:d4e5');
+    expect(started.session.getView().phase).toEqual({ kind: 'playing' });
+    expect(started.session.getView().controls.back).toBe(true);
+    await beat();
+    expect(started.session.getView().history.at(-1)).toBe('d6');
+  });
+
+  it('opens an unanswered key position it is standing on instead of skipping it', async () => {
+    momentsAt({ 3: 'pause' });
+    const started = await startReady();
+    const beat = gateBeats(started);
+    started.session.play();
+    await flush();
+    await beat();
+    await beat();
+    started.session.pausePlayback();
+    await beat();
+    expect(started.session.getView().phase.kind).toBe('ready');
+
+    started.session.stepForward();
+    await flush();
+    expect(started.session.getView().phase).toEqual({ kind: 'pause', turnIndex: 1, type: 'pause' });
+    expect(started.session.getView().history.at(-1)).toBe('Nxe4');
+  });
+
+  it('stops autoplay first when a step is tapped while it runs', async () => {
+    const started = await startReady();
+    const beat = gateBeats(started);
+    started.session.play();
+    await flush();
+    started.session.stepBack();
+    expect(started.session.getView().phase).toEqual({ kind: 'ready' });
+    expect(started.session.getView().controls).toEqual({ back: false, forward: false, previousKey: false });
+
+    await beat();
+    await beat();
+    expect(movesPlayed(started)).toBe(1);
+    expect(shownPly(started)).toBe(0);
+    expect(started.board.calls.at(-1)).toBe('set:true');
+    expect(started.session.getView().controls.forward).toBe(true);
+  });
+
+  it('turns the step buttons off while a move is sliding and ignores taps meanwhile', async () => {
+    const started = await startReady();
+    let finish!: () => void;
+    const playMove = started.board.playMove.bind(started.board);
+    started.board.playMove = (uci) => new Promise((resolve) => (finish = () => resolve(playMove(uci))));
+
+    started.session.stepForward();
+    started.session.stepForward();
+    await flush();
+    expect(started.session.getView().controls).toEqual({ back: false, forward: false, previousKey: false });
+    expect(movesPlayed(started)).toBe(1);
+
+    finish();
+    await flush();
+    expect(movesPlayed(started)).toBe(1);
+    expect(started.session.getView().controls.forward).toBe(true);
+  });
+
+  it('plays nothing by hand after dispose', async () => {
+    const started = await startReady();
+    started.session.dispose();
+    started.session.stepForward();
+    await flush();
+    expect(started.board.calls).toEqual(['set:false']);
+  });
+});
+
+describe('continuing from an earlier move', () => {
+  it('goes back to the live position, then plays on by itself', async () => {
+    momentsAt({ 7: 'pause' });
+    const started = await startReady();
+    await stepForward(started, 3);
+    await stepBack(started, 2);
+    expect(started.session.getView().returning).toBe(true);
+
+    const beat = gateBeats(started);
+    started.session.play();
+    await flush();
+    expect(started.board.calls.slice(-2)).toEqual(['set:true', 'play:d4e5']);
+    expect(shownPly(started)).toBe(4);
+    expect(started.session.getView().returning).toBe(false);
+    for (let i = 0; i < 4; i++) await beat();
+    expect(started.session.getView().phase.kind).toBe('pause');
+  });
+
+  it('does not go back to the live position when playback was stopped before it left', async () => {
+    const started = await startReady();
+    await stepForward(started, 2);
+    const beat = gateBeats(started);
+    started.session.play();
+    started.session.pausePlayback();
+    await beat();
+    expect(started.board.calls.filter((call) => call === 'set:true')).toHaveLength(0);
+  });
+});
+
+describe('a key position tried again', () => {
+  const FINAL = ['Nf6', 'd4', 'Nxe4', 'dxe5', 'd6', 'O-O'];
+
+  /** Reaches the pause at ply 3, answers it, and stops autoplay with `ahead` more moves played. */
+  async function afterFirstAnswer(ahead: number, options: Parameters<typeof startSession>[0] = {}) {
+    const started = await startReady(options);
+    const beat = gateBeats(started);
+    started.session.play();
+    await flush();
+    await beatsUntilPause(started, beat);
+    await answerAndStopAfter(started, beat, 3, ahead);
+    return { started, beat };
+  }
+
+  it('is not offered before a key position has been answered', async () => {
+    momentsAt({ 3: 'pause' });
+    const started = await startReady();
+    expect(started.session.getView().controls.previousKey).toBe(false);
+    const beat = gateBeats(started);
+    started.session.play();
+    await beatsUntilPause(started, beat);
+    started.session.pauseDone({ outcomes: outcomes(true), resumePly: 3 });
+    await flush();
+    expect(started.session.getView().controls.previousKey).toBe(true);
+  });
+
+  it('returns to the latest key position before this point and asks it again', async () => {
+    momentsAt({ 3: 'pause' });
+    const { started } = await afterFirstAnswer(2);
+    expect(started.session.getView().history.at(-1)).toBe('d6');
+
+    started.session.previousKeyPosition();
+    await flush();
+    expect(started.session.getView().phase).toEqual({ kind: 'pause', turnIndex: 1, type: 'pause', practice: true });
+    expect(started.board.fen()).toBe(positionAfter(fixtureGame(GAME_1), 3));
+    expect(started.board.calls.at(-1)).toBe('set:true');
+    expect(started.session.getView().controls.previousKey).toBe(false);
+  });
+
+  it('records the answer as practice without touching the game, the dots or the summary', async () => {
+    momentsAt({ 3: 'pause' });
+    const game = makeGame('short', FINAL);
+    const { started, beat } = await afterFirstAnswer(2, { games: [game] });
+    expect(started.session.getView().dots).toEqual(['bad']);
+
+    started.session.previousKeyPosition();
+    await flush();
+    started.session.pauseDone({ outcomes: outcomes(true, true), resumePly: 3 });
+    await flush();
+    expect(started.deps.recordMoment).toHaveBeenLastCalledWith(expect.objectContaining({ ply: 3, review: true, stars: 2 }));
+    expect(started.session.getView().dots).toEqual(['bad']);
+    expect(started.deps.recordGame).not.toHaveBeenCalled();
+
+    started.session.play();
+    await flush();
+    for (let i = 0; i < 3; i++) await beat();
+    expect(started.session.getView().phase.kind).toBe('done');
+    const { moments } = started.deps.recordGame.mock.calls[0][0];
+    expect(moments).toHaveLength(1);
+    expect(moments[0].review).toBeUndefined();
+    expect(started.deps.recordMoment.mock.calls.map(([m]) => m.review)).toEqual([undefined, true]);
+  });
+
+  it('puts the board back on the live position afterwards and waits for Continue', async () => {
+    momentsAt({ 3: 'pause' });
+    const { started } = await afterFirstAnswer(2);
+    const live = started.board.fen();
+    const waits = started.deps.wait.mock.calls.length;
+
+    started.session.previousKeyPosition();
+    await flush();
+    started.session.pauseDone({ outcomes: outcomes(true, true), resumePly: 3 });
+    await flush();
+    const view = started.session.getView();
+    expect(view.phase).toEqual({ kind: 'ready' });
+    expect(started.board.fen()).toBe(live);
+    expect(shownPly(started)).toBe(view.history.length - view.game!.start.length);
+    expect(view.returning).toBe(true);
+    expect(started.deps.wait).toHaveBeenCalledTimes(waits);
+
+    const movesBefore = movesPlayed(started);
+    started.session.play();
+    await flush();
+    expect(movesPlayed(started)).toBe(movesBefore + 1);
+    expect(started.session.getView().returning).toBe(false);
+  });
+
+  it('goes to the key position before when it is tapped again from a key position', async () => {
+    momentsAt({ 3: 'pause', 7: 'nothing' });
+    const started = await startReady();
+    const beat = gateBeats(started);
+    started.session.play();
+    await beatsUntilPause(started, beat);
+    started.session.pauseDone({ outcomes: outcomes(true), resumePly: 3 });
+    await flush();
+    await beatsUntilPause(started, beat);
+    expect(started.session.getView().phase).toEqual({ kind: 'pause', turnIndex: 3, type: 'nothing' });
+    await answerAndStopAfter(started, beat, 7, 1);
+    expect(shownPly(started)).toBe(8);
+
+    await stepBack(started);
+    expect(shownPly(started)).toBe(7);
+    started.session.previousKeyPosition();
+    await flush();
+    expect(started.session.getView().phase).toEqual({ kind: 'pause', turnIndex: 1, type: 'pause', practice: true });
+  });
+
+  it('can be asked again and again', async () => {
+    momentsAt({ 3: 'pause' });
+    const { started } = await afterFirstAnswer(2);
+    for (let i = 0; i < 2; i++) {
+      started.session.previousKeyPosition();
+      await flush();
+      expect(started.session.getView().phase.kind).toBe('pause');
+      started.session.pauseDone({ outcomes: outcomes(false), resumePly: 3 });
+      await flush();
+      expect(started.session.getView().phase).toEqual({ kind: 'ready' });
+    }
+    expect(started.deps.recordMoment).toHaveBeenCalledTimes(3);
+  });
+
+  it('does nothing when there is no earlier key position', async () => {
+    const started = await startReady();
+    await stepForward(started, 2);
+    const callsBefore = started.board.calls.length;
+    started.session.previousKeyPosition();
+    await flush();
+    expect(started.board.calls).toHaveLength(callsBefore);
+    expect(started.session.getView().phase.kind).toBe('ready');
   });
 });
 

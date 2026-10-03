@@ -1,5 +1,15 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { continueAfterPause, moveList, pauseButton, playButton } from './board';
+import {
+  continueAfterPause,
+  continueButton,
+  lookingBackLine,
+  moveList,
+  pauseButton,
+  playButton,
+  previousKeyButton,
+  stepBackButton,
+  stepForwardButton,
+} from './board';
 
 const PLAY_URL = './#/play/italian/1400';
 const FIRST_KEY_POSITION = 'Is something important happening?';
@@ -46,6 +56,21 @@ test('shows the game screen at phone width, waiting for play', async ({ page }) 
   expect([back.width, back.height]).toEqual([40, 40]);
 });
 
+test('the controls are three round buttons around Play, with nothing to step back to yet', async ({ page }) => {
+  await page.goto(PLAY_URL);
+  await expect(playButton(page)).toBeVisible();
+
+  for (const button of [previousKeyButton(page), stepBackButton(page), stepForwardButton(page)]) {
+    const box = (await button.boundingBox())!;
+    expect([box.width, box.height]).toEqual([44, 44]);
+    expect(await button.evaluate((el) => el.textContent)).toBe('');
+  }
+  await expect(previousKeyButton(page)).toBeDisabled();
+  await expect(stepBackButton(page)).toBeDisabled();
+  await expect(stepForwardButton(page)).toBeEnabled();
+  await expect(lookingBackLine(page)).toHaveText('');
+});
+
 test('nothing moves until Play is tapped', async ({ page }) => {
   await page.goto(PLAY_URL);
   await expect(playButton(page)).toBeVisible();
@@ -55,12 +80,15 @@ test('nothing moves until Play is tapped', async ({ page }) => {
   await expect(moveList(page)).toHaveCount(played);
 });
 
-test('the pill keeps its place when it turns into Pause', async ({ page }) => {
+test('the main button keeps its place when it turns into Pause', async ({ page }) => {
   await page.goto(PLAY_URL);
   const board = (await page.locator('.board-host').boundingBox())!;
   const before = (await playButton(page).boundingBox())!;
   expect(before.y).toBeGreaterThanOrEqual(board.y + board.height);
-  expect(before.width).toBeCloseTo(page.viewportSize()!.width - 32, 0);
+  const first = (await previousKeyButton(page).boundingBox())!;
+  const last = (await stepForwardButton(page).boundingBox())!;
+  expect(first.x).toBeCloseTo(16, 0);
+  expect(last.x + last.width).toBeCloseTo(page.viewportSize()!.width - 16, 0);
 
   await playButton(page).click();
   await expect(pauseButton(page)).toBeVisible();
@@ -108,6 +136,74 @@ test('after a key position the game plays on by itself to the next one', async (
   await expect.poll(() => moveList(page).count()).toBeGreaterThanOrEqual(played + 2);
   await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
   await expect(page.locator('.game-pill')).toHaveText(/^Key position 2 of \d+$/);
+});
+
+test('Next move plays one scripted move per tap and walks into the first key position', async ({ page }) => {
+  await page.goto(PLAY_URL);
+  const played = await moveList(page).count();
+
+  await stepForwardButton(page).click();
+  await expect(moveList(page)).toHaveCount(played + 1);
+  await page.waitForTimeout(1200);
+  await expect(moveList(page)).toHaveCount(played + 1);
+
+  await stepForwardButton(page).click();
+  await stepForwardButton(page).click();
+  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible();
+  await expect(moveList(page).last()).toHaveText('Nxe4');
+});
+
+test('after a key position the user can stop, look back, step on, continue and try it again', async ({ page }) => {
+  await page.goto(PLAY_URL);
+  await playButton(page).click();
+  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible({ timeout: RUN_MS });
+  await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  await page.getByRole('button', { name: 'Show solution' }).click();
+  const played = await moveList(page).count();
+  await continueAfterPause(page);
+  await expect.poll(() => moveList(page).count()).toBeGreaterThanOrEqual(played + 2);
+
+  await pauseButton(page).click();
+  await expect(playButton(page)).toBeVisible();
+  const board = await page.locator('.board-host').boundingBox();
+  await expect(lookingBackLine(page)).toHaveText('');
+  await stepBackButton(page).click();
+  await stepBackButton(page).click();
+  const looking = lookingBackLine(page);
+  await expect(looking).toHaveText(/^Move \d+ of \d+ · you are looking back$/);
+  await expect(continueButton(page)).toBeVisible();
+  await expect(playButton(page)).toHaveCount(0);
+  expect(await page.locator('.board-host').boundingBox()).toEqual(board);
+  const twoBack = await looking.textContent();
+  const [, shown, total] = twoBack!.match(/^Move (\d+) of (\d+)/)!.map(Number);
+  expect(shown).toBe(total - 2);
+
+  await stepForwardButton(page).click();
+  await expect(looking).toHaveText(`Move ${shown + 1} of ${total} · you are looking back`);
+  await stepBackButton(page).click();
+  await expect(looking).toHaveText(twoBack!);
+
+  await continueButton(page).click();
+  await expect(looking).toHaveText('');
+  await expect(pauseButton(page)).toBeVisible();
+  await expect.poll(() => moveList(page).count()).toBeGreaterThan(total);
+
+  await previousKeyButton(page).click();
+  await expect(page.getByText(FIRST_KEY_POSITION)).toBeVisible();
+  await expect(page.locator('.game-pill')).toHaveText('Practice');
+  await page.getByRole('button', { name: "Yes, something's going on" }).click();
+  await page.getByRole('button', { name: 'Show solution' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await expect(page.locator('.pause-sheet')).toHaveCount(0);
+  await expect(continueButton(page)).toBeVisible();
+  await expect(page.locator('.game-pill')).toHaveText(/^Key position 2 of \d+$/);
+  const live = await moveList(page).count();
+  await page.waitForTimeout(1500);
+  await expect(moveList(page)).toHaveCount(live);
+  await continueButton(page).click();
+  await expect(pauseButton(page)).toBeVisible();
+  await expect.poll(() => moveList(page).count()).toBeGreaterThan(live);
 });
 
 test('a short quiet game plays to its end and waits for Finish', async ({ page }) => {

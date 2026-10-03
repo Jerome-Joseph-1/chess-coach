@@ -3,8 +3,8 @@
   --top-bar: 56px;
   --player-bar: 36px;
   --move-strip: 42px;
-  /* What the slot under the board needs: the 52px play pill plus its padding, a sheet while paused. */
-  --room: 88px;
+  /* What the slot under the board needs: the looking-back line, the 44px control row and the padding; a sheet while paused. */
+  --room: 108px;
   --chrome: calc(var(--top-bar) + 2 * var(--player-bar) + var(--move-strip));
   --board: max(200px, min(100vw - 32px, 488px, var(--screen) - var(--chrome) - var(--room)));
   display: flex;
@@ -153,11 +153,44 @@
   min-height: 0;
   padding: 16px 16px 20px;
 }
-.game-play {
+.game-looking {
+  min-height: 16px;
+  margin: 0;
+  color: var(--text-muted);
+  font: var(--text-label);
+  text-align: center;
+}
+.game-controls {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
+  gap: 8px;
+}
+.game-main {
+  flex: 1;
+  min-width: 0;
+}
+.game-step {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-strong);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--t-quick) var(--spring);
+}
+.game-step:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.game-step:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .game-status {
   margin: 0;

@@ -26,7 +26,13 @@ export async function tapSquares(page: Page, from: string, to: string) {
 
 export const playButton = (page: Page) => page.getByRole('button', { name: 'Play', exact: true });
 export const pauseButton = (page: Page) => page.getByRole('button', { name: 'Pause', exact: true });
+export const continueButton = (page: Page) => page.getByRole('button', { name: 'Continue', exact: true });
+export const stepBackButton = (page: Page) => page.getByRole('button', { name: 'Previous move' });
+export const stepForwardButton = (page: Page) => page.getByRole('button', { name: 'Next move' });
+export const previousKeyButton = (page: Page) => page.getByRole('button', { name: 'Previous key position' });
 export const moveList = (page: Page) => page.locator('.game-moves li');
+/** The one line above the controls that says when the board shows an earlier move. */
+export const lookingBackLine = (page: Page) => page.locator('.game-looking');
 
 /** Taps Continue on a key position's sheet and waits for the game to move on by itself. */
 export async function continueAfterPause(page: Page) {

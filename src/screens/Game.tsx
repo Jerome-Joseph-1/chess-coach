@@ -1,4 +1,5 @@
 import { DEFAULT_POSITION, type Color, type PieceSymbol } from 'chess.js';
+import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Board } from '../board/Board';
 import type { BoardController } from '../board/types';
@@ -47,6 +48,7 @@ function sessionDeps(board: BoardController): SessionDeps {
 
 function keyPositionLabel(view: SessionView | null, review: boolean): string {
   if (review) return 'Review';
+  if (view?.phase.kind === 'pause' && view.phase.practice) return 'Practice';
   const total = view?.dots.length ?? 0;
   if (!view || total === 0) return '';
   const done = view.dots.filter((dot) => dot === 'good' || dot === 'bad').length;
@@ -95,7 +97,7 @@ export function Game({ opening, level, review }: GameProps) {
       </div>
       <PlayerBar role="you" name="You" detail={sideName(side)} fen={view?.fen ?? DEFAULT_POSITION} color={side} />
 
-      <MoveStrip moves={view?.history ?? []} />
+      <MoveStrip moves={view?.history ?? []} shown={view?.shown ?? 0} />
 
       <section class="game-slot">
         {view && board && session.current && <Slot view={view} board={board} session={session.current} />}
@@ -129,17 +131,16 @@ function PlayerBar({ role, name, detail, fen, color }: PlayerBarProps) {
   );
 }
 
-function MoveStrip({ moves }: { moves: string[] }) {
+function MoveStrip({ moves, shown }: { moves: string[]; shown: number }) {
   const strip = useRef<HTMLOListElement>(null);
   useEffect(() => {
-    const el = strip.current;
-    if (el) el.scrollLeft = el.scrollWidth;
-  }, [moves.length]);
+    strip.current?.querySelector('.is-last')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [moves.length, shown]);
 
   return (
     <ol class="game-moves" ref={strip} aria-label="Moves">
       {moves.map((san, i) => (
-        <li key={i} class={i === moves.length - 1 ? 'is-last' : undefined}>
+        <li key={i} class={i === shown - 1 ? 'is-last' : undefined}>
           {i % 2 === 0 && <span class="game-move-no">{i / 2 + 1}.</span>}
           {san}
         </li>
@@ -186,9 +187,7 @@ function Slot({ view, board, session }: SlotProps) {
       />
     );
   }
-  if (phase.kind === 'ready' || phase.kind === 'playing') {
-    return <PlayButton playing={phase.kind === 'playing'} session={session} />;
-  }
+  if (phase.kind === 'ready' || phase.kind === 'playing') return <Controls view={view} session={session} />;
   if (phase.kind === 'done') {
     return (
       <div class="game-done">
@@ -202,10 +201,54 @@ function Slot({ view, board, session }: SlotProps) {
   return <Status text={view.status} />;
 }
 
-function PlayButton({ playing, session }: { playing: boolean; session: GameSession }) {
+function lookingBackLine({ shown, history }: SessionView): string {
+  return shown < history.length ? `Move ${shown} of ${history.length} · you are looking back` : '';
+}
+
+function mainLabel({ phase, returning }: SessionView): string {
+  if (phase.kind === 'playing') return 'Pause';
+  return returning ? 'Continue' : 'Play';
+}
+
+function Controls({ view, session }: { view: SessionView; session: GameSession }) {
+  const { controls } = view;
+  const playing = view.phase.kind === 'playing';
   return (
-    <Button variant={playing ? 'secondary' : 'primary'} size="lg" class="game-play" onClick={() => (playing ? session.pausePlayback() : session.play())}>
-      {playing ? 'Pause' : 'Play'}
-    </Button>
+    <>
+      <p class="game-looking" aria-live="polite">
+        {lookingBackLine(view)}
+      </p>
+      <div class="game-controls">
+        <StepButton label="Previous key position" disabled={!controls.previousKey} onClick={() => session.previousKeyPosition()}>
+          <path d="M6 5v14M18 5l-9 7 9 7" />
+        </StepButton>
+        <StepButton label="Previous move" disabled={!controls.back} onClick={() => session.stepBack()}>
+          <path d="M15 5l-7 7 7 7" />
+        </StepButton>
+        <Button variant={playing ? 'secondary' : 'primary'} class="game-main" onClick={() => (playing ? session.pausePlayback() : session.play())}>
+          {mainLabel(view)}
+        </Button>
+        <StepButton label="Next move" disabled={!controls.forward} onClick={() => session.stepForward()}>
+          <path d="M9 5l7 7-7 7" />
+        </StepButton>
+      </div>
+    </>
+  );
+}
+
+interface StepButtonProps {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: ComponentChildren;
+}
+
+function StepButton({ label, disabled, onClick, children }: StepButtonProps) {
+  return (
+    <button class="game-step" type="button" aria-label={label} disabled={disabled} onClick={onClick}>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        {children}
+      </svg>
+    </button>
   );
 }

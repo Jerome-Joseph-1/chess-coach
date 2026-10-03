@@ -39,21 +39,31 @@ export interface SessionDeps {
   now(): number;
 }
 
+export type PausedType = 'pause' | 'nothing';
+
 export type Phase =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   /** The board moves by itself and cannot be stopped: a review replays the moves before its moment. */
   | { kind: 'busy' }
-  /** The game waits for the user to press play. */
+  /** The game waits: for play, or for the user to step through the moves. */
   | { kind: 'ready' }
   /** Both sides' scripted moves are being played. */
   | { kind: 'playing' }
-  | { kind: 'pause'; turnIndex: number; type: 'pause' | 'nothing' }
+  /** A key position is open; `practice` marks one asked again after it was answered. */
+  | { kind: 'pause'; turnIndex: number; type: PausedType; practice?: true }
   /** The moves have run out; the user leaves with Finish. */
   | { kind: 'done'; outcome: string };
 
 /** One dot per pause the user will be asked about. */
 export type DotState = 'todo' | 'now' | 'good' | 'bad';
+
+/** Which of the step buttons can be used right now. */
+export interface Controls {
+  back: boolean;
+  forward: boolean;
+  previousKey: boolean;
+}
 
 export interface SessionView {
   phase: Phase;
@@ -61,15 +71,28 @@ export interface SessionView {
   depth: Depth;
   /** SAN of every move played so far, the opening moves included. */
   history: string[];
-  /** Position after those moves. */
+  /** How many of those moves the board shows; fewer while the user looks back. */
+  shown: number;
+  /** Position after the moves shown. */
   fen: string;
   dots: DotState[];
+  controls: Controls;
+  /** The board is away from the live position, or a practice has just ended: the main button says Continue. */
+  returning: boolean;
   status: string;
 }
 
 class Stopped extends Error {}
 
-function isPrompted(type: MomentType | undefined): type is 'pause' | 'nothing' {
+const NO_CONTROLS: Controls = { back: false, forward: false, previousKey: false };
+
+/** A scripted move and the position it leads to. */
+interface Step {
+  uci: string;
+  fen: string;
+}
+
+function isPrompted(type: MomentType | undefined): type is PausedType {
   return type === 'pause' || type === 'nothing';
 }
 
@@ -77,16 +100,22 @@ export class GameSession {
   private view: SessionView;
   private listeners = new Set<(view: SessionView) => void>();
   private game!: Game;
-  private chess = new Chess();
+  private startFen = '';
+  private steps: Step[] = [];
+  /** Scripted moves played so far: the live position. */
   private ply = 0;
+  /** Scripted moves the board shows; below `ply` while the user looks back. */
+  private viewPly = 0;
   private moments = new Map<number, MomentType>();
   private results: MomentResult[] = [];
   private doneDots: DotState[] = [];
   private handledPlies = new Set<number>();
-  private lastUci: string | null = null;
   private pauseResolver: ((result: PauseResult) => void) | null = null;
-  private running = false;
-  private stopRequested = false;
+  /** Everything that moves the board runs here, one task at a time. */
+  private queue: Promise<void> = Promise.resolve();
+  private autoplayQueued = false;
+  private moving = false;
+  private practiced = false;
   private disposed = false;
   private finished = false;
 
@@ -101,8 +130,11 @@ export class GameSession {
       game: null,
       depth: deps.getDepth(opening, level),
       history: [],
-      fen: this.chess.fen(),
+      shown: 0,
+      fen: new Chess().fen(),
       dots: [],
+      controls: NO_CONTROLS,
+      returning: false,
       status: '',
     };
   }
@@ -123,25 +155,53 @@ export class GameSession {
   async start(): Promise<void> {
     await this.guarded(async () => {
       await this.setup();
-      if (this.review) await this.autoplay();
+      if (this.review) await this.askNextMoment();
       else this.update({ phase: { kind: 'ready' }, status: '' });
     });
   }
 
-  /** Plays on from here until the next key position. */
+  /** Plays on from the live position until the next key position; from an earlier move it first goes back there. */
   play(): void {
     if (this.view.phase.kind !== 'ready') return;
-    this.stopRequested = false;
+    this.practiced = false;
     this.update({ phase: { kind: 'playing' } });
     // A loop still finishing its last move carries on by itself.
-    if (!this.running) void this.guarded(() => this.autoplay());
+    if (this.autoplayQueued) return;
+    this.autoplayQueued = true;
+    this.enqueue(async () => {
+      try {
+        await this.resume();
+      } finally {
+        this.autoplayQueued = false;
+      }
+    });
   }
 
   /** Stops after the move being played. */
   pausePlayback(): void {
     if (this.view.phase.kind !== 'playing') return;
-    this.stopRequested = true;
     this.update({ phase: { kind: 'ready' } });
+  }
+
+  /** One move back through the moves already played. */
+  stepBack(): void {
+    if (this.viewPly === 0) return;
+    this.runManual(() => this.showPly(this.viewPly - 1));
+  }
+
+  /** One move on: through the moves already played, then a new scripted move; a key position it reaches opens. */
+  stepForward(): void {
+    this.runManual(async () => {
+      if (this.viewPly < this.ply || !this.nextMoment()) await this.playForward();
+      if (this.viewPly === this.ply && this.isDue()) this.play();
+    });
+  }
+
+  /** Back to the latest key position before this point, to try it again as practice. */
+  previousKeyPosition(): void {
+    const target = this.previousKeyPly();
+    if (target === null) return;
+    this.runManual(() => this.practice(target));
   }
 
   dispose(): void {
@@ -162,10 +222,60 @@ export class GameSession {
     }
   }
 
-  private update(patch: Partial<SessionView>): void {
+  private enqueue(task: () => Promise<void>): void {
+    this.queue = this.queue.then(() =>
+      this.guarded(async () => {
+        this.assertAlive();
+        await task();
+      }),
+    );
+  }
+
+  /** A move or jump the user asked for; autoplay stops first and the step buttons wait until it is done. */
+  private runManual(task: () => Promise<void>): void {
+    if (!this.canStep()) return;
+    this.pausePlayback();
+    this.setMoving(true);
+    this.enqueue(async () => {
+      try {
+        if (!this.finished) await task();
+      } finally {
+        this.setMoving(false);
+      }
+    });
+  }
+
+  private canStep(): boolean {
+    const { kind } = this.view.phase;
+    return (kind === 'ready' || kind === 'playing') && !this.moving;
+  }
+
+  private setMoving(moving: boolean): void {
+    this.moving = moving;
+    this.update();
+  }
+
+  private isPlaying(): boolean {
+    return this.view.phase.kind === 'playing';
+  }
+
+  private update(patch: Partial<SessionView> = {}): void {
     this.view = { ...this.view, ...patch };
-    this.view.dots = this.currentDots();
+    if (this.view.game) this.view = { ...this.view, ...this.derived() };
     this.listeners.forEach((listener) => listener(this.view));
+  }
+
+  /** What follows from the moves played and the one being looked at. */
+  private derived(): Pick<SessionView, 'history' | 'shown' | 'fen' | 'dots' | 'controls' | 'returning'> {
+    const { start, moves } = this.game;
+    return {
+      history: [...start, ...moves.slice(0, this.ply)],
+      shown: start.length + this.viewPly,
+      fen: this.positionAt(this.viewPly),
+      dots: this.currentDots(),
+      controls: this.currentControls(),
+      returning: this.viewPly < this.ply || this.practiced,
+    };
   }
 
   private currentDots(): DotState[] {
@@ -173,11 +283,35 @@ export class GameSession {
     const upcoming = [...this.moments]
       .sort(([a], [b]) => a - b)
       .filter(([i, type]) => {
-        const ply = this.game?.turns[i].ply ?? -1;
+        const ply = this.game.turns[i].ply;
         return isPrompted(type) && ply >= this.ply && !this.handledPlies.has(ply);
       })
       .map(([i]): DotState => (phase.kind === 'pause' && phase.turnIndex === i ? 'now' : 'todo'));
     return [...this.doneDots, ...upcoming];
+  }
+
+  private currentControls(): Controls {
+    const { kind } = this.view.phase;
+    if ((kind !== 'ready' && kind !== 'playing') || this.moving) return NO_CONTROLS;
+    return {
+      back: this.viewPly > 0,
+      forward: this.viewPly < this.ply || this.ply < this.steps.length,
+      previousKey: this.previousKeyPly() !== null,
+    };
+  }
+
+  /** The latest answered key position before the one being looked at. */
+  private previousKeyPly(): number | null {
+    const earlier = [...this.handledPlies].filter((ply) => ply < this.viewPly);
+    return earlier.length > 0 ? Math.max(...earlier) : null;
+  }
+
+  private positionAt(ply: number): string {
+    return ply === 0 ? this.startFen : this.steps[ply - 1].fen;
+  }
+
+  private lastUciAt(ply: number): string | null {
+    return ply === 0 ? null : this.steps[ply - 1].uci;
   }
 
   private assertAlive(): void {
@@ -196,7 +330,7 @@ export class GameSession {
     if (!set) throw new Error(`No games for ${opening} ${level}`);
     const game = await this.until(deps.loadGame(opening, level, this.review?.gameId ?? this.pickGameId(set)));
     this.startGame(game);
-    await this.until(this.board.setPosition(this.chess.fen(), false));
+    await this.until(this.board.setPosition(this.startFen, false));
     if (this.review) await this.replayBeforeReview(this.review.ply);
   }
 
@@ -208,12 +342,15 @@ export class GameSession {
   }
 
   private startGame(game: Game): void {
+    const chess = new Chess();
+    for (const san of game.start) chess.move(san);
     this.game = game;
-    this.chess = new Chess();
-    for (const san of game.start) this.chess.move(san);
+    this.startFen = chess.fen();
+    this.steps = game.moves.map((san) => ({ uci: playSan(chess, san), fen: chess.fen() }));
     this.ply = 0;
+    this.viewPly = 0;
     this.moments = this.chooseMomentsFor(game);
-    this.update({ game, history: [...game.start], fen: this.chess.fen() });
+    this.update({ game });
   }
 
   private chooseMomentsFor(game: Game): Map<number, MomentType> {
@@ -227,83 +364,117 @@ export class GameSession {
   }
 
   private async replayBeforeReview(reviewPly: number): Promise<void> {
-    const replayFrom = Math.max(0, reviewPly - REPLAY_PLIES);
-    while (this.ply < replayFrom) this.takeMove(this.game.moves[this.ply]);
-    await this.until(this.board.setPosition(this.chess.fen(), false));
-    this.board.setLastMove(this.lastUci);
+    this.ply = this.viewPly = Math.max(0, reviewPly - REPLAY_PLIES);
+    await this.until(this.board.setPosition(this.positionAt(this.ply), false));
+    this.board.setLastMove(this.lastUciAt(this.ply));
     this.update({ phase: { kind: 'busy' }, status: 'Replaying the last moves…' });
     while (this.ply < reviewPly) {
       await this.until(this.deps.wait(REPLAY_MS));
-      await this.playScripted();
+      await this.playForward();
     }
   }
 
-  /** Plays the scripted moves of both sides until a prompted moment, a stop request or the end of the game. */
+  private async askNextMoment(): Promise<void> {
+    const moment = this.nextMoment();
+    if (moment) await this.runPause(moment.turnIndex, moment.type);
+  }
+
+  /** The task behind Play and Continue: back to the live position, then on to the next key position. */
+  private async resume(): Promise<void> {
+    if (!this.isPlaying()) return;
+    if (this.viewPly !== this.ply) await this.showPly(this.ply);
+    await this.autoplay();
+  }
+
+  /** Plays the scripted moves of both sides until a prompted moment, a stop or the end of the game. */
   private async autoplay(): Promise<void> {
-    this.running = true;
-    try {
-      while (!this.stopRequested && !this.finished && this.ply < this.game.moves.length) {
-        this.assertAlive();
-        const moment = this.nextMoment();
-        if (moment) await this.runPause(moment.turnIndex, moment.type);
-        else await this.playPaced();
-      }
-    } finally {
-      this.running = false;
+    while (this.isPlaying() && this.ply < this.steps.length) {
+      this.assertAlive();
+      const moment = this.nextMoment();
+      if (moment) await this.runPause(moment.turnIndex, moment.type);
+      else await this.playPaced();
     }
-    if (!this.finished && this.ply >= this.game.moves.length) this.finish();
+    if (this.ply >= this.steps.length && !this.finished) this.finish();
   }
 
-  private nextMoment(): { turnIndex: number; type: 'pause' | 'nothing' } | null {
+  /** The key position waiting at the live position, if it has not been answered yet. */
+  private nextMoment(): { turnIndex: number; type: PausedType } | null {
     const turnIndex = this.game.turns.findIndex((t) => t.ply === this.ply);
     const type = this.moments.get(turnIndex);
     if (!isPrompted(type) || this.handledPlies.has(this.ply)) return null;
     return { turnIndex, type };
   }
 
-  /** Plays the next scripted move on the model, not on the board. */
-  private takeMove(san: string): void {
-    this.lastUci = playSan(this.chess, san);
-    this.update({ history: [...this.view.history, san], fen: this.chess.fen() });
-    this.ply++;
+  private isDue(): boolean {
+    return this.nextMoment() !== null || this.ply >= this.steps.length;
   }
 
-  private async playScripted(): Promise<void> {
-    this.takeMove(this.game.moves[this.ply]);
-    await this.until(this.board.playMove(this.lastUci!));
+  /** Moves the model ahead of the board, which then plays the same move. */
+  private async playForward(): Promise<void> {
+    const { uci } = this.steps[this.viewPly];
+    this.viewPly++;
+    this.ply = Math.max(this.ply, this.viewPly);
+    this.update();
+    await this.until(this.board.playMove(uci));
+  }
+
+  /** Shows the position after `ply` moves, sliding the pieces there. */
+  private async showPly(ply: number): Promise<void> {
+    this.viewPly = ply;
+    this.update();
+    await this.until(this.board.setPosition(this.positionAt(ply), true));
+    this.board.setLastMove(this.lastUciAt(ply));
   }
 
   /** One move per beat, however long the animation takes. */
   private async playPaced(): Promise<void> {
-    await this.until(Promise.all([this.playScripted(), this.deps.wait(AUTOPLAY_MS)]));
+    await this.until(Promise.all([this.playForward(), this.deps.wait(AUTOPLAY_MS)]));
   }
 
-  private async runPause(turnIndex: number, type: 'pause' | 'nothing'): Promise<void> {
-    this.update({ phase: { kind: 'pause', turnIndex, type }, status: '' });
-    const result = await new Promise<PauseResult>((resolve) => {
-      this.pauseResolver = resolve;
-    });
-    this.pauseResolver = null;
-    this.assertAlive();
-
+  private async runPause(turnIndex: number, type: PausedType): Promise<void> {
+    const result = await this.askPause(turnIndex, type);
     this.record(this.game.turns[turnIndex], type, result.outcomes);
     if (this.review) {
       this.finish();
       return;
     }
     this.update({ phase: { kind: 'playing' } });
-    await this.resume(result.resumePly);
+    await this.catchUp(result.resumePly);
+  }
+
+  private async askPause(turnIndex: number, type: PausedType, practice = false): Promise<PauseResult> {
+    this.update({ phase: { kind: 'pause', turnIndex, type, ...(practice && { practice: true as const }) }, status: '' });
+    const result = await new Promise<PauseResult>((resolve) => {
+      this.pauseResolver = resolve;
+    });
+    this.pauseResolver = null;
+    this.assertAlive();
+    return result;
   }
 
   /** The sheet leaves the board at the pause position; a sheet that played on is caught up without animation. */
-  private async resume(resumePly: number): Promise<void> {
-    while (this.ply < resumePly && this.ply < this.game.moves.length) this.takeMove(this.game.moves[this.ply]);
-    if (placement(this.board.fen()) === placement(this.chess.fen())) return;
-    await this.until(this.board.setPosition(this.chess.fen(), false));
-    this.board.setLastMove(this.lastUci);
+  private async catchUp(resumePly: number): Promise<void> {
+    this.ply = this.viewPly = Math.max(this.ply, Math.min(resumePly, this.steps.length));
+    this.update();
+    if (placement(this.board.fen()) === placement(this.positionAt(this.ply))) return;
+    await this.until(this.board.setPosition(this.positionAt(this.ply), false));
+    this.board.setLastMove(this.lastUciAt(this.ply));
   }
 
-  private record(turn: Turn, type: MomentResult['type'], outcomes: StepOutcome[]): void {
+  /** Asks an answered key position again, then returns the board to the live position and waits there. */
+  private async practice(ply: number): Promise<void> {
+    const turnIndex = this.game.turns.findIndex((t) => t.ply === ply);
+    const type = this.moments.get(turnIndex);
+    if (!isPrompted(type)) return;
+    await this.showPly(ply);
+    const result = await this.askPause(turnIndex, type, true);
+    this.record(this.game.turns[turnIndex], type, result.outcomes, true);
+    this.practiced = true;
+    this.update({ phase: { kind: 'ready' } });
+    await this.showPly(this.ply);
+  }
+
+  private record(turn: Turn, type: MomentResult['type'], outcomes: StepOutcome[], practice = false): void {
     const result: MomentResult = {
       opening: this.opening,
       level: this.level,
@@ -317,16 +488,21 @@ export class GameSession {
       stars: outcomes.filter((o) => o.correct).length,
       at: this.deps.now(),
     };
-    if (this.review) result.review = true;
+    if (this.review || practice) result.review = true;
     const { depthChanged } = this.deps.recordMoment(result);
-    this.results.push(result);
-    this.handledPlies.add(turn.ply);
-    this.doneDots.push(outcomes.length > 0 && outcomes.every((o) => o.correct) ? 'good' : 'bad');
+    if (!practice) this.countAnswer(turn, result);
     this.update({ depth: depthChanged ?? this.view.depth });
     if (depthChanged) {
       this.deps.celebrate('levelup');
       this.deps.toast('New step unlocked');
     }
+  }
+
+  /** Only a first answer counts toward the game's key positions and dots. */
+  private countAnswer(turn: Turn, result: MomentResult): void {
+    this.results.push(result);
+    this.handledPlies.add(turn.ply);
+    this.doneDots.push(result.outcomes.length > 0 && result.outcomes.every((o) => o.correct) ? 'good' : 'bad');
   }
 
   private finish(): void {
@@ -339,7 +515,7 @@ export class GameSession {
       at: this.deps.now(),
     };
     this.deps.recordGame(summary);
-    const outcome = this.review ? 'That was the position you missed before.' : outcomeText(this.chess, this.game);
+    const outcome = this.review ? 'That was the position you missed before.' : outcomeText(new Chess(this.positionAt(this.ply)), this.game);
     this.update({ phase: { kind: 'done', outcome }, status: '' });
   }
 }
