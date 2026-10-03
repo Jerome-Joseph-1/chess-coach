@@ -1,4 +1,5 @@
 import { LEVELS, OPENINGS } from '../content/catalog';
+import { UNIT_IDS, type DrillResult, type LessonRecord, type Lessons, type UnitId } from '../course/types';
 import type { Depth, GameSummary, Kind, Level, MomentResult, OpeningId, ReviewItem, Settings, StepOutcome } from '../content/types';
 import { DEPTHS, type DepthState, type WindowEntry } from './depth';
 import { BOXES } from './srs';
@@ -36,6 +37,10 @@ export interface Progress {
   /** The welcome-back bonus is waiting for the next recorded game. */
   armed: boolean;
   lastGame: LastGame | null;
+  /** Course lessons per opening. */
+  lessons: Partial<Record<OpeningId, Lessons>>;
+  /** How many times each opening note has been shown in full, by note id. */
+  notesSeen: Record<string, number>;
 }
 
 export interface LastGame {
@@ -55,7 +60,18 @@ export const DEFAULT_SETTINGS: StoredSettings = {
 };
 
 export function emptyProgress(): Progress {
-  return { v: PROGRESS_VERSION, moments: [], games: [], depth: {}, reviews: [], days: [], armed: false, lastGame: null };
+  return {
+    v: PROGRESS_VERSION,
+    moments: [],
+    games: [],
+    depth: {},
+    reviews: [],
+    days: [],
+    armed: false,
+    lastGame: null,
+    lessons: {},
+    notesSeen: {},
+  };
 }
 
 const THEMES: Settings['theme'][] = ['system', 'light', 'dark'];
@@ -141,6 +157,8 @@ function parseMoment(raw: unknown): MomentResult | null {
     at,
   };
   if (raw.review === true) moment.review = true;
+  if (raw.practice === true) moment.practice = true;
+  if (raw.hinted === true) moment.hinted = true;
   return moment;
 }
 
@@ -199,6 +217,43 @@ function parseDepthMap(raw: unknown): Progress['depth'] {
   return result;
 }
 
+function parseDrill(raw: unknown): DrillResult | null {
+  if (!isRecord(raw) || typeof raw.key !== 'string' || typeof raw.correct !== 'boolean' || !isNumber(raw.at)) return null;
+  return { key: raw.key, correct: raw.correct, at: raw.at };
+}
+
+function parseLesson(raw: unknown): LessonRecord | null {
+  if (!isRecord(raw)) return null;
+  const lesson: LessonRecord = { drills: list(raw.drills, parseDrill) };
+  if (isNumber(raw.learnedAt)) lesson.learnedAt = raw.learnedAt;
+  if (isNumber(raw.doneAt)) lesson.doneAt = raw.doneAt;
+  return lesson;
+}
+
+function parseLessons(raw: unknown): Lessons {
+  const lessons: Lessons = {};
+  if (!isRecord(raw)) return lessons;
+  for (const id of UNIT_IDS) {
+    const lesson = parseLesson(raw[id]);
+    if (lesson) lessons[id as UnitId] = lesson;
+  }
+  return lessons;
+}
+
+function parseLessonsByOpening(raw: unknown): Progress['lessons'] {
+  const result: Progress['lessons'] = {};
+  if (!isRecord(raw)) return result;
+  for (const opening of OPENING_IDS) if (isRecord(raw[opening])) result[opening] = parseLessons(raw[opening]);
+  return result;
+}
+
+function parseCounts(raw: unknown): Record<string, number> {
+  const counts: Record<string, number> = {};
+  if (!isRecord(raw)) return counts;
+  for (const [key, value] of Object.entries(raw)) if (isNumber(value)) counts[key] = value;
+  return counts;
+}
+
 function parseDay(raw: unknown): string | null {
   return typeof raw === 'string' && DAY_FORMAT.test(raw) ? raw : null;
 }
@@ -215,5 +270,7 @@ export function readProgress(raw: Record<string, unknown> | null): Progress | nu
     days: [...new Set(list(raw.days, parseDay))].sort().slice(-DAYS_CAP),
     armed: raw.armed === true,
     lastGame: parseLastGame(raw.lastGame),
+    lessons: parseLessonsByOpening(raw.lessons),
+    notesSeen: parseCounts(raw.notesSeen),
   };
 }

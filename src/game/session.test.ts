@@ -5,7 +5,8 @@ import type { Depth, Game, MomentType, SetIndex, Side, StepOutcome, Turn } from 
 import { fixtureGame, fixtureSet } from './fixtures';
 import { chooseMoments } from './pauses';
 import { parseUci } from './position';
-import { AUTOPLAY_MS, GameSession, KEY_BEAT_MS, RESUME_MS, type SessionDeps } from './session';
+import { beat } from './pacing';
+import { GameSession, RESUME_MS, type SessionDeps } from './session';
 
 vi.mock('./pauses', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./pauses')>();
@@ -85,6 +86,7 @@ function startSession(options: { games?: Game[]; review?: { gameId: string; ply:
     playedGameIds: vi.fn(() => options.played ?? []),
     recordMoment: vi.fn<SessionDeps['recordMoment']>(() => ({})),
     recordGame: vi.fn<SessionDeps['recordGame']>(),
+    dropReview: vi.fn<SessionDeps['dropReview']>(),
     celebrate: vi.fn(),
     toast: vi.fn(),
     wait: vi.fn<SessionDeps['wait']>(async () => {}),
@@ -238,10 +240,8 @@ describe('autoplay', () => {
     const { session, board, deps } = await playToPause();
     expect(board.calls).toEqual(['set:false', 'play:g8f6', 'play:d2d4', 'play:f6e4']);
     expect(session.getView().history.slice(-3)).toEqual(['Nf6', 'd4', 'Nxe4']);
-    // The beat before the move onto the key position is longer.
-    expect(deps.wait.mock.calls.map(([ms]) => ms)).toEqual([AUTOPLAY_MS, AUTOPLAY_MS + KEY_BEAT_MS, AUTOPLAY_MS]);
-    expect(AUTOPLAY_MS).toBe(600);
-    expect(KEY_BEAT_MS).toBe(350);
+    // Three moves before the stop: the beats slow into it.
+    expect(deps.wait.mock.calls.map(([ms]) => ms)).toEqual([beat(0, 3), beat(1, 2), beat(2, 1)]);
   });
 
   it('does not move until the next beat', async () => {
@@ -842,9 +842,8 @@ describe('reviewing a moment', () => {
     started.session.pauseDone({ outcomes: outcomes(true, true, true), resumePly: 7 });
     await flush();
     expect(started.deps.recordMoment).toHaveBeenCalledWith(expect.objectContaining({ ply: 7, review: true, stars: 3 }));
-    const summary = started.deps.recordGame.mock.calls[0][0];
-    expect(summary.moments).toHaveLength(1);
-    expect(summary.moments[0].review).toBe(true);
+    // A review is one position of a game already played, not another game.
+    expect(started.deps.recordGame).not.toHaveBeenCalled();
     expect(started.session.getView().phase.kind).toBe('done');
     expect(started.board.calls).toHaveLength(playsBefore);
   });
@@ -855,11 +854,17 @@ describe('reviewing a moment', () => {
     expect(started.deps.wait).toHaveBeenCalledTimes(3);
   });
 
-  it('reports a ply that is not a turn', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('drops a review whose ply is no longer a turn instead of failing', async () => {
     const started = startSession({ review: { gameId: GAME_1, ply: 4 } });
-    await flush();
-    expect(started.session.getView().phase.kind).toBe('error');
+    await waitForPhase(started, 'done');
+    expect(started.deps.dropReview).toHaveBeenCalledWith('italian', 1400, GAME_1, 4);
+    expect(started.deps.recordGame).not.toHaveBeenCalled();
+  });
+
+  it('drops a review whose game is no longer in the set', async () => {
+    const started = startSession({ review: { gameId: 'italian-1400-9999', ply: 7 } });
+    await waitForPhase(started, 'done');
+    expect(started.deps.dropReview).toHaveBeenCalledWith('italian', 1400, 'italian-1400-9999', 7);
   });
 });
 

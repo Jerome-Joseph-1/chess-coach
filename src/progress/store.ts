@@ -1,4 +1,5 @@
 import { setKey } from '../content/loader';
+import type { DrillResult, LessonRecord, Lessons, UnitId } from '../course/types';
 import type { Depth, GameSummary, Level, MomentResult, OpeningId, ReviewItem } from '../content/types';
 import { createBackup, parseBackup } from './backup';
 import { dayKey, daysBetween } from './days';
@@ -135,9 +136,62 @@ export function clearLastGameUnlock(): void {
   persist();
 }
 
+/** Games played in full, plus games a lesson used for practice: neither is offered as a new game. */
 export function playedGameIds(opening: OpeningId, level: Level): string[] {
   const ids = state().games.filter((g) => g.opening === opening && g.level === level).map((g) => g.gameId);
-  return [...new Set(ids)];
+  return [...new Set([...ids, ...drilledGameIds(setKey(opening, level))])];
+}
+
+function drilledGameIds(set: string): string[] {
+  const lessons = Object.values(state().lessons).flatMap((byUnit) => Object.values(byUnit ?? {}));
+  const prefix = `${set}/`;
+  return lessons.flatMap((l) => l.drills.filter((d) => d.key.startsWith(prefix)).map((d) => d.key.slice(prefix.length).split(':')[0]));
+}
+
+/** Games of this opening played since `at`, at any level. */
+export function gamesPlayedSince(opening: OpeningId, at: number): number {
+  return state().games.filter((g) => g.opening === opening && g.at > at).length;
+}
+
+export function dropReview(opening: OpeningId, level: Level, gameId: string, ply: number): void {
+  const p = state();
+  p.reviews = p.reviews.filter((r) => !(r.opening === opening && r.level === level && r.gameId === gameId && r.ply === ply));
+  persist();
+}
+
+export function getLessons(opening: OpeningId): Lessons {
+  return state().lessons[opening] ?? {};
+}
+
+function lessonRecord(opening: OpeningId, unit: UnitId): LessonRecord {
+  const p = state();
+  const byUnit = (p.lessons[opening] ??= {});
+  return (byUnit[unit] ??= { drills: [] });
+}
+
+export function recordLearned(opening: OpeningId, unit: UnitId, at: number): void {
+  lessonRecord(opening, unit).learnedAt ??= at;
+  persist();
+}
+
+export function recordDrill(opening: OpeningId, unit: UnitId, result: DrillResult): void {
+  lessonRecord(opening, unit).drills.push(result);
+  persist();
+}
+
+export function recordLessonDone(opening: OpeningId, unit: UnitId, at: number): void {
+  lessonRecord(opening, unit).doneAt = at;
+  persist();
+}
+
+export function noteSeenCount(id: string): number {
+  return state().notesSeen[id] ?? 0;
+}
+
+export function markNoteSeen(id: string): void {
+  const p = state();
+  p.notesSeen[id] = (p.notesSeen[id] ?? 0) + 1;
+  persist();
 }
 
 export function dueReviews(opening: OpeningId, level: Level, now: number): ReviewItem[] {

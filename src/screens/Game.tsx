@@ -12,7 +12,7 @@ import { CrossFade } from '../pause/CrossFade';
 import { Dock, DockButton } from '../pause/Dock';
 import { PauseSheet, type PauseOutcome, type PauseStage, type Verdict } from '../pause/PauseSheet';
 import { Icon } from '../pause/steps/icons';
-import { getDepth, getSettings, playedGameIds, recordGame, recordMoment } from '../progress/store';
+import { dropReview, getDepth, getSettings, playedGameIds, recordGame, recordMoment } from '../progress/store';
 import { navigate } from '../router';
 import { celebrate, toast } from '../ui/rewards';
 import { Controls, CoachLine } from './game/Controls';
@@ -46,6 +46,7 @@ function sessionDeps(board: BoardController): SessionDeps {
     playedGameIds,
     recordMoment,
     recordGame,
+    dropReview,
     celebrate,
     toast,
     wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
@@ -125,7 +126,7 @@ export function Game({ opening, level, review }: GameProps) {
   return (
     <main class="game" data-mode={mode}>
       <header class="game-top">
-        <button class="game-back" type="button" aria-label="Back" onClick={() => navigate(review ? '/review' : '/')}>
+        <button class="game-back" type="button" aria-label="Back" onClick={() => navigate('/')}>
           <Icon name="chevron-left" />
         </button>
         <div class="game-heading">
@@ -197,7 +198,7 @@ function Slot({ view, review, board, session, onAnalyse, onPauseDone, onStage }:
   }
   if (phase.kind === 'done') {
     const eyebrow = review ? 'Review' : `Game over · ${Math.ceil(view.history.length / 2)} moves`;
-    return <Ending eyebrow={eyebrow} text={phase.outcome} action="Finish" onAction={() => navigate('/recap')} />;
+    return <Ending eyebrow={eyebrow} text={phase.outcome} action="Finish" onAction={() => navigate(review ? '/' : '/recap')} />;
   }
   return <Controls view={view} session={session} onAnalyse={onAnalyse} />;
 }

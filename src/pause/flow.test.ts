@@ -486,3 +486,35 @@ describe('the reveal', () => {
     expect(run(ctx, [{ type: 'continue' }], start)).toBe(start);
   });
 });
+
+describe('a lesson practice position', () => {
+  const drill = (depth: Depth): FlowContext => ({ ...ctxFor(italian1, 3, depth), mode: 'drill' });
+
+  it('starts at the move with the pattern already named, and asks nothing after it', () => {
+    const ctx = drill(5);
+    const state = initialState(ctx);
+    expect(state.phase).toBe('solve');
+    expect(state.hint).toBe(1);
+    expect(holdTurns(ctx)).toEqual([]);
+    expect(plannedSteps(ctx)).toEqual(['solve']);
+    expect(stepNumber(ctx, 'solve', 3)).toBe(1);
+  });
+
+  it('counts the move as found without a hint, then reveals', () => {
+    const ctx = drill(3);
+    const state = run(ctx, [move(scriptedUci(italian1, 3)), advance]);
+    expect(state.phase).toBe('reveal');
+    expect(state.outcomes).toEqual([{ step: 'solve', correct: true }]);
+    expect(verdictOf(ctx, state)).toBe('found');
+  });
+
+  it('climbs the hint ladder from the piece', () => {
+    const ctx = drill(3);
+    const state = run(ctx, [hint]);
+    expect(state.hint).toBe(2);
+    expect(state.hinted).toBe(true);
+    const done = run(ctx, [move(scriptedUci(italian1, 3)), advance], state);
+    expect(done.outcomes).toEqual([{ step: 'solve', correct: false }]);
+    expect(verdictOf(ctx, done)).toBe('hinted');
+  });
+});

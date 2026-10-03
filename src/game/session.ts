@@ -14,15 +14,13 @@ import type {
 import type { PauseResult } from '../pause/PauseSheet';
 import type { Celebration, Point } from '../ui/rewards';
 import { outcomeText } from './outcome';
+import { beat } from './pacing';
 import { chooseMoments, hashSeed } from './pauses';
 import { placement, playSan } from './position';
 
-/** One scripted move every 600 ms while the game plays by itself. */
-export const AUTOPLAY_MS = 600;
-/** Added to the beat before a move that lands on a key position, so the stop does not come abruptly. */
-export const KEY_BEAT_MS = 350;
 /** After a key position, the game waits this long before it plays on. */
 export const RESUME_MS = 300;
+const STALE_REVIEW = 'This position is no longer in the course, so it is off your review list.';
 const REPLAY_PLIES = 4;
 const REPLAY_MS = 250;
 
@@ -35,6 +33,7 @@ export interface SessionDeps {
   playedGameIds(opening: OpeningId, level: Level): string[];
   recordMoment(result: MomentResult): { depthChanged?: Depth };
   recordGame(summary: GameSummary): void;
+  dropReview(opening: OpeningId, level: Level, gameId: string, ply: number): void;
   celebrate(kind: Celebration, origin?: Point): void;
   toast(text: string): void;
   wait(ms: number): Promise<void>;
@@ -83,6 +82,8 @@ export interface SessionView {
   /** The board is away from the live position, or a practice has just ended: the main button says Continue. */
   returning: boolean;
   status: string;
+  /** The opening the moves shown have reached, and the coach's note on them while it is new to the user. */
+  note: { name: string | null; text: string | null } | null;
 }
 
 class Stopped extends Error {}
@@ -109,6 +110,8 @@ export class GameSession {
   private ply = 0;
   /** Scripted moves the board shows; below `ply` while the user looks back. */
   private viewPly = 0;
+  /** Moves autoplay has played since Play, Continue or the last key position. */
+  private streak = 0;
   private moments = new Map<number, MomentType>();
   private results: MomentResult[] = [];
   private doneDots: DotState[] = [];
@@ -139,6 +142,7 @@ export class GameSession {
       controls: NO_CONTROLS,
       returning: false,
       status: '',
+      note: null,
     };
   }
 
@@ -157,7 +161,7 @@ export class GameSession {
 
   async start(): Promise<void> {
     await this.guarded(async () => {
-      await this.setup();
+      if (!(await this.setup())) return;
       if (this.review) await this.askNextMoment();
       else this.update({ phase: { kind: 'ready' }, status: '' });
     });
@@ -327,14 +331,36 @@ export class GameSession {
     return value;
   }
 
-  private async setup(): Promise<void> {
+  /** Loads the game and shows its start; false when a review points at a position that is gone. */
+  private async setup(): Promise<boolean> {
     const { opening, level, deps } = this;
     const set = await this.until(deps.loadSet(opening, level));
     if (!set) throw new Error(`No games for ${opening} ${level}`);
+    if (this.review && !(await this.until(this.reviewStillThere(this.review)))) {
+      this.dropStaleReview(this.review);
+      return false;
+    }
     const game = await this.until(deps.loadGame(opening, level, this.review?.gameId ?? this.pickGameId(set)));
     this.startGame(game);
     await this.until(this.board.setPosition(this.startFen, false));
     if (this.review) await this.replayBeforeReview(this.review.ply);
+    return true;
+  }
+
+  /** New content can drop a game or move its key positions; a review saved before then points nowhere. */
+  private async reviewStillThere({ gameId, ply }: { gameId: string; ply: number }): Promise<boolean> {
+    try {
+      const game = await this.deps.loadGame(this.opening, this.level, gameId);
+      return game.turns.some((t) => t.ply === ply);
+    } catch {
+      return false;
+    }
+  }
+
+  private dropStaleReview({ gameId, ply }: { gameId: string; ply: number }): void {
+    this.deps.dropReview(this.opening, this.level, gameId, ply);
+    this.finished = true;
+    this.update({ phase: { kind: 'done', outcome: STALE_REVIEW }, status: '' });
   }
 
   private pickGameId(set: SetIndex): string {
@@ -391,11 +417,14 @@ export class GameSession {
 
   /** Plays the scripted moves of both sides until a prompted moment, a stop or the end of the game. */
   private async autoplay(): Promise<void> {
+    this.streak = 0;
     while (this.isPlaying() && this.ply < this.steps.length) {
       this.assertAlive();
       const moment = this.nextMoment();
-      if (moment) await this.runPause(moment.turnIndex, moment.type);
-      else await this.playPaced();
+      if (moment) {
+        await this.runPause(moment.turnIndex, moment.type);
+        this.streak = 0;
+      } else await this.playPaced();
     }
     if (this.ply >= this.steps.length && !this.finished) this.finish();
   }
@@ -433,10 +462,17 @@ export class GameSession {
     this.board.setLastMove(this.lastUciAt(ply));
   }
 
-  /** One move per beat, however long the animation takes; the beat before a move onto a key position is longer. */
+  /** One move per beat, however long the animation takes: quicker through a long stretch, slower into a stop. */
   private async playPaced(): Promise<void> {
-    const beat = this.momentAt(this.ply + 2) ? AUTOPLAY_MS + KEY_BEAT_MS : AUTOPLAY_MS;
-    await this.until(Promise.all([this.playForward(), this.deps.wait(beat)]));
+    const wait = beat(this.streak, this.movesUntilStop());
+    this.streak++;
+    await this.until(Promise.all([this.playForward(), this.deps.wait(wait)]));
+  }
+
+  /** Moves left to play before the next key position or the end of the game, the next one included. */
+  private movesUntilStop(): number {
+    for (let ply = this.ply + 1; ply < this.steps.length; ply++) if (this.momentAt(ply)) return ply - this.ply;
+    return this.steps.length - this.ply;
   }
 
   private async runPause(turnIndex: number, type: PausedType): Promise<void> {
@@ -526,7 +562,8 @@ export class GameSession {
       moments: this.results,
       at: this.deps.now(),
     };
-    this.deps.recordGame(summary);
+    // A review replays one position of a game already played: it is not another game.
+    if (!this.review) this.deps.recordGame(summary);
     const outcome = this.review ? 'That was the position you missed before.' : outcomeText(new Chess(this.positionAt(this.ply)), this.game);
     this.update({ phase: { kind: 'done', outcome }, status: '' });
   }

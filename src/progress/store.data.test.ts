@@ -114,3 +114,47 @@ describe('settings and data tools', () => {
     expect(() => store.dismissInstallHint()).not.toThrow();
   });
 });
+
+describe('lessons, opening notes and answer flags', () => {
+  it('keeps lessons and practice positions across a reload, and skips practised games', async () => {
+    const store = await openStore();
+    store.recordLearned('italian', 'fork', 10);
+    store.recordDrill('italian', 'fork', { key: 'italian-1400/italian-1400-0007:21', correct: true, at: 11 });
+    store.recordLessonDone('italian', 'fork', 12);
+    const reloaded = await openStore();
+    expect(reloaded.getLessons('italian').fork).toEqual({
+      learnedAt: 10,
+      doneAt: 12,
+      drills: [{ key: 'italian-1400/italian-1400-0007:21', correct: true, at: 11 }],
+    });
+    expect(reloaded.playedGameIds('italian', 1400)).toEqual(['italian-1400-0007']);
+    expect(reloaded.playedGameIds('italian', 1700)).toEqual([]);
+  });
+
+  it('counts how often each opening note was shown', async () => {
+    const store = await openStore();
+    store.markNoteSeen('two-knights');
+    store.markNoteSeen('two-knights');
+    expect((await openStore()).noteSeenCount('two-knights')).toBe(2);
+    expect((await openStore()).noteSeenCount('giuoco-piano')).toBe(0);
+  });
+
+  it('keeps the hint and practice flags of a moment after a reload', async () => {
+    const store = await openStore();
+    store.recordMoment(moment({ hinted: true }));
+    store.recordMoment(moment({ ply: 9, practice: true }));
+    const [hinted, practice] = (await openStore()).getMoments();
+    expect(hinted.hinted).toBe(true);
+    expect(practice.practice).toBe(true);
+  });
+
+  it('drops one review and keeps the others', async () => {
+    const store = await openStore();
+    store.recordMoment(moment({ ply: 5, outcomes: [{ step: 'spot', correct: false }], stars: 0 }));
+    store.recordMoment(moment({ ply: 9, outcomes: [{ step: 'spot', correct: false }], stars: 0 }));
+    store.dropReview('italian', 1400, moment().gameId, 5);
+    const due = (await openStore()).dueReviews('italian', 1400, Number.MAX_SAFE_INTEGER).map((r) => r.ply);
+    expect(due).toContain(9);
+    expect(due).not.toContain(5);
+  });
+});

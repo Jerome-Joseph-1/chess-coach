@@ -11,6 +11,17 @@ export interface FlowContext {
   turnIndex: number;
   type: 'pause' | 'nothing';
   depth: Depth;
+  /** A lesson's practice position: straight to the move, the pattern already named, no follow-up moves. */
+  mode?: 'game' | 'drill';
+}
+
+function isDrill(ctx: FlowContext): boolean {
+  return ctx.mode === 'drill';
+}
+
+/** The hint a question starts with: a drill has already named its pattern. */
+function startingHint(ctx: FlowContext): HintLevel {
+  return isDrill(ctx) ? 1 : 0;
 }
 
 export type Phase = 'spot' | 'solve' | 'hold' | 'reply' | 'reveal' | 'done';
@@ -64,10 +75,10 @@ export type FlowEvent =
 
 export function initialState(ctx: FlowContext): FlowState {
   return {
-    phase: 'spot',
+    phase: isDrill(ctx) ? 'solve' : 'spot',
     turn: ctx.turnIndex,
     tries: 0,
-    hint: 0,
+    hint: startingHint(ctx),
     answered: false,
     next: null,
     spotUp: null,
@@ -94,8 +105,10 @@ export function replyUci(game: Game, turnIndex: number): string {
 }
 
 /** Turn indexes asked after the solve step. A play-out of 5 stops before a quiet turn. */
-export function holdTurns({ game, turnIndex, depth }: FlowContext): number[] {
+export function holdTurns(ctx: FlowContext): number[] {
+  const { game, turnIndex, depth } = ctx;
   const turns: number[] = [];
+  if (isDrill(ctx)) return turns;
   for (let i = turnIndex + 1; turns.length < HOLD_MOVES[depth]; i++) {
     const next = game.turns[i];
     if (!next || next.ply !== game.turns[i - 1].ply + 2) break;
@@ -108,6 +121,7 @@ export function holdTurns({ game, turnIndex, depth }: FlowContext): number[] {
 /** Every step this pause asks, in order: spot, play, then the follow-up moves of stage 4 and 5. */
 export function plannedSteps(ctx: FlowContext): StepName[] {
   if (ctx.type === 'nothing') return ['spot'];
+  if (isDrill(ctx)) return ['solve'];
   return ['spot', 'solve', ...holdTurns(ctx).map((): StepName => 'hold')];
 }
 
@@ -125,7 +139,8 @@ export function stepNumber(ctx: FlowContext, phase: Phase, turn: number): number
   if (phase === 'spot') return 1;
   if (phase !== 'solve' && phase !== 'hold' && phase !== 'reply') return null;
   const at = [ctx.turnIndex, ...holdTurns(ctx)].indexOf(turn);
-  return at < 0 ? null : 2 + at;
+  if (at < 0) return null;
+  return isDrill(ctx) ? 1 + at : 2 + at;
 }
 
 /** Turn whose lines the reveal shows: where the user asked for the solution, else the pause itself. */
@@ -201,7 +216,7 @@ function playMove(ctx: FlowContext, state: FlowState, uci: string): FlowState {
 
   const step = state.phase === 'hold' ? 'hold' : 'solve';
   const grade = ctx.game.turns[state.turn].grades[uci];
-  const outcomes: StepOutcome[] = [...state.outcomes, { step, correct: state.hint === 0 }];
+  const outcomes: StepOutcome[] = [...state.outcomes, { step, correct: state.hint <= startingHint(ctx) }];
 
   if (uci === scriptedUci(ctx.game, state.turn)) {
     const last = holdTurns(ctx).at(-1) ?? ctx.turnIndex;

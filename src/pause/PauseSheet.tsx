@@ -68,6 +68,8 @@ export interface PauseSheetProps {
   onDone: (result: PauseOutcome) => void;
   /** Told whenever the panel changes stage, so the screen can make room for it. */
   onStage?: (stage: PauseStage) => void;
+  /** A lesson's practice position: it starts at the move with the pattern named. */
+  mode?: 'game' | 'drill';
 }
 
 const REPLY_MS = 350;
@@ -107,8 +109,8 @@ function lastMoveSquares(game: Game, turnIndex: number): string[] {
   return move ? [move.from, move.to] : [];
 }
 
-export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStage }: PauseSheetProps) {
-  const ctx = useMemo<FlowContext>(() => ({ game, turnIndex, type, depth }), [game, turnIndex, type, depth]);
+export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStage, mode = 'game' }: PauseSheetProps) {
+  const ctx = useMemo<FlowContext>(() => ({ game, turnIndex, type, depth, mode }), [game, turnIndex, type, depth, mode]);
   const [state, setState] = useState(() => initialState(ctx));
   const [why, setWhy] = useState<number | null>(null);
   const [lineAt, setLineAt] = useState(0);

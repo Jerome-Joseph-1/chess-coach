@@ -1,3 +1,4 @@
+import type { CourseFile } from '../course/types';
 import type { Game, Level, OpeningId, SetIndex } from './types';
 
 export const CONTENT_URL = `${import.meta.env.BASE_URL}content/`;
@@ -19,4 +20,14 @@ export async function loadGame(opening: OpeningId, level: Level, id: string): Pr
   const res = await fetch(gameUrl(opening, level, id));
   if (!res.ok) throw new Error(`Game ${id} not found`);
   return res.json();
+}
+
+export function courseUrl(opening: OpeningId, level: Level): string {
+  return `${CONTENT_URL}${setKey(opening, level)}/course.json`;
+}
+
+/** The set's lessons: which key positions teach and practise each pattern. Null when the set has none. */
+export async function loadCourse(opening: OpeningId, level: Level): Promise<CourseFile | null> {
+  const res = await fetch(courseUrl(opening, level));
+  return res.ok ? res.json() : null;
 }
