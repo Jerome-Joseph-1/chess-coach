@@ -1,6 +1,10 @@
+import { OPENINGS } from './content/catalog';
 import type { Level, OpeningId } from './content/types';
+import { LessonScreen } from './course/lesson/LessonScreen';
+import { isUnitId } from './course/units';
 import { useRoute } from './router';
 import { About } from './screens/About';
+import { Course } from './screens/Course';
 import { Game } from './screens/Game';
 import { Home } from './screens/Home';
 import { PauseLab } from './screens/PauseLab';
@@ -15,6 +19,10 @@ function parseReview(query: string): { gameId: string; ply: number } | undefined
   return gameId && ply ? { gameId, ply: Number(ply) } : undefined;
 }
 
+function isOpeningId(value: string): value is OpeningId {
+  return OPENINGS.some((o) => o.id === value);
+}
+
 export function App() {
   const route = useRoute();
   const [path, query = ''] = route.split('?');
@@ -24,7 +32,13 @@ export function App() {
       <Game key={route} opening={play[1] as OpeningId} level={Number(play[2]) as Level} review={parseReview(query)} />
     );
   }
+  const lesson = path.match(/^\/lesson\/([a-z-]+)\/([a-z-]+)$/);
+  if (lesson && isOpeningId(lesson[1]) && isUnitId(lesson[2])) {
+    return <LessonScreen key={route} opening={lesson[1]} unit={lesson[2]} />;
+  }
   switch (path) {
+    case '/course':
+      return <Course />;
     case '/recap':
       return <Recap />;
     case '/progress':

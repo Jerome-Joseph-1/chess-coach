@@ -2,10 +2,11 @@ import { useEffect, useState } from 'preact/hooks';
 import { Icon, type IconName } from '../screens/shared/icons';
 import './tabbar.css';
 
-export type Tab = 'today' | 'progress' | 'settings';
+export type Tab = 'today' | 'course' | 'progress' | 'settings';
 
 const TABS: { id: Tab; href: string; label: string; icon: IconName }[] = [
   { id: 'today', href: '#/', label: 'Today', icon: 'home' },
+  { id: 'course', href: '#/course', label: 'Course', icon: 'course' },
   { id: 'progress', href: '#/progress', label: 'Progress', icon: 'chart' },
   { id: 'settings', href: '#/settings', label: 'Settings', icon: 'sliders' },
 ];
@@ -24,7 +25,7 @@ export function TabBar({ current }: { current: Tab }) {
 
   return (
     <nav class="tabbar" aria-label="Main">
-      <div class="tabbar-tabs" style={{ '--i': indexOf(current), '--from': indexOf(from) }}>
+      <div class="tabbar-tabs" style={{ '--n': TABS.length, '--i': indexOf(current), '--from': indexOf(from) }}>
         <span class={`tabbar-pill ${from === current ? '' : 'tabbar-pill--slide'}`} aria-hidden="true" />
         {TABS.map((tab) => (
           <a key={tab.id} class="tabbar-item" href={tab.href} aria-current={tab.id === current ? 'page' : undefined}>

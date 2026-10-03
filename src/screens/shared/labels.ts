@@ -1,5 +1,6 @@
 import { openingById } from '../../content/catalog';
 import type { Level, OpeningId } from '../../content/types';
+import type { UnitId } from '../../course/types';
 import type { StatKind } from '../../progress/stats';
 
 export const OPENING_TITLES: Record<OpeningId, string> = {
@@ -25,6 +26,10 @@ export function ratingLine(level: Level): string {
 
 export function playPath(opening: OpeningId, level: Level): string {
   return `/play/${opening}/${level}`;
+}
+
+export function lessonPath(opening: OpeningId, unit: UnitId): string {
+  return `/lesson/${opening}/${unit}`;
 }
 
 export function reviewPath(item: { opening: OpeningId; level: Level; gameId: string; ply: number }): string {

@@ -1,0 +1,59 @@
+/* One row per unit in teaching order: icon, name, what it is, and where it stands. */
+.unit-row {
+  align-items: flex-start;
+  min-height: 72px;
+}
+.unit-main {
+  gap: 2px;
+}
+.unit-main .row-sub {
+  text-wrap: pretty;
+}
+.unit-row .chevron {
+  align-self: center;
+}
+.unit-chevron--none {
+  visibility: hidden;
+}
+.unit-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+  margin-top: 4px;
+}
+.unit-score {
+  color: var(--text-muted);
+  font: var(--text-label);
+  font-weight: 400;
+}
+/* The coach's colour marks the lesson it suggests next, as on Today. */
+.unit-next {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--coach-tint);
+  color: var(--coach-text);
+  font: 600 12px/16px var(--font);
+  letter-spacing: 0.01em;
+}
+.unit-later {
+  color: var(--text-muted);
+  font: var(--text-label);
+}
+.unit-row--later .row-title {
+  color: var(--text);
+}
+.unit-row--later .tile {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.course-note {
+  margin: 0;
+  padding: 16px;
+  border-radius: 16px;
+  font: var(--text-caption);
+}

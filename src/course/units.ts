@@ -9,16 +9,16 @@ export interface UnitInfo {
 
 export const UNITS: Record<UnitId, UnitInfo> = {
   'free-piece': { title: 'Free pieces', line: 'A piece nobody guards: take it.' },
-  'piece-in-danger': { title: 'Pieces in danger', line: 'One of your pieces can be taken: move it or guard it.' },
+  'piece-in-danger': { title: 'Pieces in danger', line: 'Your piece can be taken: move it or guard it.' },
   fork: { title: 'Forks', line: 'One piece attacks two things at once.' },
-  pin: { title: 'Pins', line: 'A piece cannot move without uncovering a bigger one behind it.' },
-  checkmate: { title: 'Checkmate', line: 'Mate, the threat of mate, and the back rank.' },
-  'remove-defender': { title: 'Remove the defender', line: 'Take or chase away the piece that guards another.' },
-  discovered: { title: 'Discovered attacks', line: 'One piece steps aside and the piece behind it attacks.' },
-  skewer: { title: 'Skewers', line: 'Attack a big piece; when it moves, take the one behind.' },
-  trapped: { title: 'Trapped pieces', line: 'A piece with no safe square left can be won.' },
-  traps: { title: 'Traps', line: 'A tempting move that loses: see the catch before you take.' },
-  threats: { title: 'Threats', line: 'See what your opponent wants to do next and stop it.' },
+  pin: { title: 'Pins', line: 'A piece stuck in front of a bigger one.' },
+  checkmate: { title: 'Checkmate', line: 'Mate, mate threats and the back rank.' },
+  'remove-defender': { title: 'Remove the defender', line: 'Take the guard, then what it guarded.' },
+  discovered: { title: 'Discovered attacks', line: 'One piece moves and uncovers an attack.' },
+  skewer: { title: 'Skewers', line: 'Attack a big piece and win the one behind.' },
+  trapped: { title: 'Trapped pieces', line: 'A piece with no safe square left.' },
+  traps: { title: 'Traps', line: 'A tempting move that loses: spot the catch.' },
+  threats: { title: 'Threats', line: 'See what your opponent wants and stop it.' },
 };
 
 const UNIT_OF_THEME: Record<ThemeId, UnitId | null> = {

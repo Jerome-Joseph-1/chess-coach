@@ -22,7 +22,7 @@
   left: 0;
   display: grid;
   place-items: center;
-  width: calc(100% / 3);
+  width: calc(100% / var(--n));
   height: 32px;
   transform: translateX(calc(var(--i) * 100%));
 }
