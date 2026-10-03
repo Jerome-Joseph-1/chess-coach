@@ -61,7 +61,7 @@ describe.skipIf(!CONTENT_DIR)('whyWrong over a whole content folder', () => {
           const lines = [[uci, ...(turn.refutations[uci] ?? [])], uci === turn.mistakeMove ? (turn.lines.mistake ?? []) : []];
           // The opponent may play a move written the same way, which names nothing of the user's.
           const played = lines.flatMap((line) => playLine(turn.fen, line));
-          const theirs = new Set(played.filter((m) => m.color !== game.side).map((m) => m.san));
+          const theirs = new Set(played.filter((m) => m.color !== game.side).flatMap((m) => [m.san, m.san.replace(/[+#]$/, '')]));
           const first = whyWrong(game, i, uci, 0);
           const told: WrongMove[] = first.kind === 'ignores-threat' ? [first, whyWrong(game, i, uci, 2)] : [first];
           for (const why of told) {
