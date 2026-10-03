@@ -144,7 +144,8 @@ export function verdictOf(ctx: FlowContext, state: FlowState): Verdict {
 
 /** The sheet hands the board back on the pause position, so the game resumes at the scripted move there. */
 export function flowResult(ctx: FlowContext, state: FlowState) {
-  return { outcomes: state.outcomes, resumePly: ctx.game.turns[ctx.turnIndex].ply, verdict: verdictOf(ctx, state) };
+  const verdict = verdictOf(ctx, state);
+  return { outcomes: state.outcomes, resumePly: ctx.game.turns[ctx.turnIndex].ply, verdict, hinted: verdict === 'hinted' };
 }
 
 export function flowReducer(ctx: FlowContext, state: FlowState, event: FlowEvent): FlowState {

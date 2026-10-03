@@ -45,6 +45,8 @@ export interface PauseResult {
    * the game plays that move and everything after it.
    */
   resumePly: number;
+  /** Found only once a hint had shown the way. */
+  hinted?: boolean;
 }
 
 /** The result, and how it went for the mark on the pause's move. */

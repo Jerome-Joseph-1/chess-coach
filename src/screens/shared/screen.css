@@ -188,6 +188,10 @@ a.row:active {
   background: color-mix(in srgb, var(--danger) 16%, var(--surface));
   color: var(--danger);
 }
+.tile--hinted {
+  background: var(--coach-tint);
+  color: var(--coach-text);
+}
 .row-stack {
   display: grid;
   gap: 12px;

@@ -102,6 +102,9 @@
 .pip--missed {
   --pip: var(--danger);
 }
+.pip--hinted {
+  --pip: var(--coach);
+}
 @keyframes pip-fill {
   from {
     opacity: 0;

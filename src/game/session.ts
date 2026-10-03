@@ -9,7 +9,6 @@ import type {
   MomentType,
   OpeningId,
   SetIndex,
-  StepOutcome,
   Turn,
 } from '../content/types';
 import type { PauseResult } from '../pause/PauseSheet';
@@ -442,7 +441,7 @@ export class GameSession {
 
   private async runPause(turnIndex: number, type: PausedType): Promise<void> {
     const result = await this.askPause(turnIndex, type);
-    this.record(this.game.turns[turnIndex], type, result.outcomes);
+    this.record(this.game.turns[turnIndex], type, result);
     if (this.review) {
       this.finish();
       return;
@@ -479,13 +478,13 @@ export class GameSession {
     if (!isPrompted(type)) return;
     await this.showPly(ply);
     const result = await this.askPause(turnIndex, type, true);
-    this.record(this.game.turns[turnIndex], type, result.outcomes, true);
+    this.record(this.game.turns[turnIndex], type, result, true);
     this.practiced = true;
     this.update({ phase: { kind: 'ready' } });
     await this.showPly(this.ply);
   }
 
-  private record(turn: Turn, type: MomentResult['type'], outcomes: StepOutcome[], practice = false): void {
+  private record(turn: Turn, type: MomentResult['type'], { outcomes, hinted }: PauseResult, practice = false): void {
     const result: MomentResult = {
       opening: this.opening,
       level: this.level,
@@ -501,6 +500,7 @@ export class GameSession {
     };
     if (this.review || practice) result.review = true;
     if (practice) result.practice = true;
+    if (hinted) result.hinted = true;
     const { depthChanged } = this.deps.recordMoment(result);
     if (!practice) this.countAnswer(turn, result);
     this.update({ depth: depthChanged ?? this.view.depth });

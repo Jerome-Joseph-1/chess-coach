@@ -97,6 +97,8 @@ export interface MomentResult {
   review?: boolean;
   /** Asked again right after it was answered: it moves no stage and no review date. */
   practice?: boolean;
+  /** Found only once a hint had shown the way; it still counts as a miss. */
+  hinted?: boolean;
 }
 
 export interface GameSummary {

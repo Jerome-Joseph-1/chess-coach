@@ -107,6 +107,12 @@ describe('key position results', () => {
     expect(momentTone(wrong({ type: 'nothing', kinds: [] }))).toBe('missed');
     expect(momentTone(wrong())).toBe('missed');
   });
+
+  it('marks a move found only with a hint, and still saves it for review', () => {
+    expect(momentTone(wrong({ hinted: true }))).toBe('hinted');
+    expect(momentSub(wrong({ hinted: true }))).toBe('Found it with a hint · saved for review');
+    expect(handledWell([wrong({ hinted: true }), moment()])).toEqual({ right: 1, total: 2 });
+  });
 });
 
 describe('handled well', () => {

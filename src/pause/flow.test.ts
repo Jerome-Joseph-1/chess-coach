@@ -179,6 +179,7 @@ describe('a quiet turn', () => {
       outcomes: [{ step: 'spot', correct: true }],
       resumePly: italian1.turns[11].ply,
       verdict: 'quiet',
+      hinted: false,
     });
   });
 
@@ -473,6 +474,7 @@ describe('the reveal', () => {
     const ctx = ctxFor(italian1, 3, 3);
     expect(verdictOf(ctx, run(ctx, perfectRun(ctx)))).toBe('found');
     expect(verdictOf(ctx, run(ctx, [spot(true), advance, hint, move(scriptedUci(italian1, 3))]))).toBe('hinted');
+    expect(flowResult(ctx, run(ctx, [spot(true), advance, hint, move(scriptedUci(italian1, 3))])).hinted).toBe(true);
     expect(verdictOf(ctx, run(ctx, [spot(true), advance, hint, solution]))).toBe('missed');
     expect(verdictOf(ctx, run(ctx, [spot(false), spot(true), advance, move(scriptedUci(italian1, 3))]))).toBe('missed');
     expect(verdictOf(ctxFor(italian1, 11, 3, 'nothing'), initialState(ctxFor(italian1, 11, 3, 'nothing')))).toBe('quiet');

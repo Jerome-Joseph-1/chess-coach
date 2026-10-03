@@ -26,7 +26,9 @@ const CELEBRATE_AFTER_MS = 300;
 let celebratedGameAt: number | null = null;
 let soundedGameAt: number | null = null;
 
-const MARKS: Record<MomentTone, IconName> = { right: 'check', quiet: 'check', missed: 'cross' };
+const MARKS: Record<MomentTone, IconName> = { right: 'check', quiet: 'check', hinted: 'bulb', missed: 'cross' };
+const TILES: Record<MomentTone, string> = { right: 'tile--right', quiet: 'tile--right', hinted: 'tile--hinted', missed: 'tile--missed' };
+const PIPS: Record<MomentTone, string> = { right: 'pip--right', quiet: 'pip--right', hinted: 'pip--hinted', missed: 'pip--missed' };
 
 interface KnownTurn {
   turn: Turn;
@@ -35,21 +37,22 @@ interface KnownTurn {
 
 function MomentRow({ m, known, index }: { m: MomentResult; known?: KnownTurn; index: number }) {
   const tone = momentTone(m);
+  const again = tone === 'missed' || tone === 'hinted';
   const contents = (
     <>
-      <span class={`tile ${tone === 'missed' ? 'tile--missed' : 'tile--right'}`} aria-hidden="true">
+      <span class={`tile ${TILES[tone]}`} aria-hidden="true">
         <Icon name={MARKS[tone]} />
       </span>
       <span class="row-main">
         <span class="moment-title">{momentTitle(m, known?.turn, known?.pattern)}</span>
         <span class="row-sub">{momentSub(m)}</span>
       </span>
-      {tone === 'missed' && <span class="moment-again">See it again</span>}
+      {again && <span class="moment-again">See it again</span>}
     </>
   );
   return (
     <li class="rise-in" style={{ animationDelay: `${rowDelay(index)}ms` }}>
-      {tone === 'missed' ? (
+      {again ? (
         <a class="row moment" href={`#${reviewPath(m)}`}>
           {contents}
         </a>
@@ -101,8 +104,8 @@ function Pips({ moments }: { moments: MomentResult[] }) {
   return (
     <span class="pips" aria-hidden="true">
       {moments.map((m, i) => (
-        <i key={`${m.gameId}:${m.ply}`} class={`pip ${isRight(m) ? 'pip--right' : 'pip--missed'}`} style={{ '--delay': `${pipDelay(i)}ms` }}>
-          <Icon name={isRight(m) ? 'check' : 'cross'} size={14} />
+        <i key={`${m.gameId}:${m.ply}`} class={`pip ${PIPS[momentTone(m)]}`} style={{ '--delay': `${pipDelay(i)}ms` }}>
+          <Icon name={MARKS[momentTone(m)]} size={14} />
         </i>
       ))}
     </span>

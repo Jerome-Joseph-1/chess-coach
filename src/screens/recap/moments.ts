@@ -4,7 +4,7 @@ import { parseUci, withTurn } from '../../game/position';
 import { isRight } from '../../progress/moments';
 import type { RateCount } from '../../progress/stats';
 
-export type MomentTone = 'right' | 'quiet' | 'missed';
+export type MomentTone = 'right' | 'quiet' | 'hinted' | 'missed';
 
 const PIECE_NAMES: Record<PieceSymbol, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
 const WON_PIECE: Record<PieceSymbol, string> = { p: 'a pawn', n: 'a piece', b: 'a piece', r: 'a rook', q: 'the queen', k: 'the king' };
@@ -61,13 +61,14 @@ export function momentTitle(m: MomentResult, turn?: Turn, pattern?: string): str
 }
 
 export function momentTone(m: MomentResult): MomentTone {
-  if (!isRight(m)) return 'missed';
+  if (!isRight(m)) return m.hinted ? 'hinted' : 'missed';
   return m.type === 'nothing' ? 'quiet' : 'right';
 }
 
 export function momentSub(m: MomentResult): string {
   const tone = momentTone(m);
   if (tone === 'missed') return 'Missed it · saved for review';
+  if (tone === 'hinted') return 'Found it with a hint · saved for review';
   if (tone === 'quiet') return 'Right, it was quiet';
   if (m.type === 'silent') return 'Found it without a hint';
   return FOUND[m.outcomes.at(-1)?.step ?? 'spot'];

@@ -380,6 +380,14 @@ describe('a pause', () => {
     });
   });
 
+  it('records a move found only with a hint as hinted', async () => {
+    momentsAt({ 3: 'pause' });
+    const started = await playToPause({ depth: 3 });
+    started.session.pauseDone({ outcomes: outcomes(true, false), resumePly: 3, hinted: true });
+    await flush();
+    expect(started.deps.recordMoment).toHaveBeenCalledWith(expect.objectContaining({ ply: 3, hinted: true }));
+  });
+
   it('plays on by itself, starting with the scripted move', async () => {
     momentsAt({ 3: 'pause' });
     const started = await playToPause();
