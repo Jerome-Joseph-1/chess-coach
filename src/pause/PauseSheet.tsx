@@ -353,8 +353,10 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
   function actions() {
     if (view === 'reveal') {
       const onWhy = watchable && why === null ? () => setWhy(lineAt) : undefined;
-      const done = type === 'nothing' || lineDone || !reveal?.sequence.steps.length;
-      return <RevealActions onContinue={carryOn} onWhy={onWhy} whyDisabled={lineAt === 0} nudge={done && why === null} />;
+      const steps = reveal?.sequence.steps.length ?? 0;
+      // Until the line stands played at its end, the stepper's next button is the one to press.
+      const lineOver = type === 'nothing' || steps === 0 || (lineDone && lineAt === steps);
+      return <RevealActions onContinue={carryOn} onWhy={onWhy} whyDisabled={lineAt === 0} nudge={lineOver && why === null} />;
     }
     const ladder = hintLadder(state);
     return (

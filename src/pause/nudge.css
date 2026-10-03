@@ -1,4 +1,4 @@
-/* The button to press next: a ring that swells and fades around it, so the eye finds it at once. */
+/* The one button to press next, a pill or a round one: a ring that swells and fades around it, so the eye finds it at once. */
 .is-nudge {
   position: relative;
 }
@@ -7,9 +7,11 @@
   position: absolute;
   inset: -5px;
   border: 2px solid var(--coach);
-  border-radius: 31px;
+  border-radius: 999px;
+  opacity: 0;
   pointer-events: none;
-  animation: nudge-ring 1.6s var(--ease-leave) infinite;
+  /* A beat before the first ring, so a button that is only briefly the next one never flashes. */
+  animation: nudge-ring 1.6s var(--ease-leave) var(--d-base) infinite;
 }
 @keyframes nudge-ring {
   0% {

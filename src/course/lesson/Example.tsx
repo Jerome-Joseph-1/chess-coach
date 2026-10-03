@@ -63,6 +63,7 @@ export function Example({ board, position, onLayout, onDone }: ExampleProps) {
   const [at, setAt] = useState(0);
   const [wrong, setWrong] = useState(false);
   const [lineDone, setLineDone] = useState(false);
+  const [lineAt, setLineAt] = useState(0);
   const busy = useRef(false);
   /** A wrong move on its way back; the board takes nothing else until it is. */
   const refusing = useRef<Promise<unknown>>(Promise.resolve());
@@ -72,6 +73,10 @@ export function Example({ board, position, onLayout, onDone }: ExampleProps) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const beat = beats[at];
   const line = beat.line;
+  const sequence = useMemo(() => line && lineSequence(beat.fen, line, 'best'), [beat]);
+  const playable = sequence !== undefined && sequence.steps.length > 0;
+  // Until the line stands played at its end, the stepper's next button is the one to press.
+  const lineOver = !playable || (lineDone && lineAt === sequence.steps.length);
 
   useEffect(() => onLayout(line ? 'line' : 'example'), [line !== undefined]);
 
@@ -101,6 +106,7 @@ export function Example({ board, position, onLayout, onDone }: ExampleProps) {
     busy.current = false;
     setWrong(false);
     setLineDone(false);
+    setLineAt(0);
     setAt(Math.max(0, Math.min(beats.length - 1, next)));
   }
 
@@ -158,17 +164,10 @@ export function Example({ board, position, onLayout, onDone }: ExampleProps) {
 
   function ending() {
     const pattern = { name: lesson.name, icon: patternIcon(lesson.theme) };
-    const playable = line !== undefined && line.length > 0;
     return (
       <div class="pause-answer">
         {playable && (
-          <LineStepper
-            board={board}
-            userSide={game.side}
-            sequence={lineSequence(beat.fen, line, 'best')}
-            replayable
-            onFinished={() => setLineDone(true)}
-          />
+          <LineStepper board={board} userSide={game.side} sequence={sequence} replayable onStep={setLineAt} onFinished={() => setLineDone(true)} />
         )}
         <CoachBubble
           tone="neutral"
@@ -191,7 +190,7 @@ export function Example({ board, position, onLayout, onDone }: ExampleProps) {
       return (
         <div class="dock-row">
           {back}
-          <DockButton look="primary" wide nudge label={COPY.next} onClick={onDone} />
+          <DockButton look="primary" wide nudge={lineOver} label={COPY.next} onClick={onDone} />
         </div>
       );
     }

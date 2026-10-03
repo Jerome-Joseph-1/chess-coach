@@ -502,23 +502,6 @@
     transform: rotate(-360deg);
   }
 }
-/* A soft ring that asks to be pressed while the line waits. */
-.stepper-nav.is-pulsing {
-  animation: stepper-pulse 1.6s ease-out infinite;
-}
-@keyframes stepper-pulse {
-  0% {
-    box-shadow:
-      inset 0 0 0 1px var(--hairline),
-      0 0 0 0 color-mix(in srgb, var(--text-strong) 28%, transparent);
-  }
-  70%,
-  100% {
-    box-shadow:
-      inset 0 0 0 1px var(--hairline),
-      0 0 0 10px transparent;
-  }
-}
 
 .pause-answer {
   display: grid;
@@ -743,8 +726,7 @@
   .choice-ring {
     animation-name: fade-in;
   }
-  .stepper-replay .is-turning,
-  .stepper-nav.is-pulsing {
+  .stepper-replay .is-turning {
     animation: none;
   }
   .hint-rule.is-filled::after {

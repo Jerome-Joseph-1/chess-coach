@@ -7,6 +7,7 @@ import { CrossFade } from './CrossFade';
 import { controlState, LEAD_MS, LineMotion } from './lineMotion';
 import { captionParts, sequenceKey, type Sequence } from './sequence';
 import { Icon } from './steps/icons';
+import './nudge.css';
 
 export interface LineStepperProps {
   board: BoardController;
@@ -35,13 +36,14 @@ interface NavProps {
   dir: 'left' | 'right';
   label: string;
   disabled: boolean;
-  pulsing?: boolean;
+  /** The line waits on this button: it gets the ring of the button to press next. */
+  nudge?: boolean;
   onClick: () => void;
 }
 
-export function NavButton({ dir, label, disabled, pulsing = false, onClick }: NavProps) {
+export function NavButton({ dir, label, disabled, nudge = false, onClick }: NavProps) {
   return (
-    <button type="button" class={`stepper-nav${pulsing ? ' is-pulsing' : ''}`} aria-label={label} disabled={disabled} onClick={onClick}>
+    <button type="button" class={`stepper-nav${nudge ? ' is-nudge' : ''}`} aria-label={label} disabled={disabled} onClick={onClick}>
       <Icon name={dir === 'left' ? 'chevron-left' : 'chevron-right'} />
     </button>
   );
@@ -156,7 +158,7 @@ function Stepper({ board, userSide, sequence, frozen, startAt, replayable = fals
           <span class="stepper-says">{caption.text}</span>
         </CrossFade>
       </div>
-      <NavButton dir="right" label="Next move" disabled={state.nextDisabled} pulsing={state.pulseNext} onClick={() => m.goTo(m.heading + 1)} />
+      <NavButton dir="right" label="Next move" disabled={state.nextDisabled} nudge={state.pulseNext} onClick={() => m.goTo(m.heading + 1)} />
       {replayable && (
         <>
           <span class="stepper-divider" aria-hidden="true" />
