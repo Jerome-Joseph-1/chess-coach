@@ -176,12 +176,12 @@
 }
 .badge {
   position: absolute;
-  top: 2%;
-  right: 2%;
+  top: 0;
+  right: 0;
   display: grid;
   place-items: center;
-  /* a quarter of the square, but never too small to read on the pause board */
-  width: max(26%, 13px);
+  /* about a third of the square, but never too small to read on the pause board */
+  width: max(36%, 16px);
   aspect-ratio: 1;
   border-radius: 50%;
   background: var(--badge);
