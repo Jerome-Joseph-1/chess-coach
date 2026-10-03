@@ -183,7 +183,7 @@ function keyVerb(say: Say, caught: Caught, voice: Voice, it?: string): string {
   const promotes = capture.promotion ? ` and makes a new ${NAME[capture.promotion]}` : '';
   const forked = cost.forked.map((p) => refer({ ...p, color: say.user }, say.user));
   const hits = forked.length ? ` and then attacks ${listOf(forked)} at once` : '';
-  const wins = onlyNamed(say, caught, voice) && !losesExchange(say, caught, voice);
+  const wins = onlyNamed(say, caught, voice) && !exchangeLost(say, caught, voice);
   return `${wins ? 'wins' : 'takes'} ${ref}${promotes}${hits}`;
 }
 
@@ -219,16 +219,17 @@ function netText(say: Say, caught: Caught, voice: Voice): string {
   const back = gotBack(say, cost, voice);
   const lost = cost.trade.won;
   if (!lost.length) return '';
-  if (losesExchange(say, caught, voice)) return ', and you lose the exchange';
+  const exchange = exchangeLost(say, caught, voice);
+  if (exchange) return `, and you lose ${exchange}`;
   if (onlyNamed(say, caught, voice)) return '';
   const what = !cost.then.length && sameTypes(lost, [keyType(caught.t)]) ? 'it' : yours(lost);
   return back.length ? `, and you get only ${some(back)} for ${what}` : `, and you lose ${yours(lost)} in all`;
 }
 
-/** A rook given for a knight or a bishop, the minor piece perhaps being the one the move grabbed. */
-function losesExchange(say: Say, { cost }: Caught, voice: Voice): boolean {
+/** "the exchange", "the exchange and a pawn": a rook given for a minor piece, perhaps the one the move grabbed. */
+function exchangeLost(say: Say, { cost }: Caught, voice: Voice): string | null {
   const back = gotBack(say, cost, voice);
-  return isExchange(cost.trade.won, voice.grabbed && !back.length && say.move.captured ? [say.move.captured] : back);
+  return exchangeText(cost.trade.won, voice.grabbed && !back.length && say.move.captured ? [say.move.captured] : back);
 }
 
 /** The pieces the clause names as taken: the key piece and the later captures. */
@@ -249,15 +250,18 @@ function sameTypes(a: PieceSymbol[], b: PieceSymbol[]): boolean {
   return [...a].sort().join() === [...b].sort().join();
 }
 
-function isExchange(lost: PieceSymbol[], back: PieceSymbol[]): boolean {
-  return lost.length === 1 && lost[0] === 'r' && back.length === 1 && (back[0] === 'n' || back[0] === 'b');
+/** A rook, and maybe pawns, given for one minor piece, as "the exchange and a pawn"; null for any other trade. */
+function exchangeText(lost: PieceSymbol[], back: PieceSymbol[]): string | null {
+  const pawns = lost.filter((type) => type === 'p');
+  const rook = lost.length === pawns.length + 1 && lost.includes('r');
+  if (!rook || back.length !== 1 || (back[0] !== 'n' && back[0] !== 'b')) return null;
+  return pawns.length ? `the exchange and ${some(pawns)}` : 'the exchange';
 }
 
 /** "a rook for a pawn", "the exchange" */
 function lossText(say: Say, cost: Cost, voice: Voice): string {
   const back = gotBack(say, cost, voice);
-  if (isExchange(cost.trade.won, back)) return 'the exchange';
-  return `${yours(cost.trade.won)}${back.length ? ` for ${some(back)}` : ''}`;
+  return exchangeText(cost.trade.won, back) ?? `${yours(cost.trade.won)}${back.length ? ` for ${some(back)}` : ''}`;
 }
 
 /** A pattern as a verb phrase with what it wins, or null for a plain capture. */
