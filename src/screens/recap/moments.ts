@@ -54,8 +54,10 @@ export function kindPhrase(m: MomentResult, turn?: Turn): string {
   }
 }
 
-export function momentTitle(m: MomentResult, turn?: Turn): string {
-  return `Move ${m.moveNo} · ${kindPhrase(m, turn)}`;
+/** "Move 7 · Trapped piece": the pattern when the game file named one, else the kind in plain words. */
+export function momentTitle(m: MomentResult, turn?: Turn, pattern?: string): string {
+  const name = m.type !== 'nothing' && pattern ? pattern : kindPhrase(m, turn);
+  return `Move ${m.moveNo} · ${name}`;
 }
 
 export function momentTone(m: MomentResult): MomentTone {

@@ -270,8 +270,8 @@ test.describe('Recap', () => {
     await expect(summary.locator('.result-bar .missed')).toHaveCount(1);
 
     const list = page.getByRole('list', { name: 'Key positions' });
-    await expect(list.getByText('Move 5 · Win back a pawn')).toBeVisible();
-    await expect(list.getByText('Move 11 · Win material')).toBeVisible();
+    await expect(list.getByText('Move 5 · Free piece')).toBeVisible();
+    await expect(list.getByText('Move 11 · Trapped piece')).toBeVisible();
     await expect(list.getByText('Move 15 · Nothing special')).toBeVisible();
     await expect(list.getByText('Spotted it', { exact: true })).toBeVisible();
     await expect(list.getByText('Found it without a hint')).toBeVisible();

@@ -287,7 +287,7 @@ describe('the play step', () => {
 
   it('accepts only the shown move once the move is on the board', () => {
     const alt = otherHoldingMove(italian1, 3);
-    const shown = run(ctx, [hint, hint], toSolve());
+    const shown = run(ctx, [hint, hint, hint], toSolve());
     const state = run(ctx, [move(alt)], shown);
     expect(state.phase).toBe('solve');
     expect(state.feedback).toEqual({ kind: 'wrong', uci: alt });
@@ -307,12 +307,14 @@ describe('hints', () => {
   const toSolve = () => run(ctx, [spot(true), advance]);
   const scripted = scriptedUci(italian1, 3);
 
-  it('walks from the piece to the move and stops there', () => {
+  it('walks from the pattern to the piece to the move and stops there', () => {
     const first = run(ctx, [hint], toSolve());
     expect(first.hint).toBe(1);
     const second = run(ctx, [hint], first);
     expect(second.hint).toBe(2);
-    expect(run(ctx, [hint], second)).toBe(second);
+    const third = run(ctx, [hint], second);
+    expect(third.hint).toBe(3);
+    expect(run(ctx, [hint], third)).toBe(third);
   });
 
   it('counts a hinted answer as not correct, and says the pause was solved with a hint', () => {

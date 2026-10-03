@@ -1,6 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { loadGame } from '../content/loader';
+import { lessonFor } from '../learn';
 import type { GameSummary, MomentResult, Turn } from '../content/types';
 import { isRight } from '../progress/moments';
 import { clearLastGameUnlock, getLastGame, getLastGameBonus, getLastGameUnlock } from '../progress/store';
@@ -29,7 +30,12 @@ const MARKS: Record<MomentTone, ComponentChildren> = {
   quiet: <Dash size={14} />,
 };
 
-function MomentRow({ m, turn, index }: { m: MomentResult; turn?: Turn; index: number }) {
+interface KnownTurn {
+  turn: Turn;
+  pattern: string;
+}
+
+function MomentRow({ m, known, index }: { m: MomentResult; known?: KnownTurn; index: number }) {
   const tone = momentTone(m);
   const contents = (
     <>
@@ -37,7 +43,7 @@ function MomentRow({ m, turn, index }: { m: MomentResult; turn?: Turn; index: nu
         {MARKS[tone]}
       </span>
       <span class="row-main">
-        <span class="moment-title">{momentTitle(m, turn)}</span>
+        <span class="moment-title">{momentTitle(m, known?.turn, known?.pattern)}</span>
         <span class={`row-sub moment-sub--${tone}`}>{momentSub(m)}</span>
       </span>
       {tone === 'missed' && (
@@ -61,14 +67,14 @@ function MomentRow({ m, turn, index }: { m: MomentResult; turn?: Turn; index: nu
   );
 }
 
-/** The game file names each position in plain words; without it the titles stay general. */
-function useTurns(game: GameSummary): Map<number, Turn> {
-  const [turns, setTurns] = useState(new Map<number, Turn>());
+/** The game file names each position's pattern; without it the titles stay general. */
+function useTurns(game: GameSummary): Map<number, KnownTurn> {
+  const [turns, setTurns] = useState(new Map<number, KnownTurn>());
   useEffect(() => {
     if (game.moments.length === 0) return;
     let current = true;
     loadGame(game.opening, game.level, game.gameId)
-      .then((data) => current && setTurns(new Map(data.turns.map((t) => [t.ply, t]))))
+      .then((data) => current && setTurns(new Map(data.turns.map((turn, i) => [turn.ply, { turn, pattern: lessonFor(data, i).name }]))))
       .catch(() => {});
     return () => {
       current = false;
@@ -148,7 +154,7 @@ function RecapBody({ game, bonus }: { game: GameSummary; bonus: boolean }) {
         {game.moments.length > 0 && (
           <ol class="card list" aria-label="Key positions">
             {game.moments.map((m, i) => (
-              <MomentRow key={`${m.gameId}:${m.ply}`} m={m} turn={turns.get(m.ply)} index={i} />
+              <MomentRow key={`${m.gameId}:${m.ply}`} m={m} known={turns.get(m.ply)} index={i} />
             ))}
           </ol>
         )}

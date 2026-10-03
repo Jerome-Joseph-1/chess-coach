@@ -16,7 +16,8 @@ export interface FlowContext {
 export type Phase = 'spot' | 'solve' | 'hold' | 'reply' | 'reveal' | 'done';
 
 /** 0 none yet, 1 the piece is marked, 2 the move is drawn. */
-export type HintLevel = 0 | 1 | 2;
+/** 1 names the pattern, 2 marks the piece, 3 draws the move. */
+export type HintLevel = 0 | 1 | 2 | 3;
 
 /** What the view should react to after an event: sound, confetti, highlights. */
 export type Feedback =
@@ -180,8 +181,10 @@ function answerSpot(ctx: FlowContext, state: FlowState, up: boolean): FlowState 
 }
 
 function takeHint(state: FlowState): FlowState {
-  if (!isAsking(state) || state.hint >= 2) return state;
-  return { ...state, hint: (state.hint + 1) as HintLevel, hinted: true };
+  if (!isAsking(state) || state.hint >= 3) return state;
+  // Follow-up moves have no pattern of their own to name, so their first hint marks the piece.
+  const hint = state.hint === 0 && state.phase === 'hold' ? 2 : state.hint + 1;
+  return { ...state, hint: hint as HintLevel, hinted: true };
 }
 
 function playMove(ctx: FlowContext, state: FlowState, uci: string): FlowState {
@@ -197,7 +200,7 @@ function playMove(ctx: FlowContext, state: FlowState, uci: string): FlowState {
     return settle(state, outcomes, next, { kind: 'move', uci, turn: state.turn });
   }
   // With the move already drawn on the board, only that move counts.
-  if (state.hint < 2 && grade !== undefined && grade <= HOLD_MAX) {
+  if (state.hint < 3 && grade !== undefined && grade <= HOLD_MAX) {
     return settle(state, outcomes, 'reveal', { kind: 'alt', uci }, { alt: true });
   }
   return { ...state, tries: state.tries + 1, wrongUci: state.wrongUci ?? uci, feedback: { kind: 'wrong', uci } };

@@ -3,7 +3,7 @@ import type { Side } from '../../content/types';
 import type { ResultLine } from '../copy';
 import { LineStepper } from '../LineStepper';
 import type { Sequence } from '../sequence';
-import { ResultRow } from './ResultRow';
+import { Remember, ResultRow } from './ResultRow';
 import { SubLine } from './SubLine';
 
 export interface RevealStepProps {
@@ -12,6 +12,8 @@ export interface RevealStepProps {
   sequence: Sequence;
   result: ResultLine;
   headline: string;
+  /** The pattern's name and the takeaway, when the position teaches one. */
+  lesson?: { name: string; remember: string };
   /** Extra line under the headline, e.g. why the game goes on with a different move. */
   note?: string;
   /** The sheet is handing the board back; the stepper must stop moving it. */
@@ -24,10 +26,11 @@ export interface RevealStepProps {
 export function RevealStep(props: RevealStepProps) {
   return (
     <div class="pause-reveal">
-      <ResultRow result={props.result} />
+      <ResultRow result={props.result} pattern={props.lesson?.name} />
       <h2 class="pause-title">{props.headline}</h2>
       {props.note && <SubLine text={props.note} />}
       <LineStepper board={props.board} userSide={props.userSide} sequence={props.sequence} frozen={props.frozen} replays={props.replays} />
+      {props.lesson && <Remember text={props.lesson.remember} />}
     </div>
   );
 }

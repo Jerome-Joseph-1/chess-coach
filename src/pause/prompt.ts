@@ -1,4 +1,5 @@
 import type { Game } from '../content/types';
+import { lessonFor } from '../learn';
 import { COPY, findNote, holdSub, replySub, spotSub } from './copy';
 import type { FlowState } from './flow';
 
@@ -30,10 +31,11 @@ function feedbackSub(game: Game, state: FlowState): Pick<Prompt, 'sub' | 'right'
   }
 }
 
-/** What the hint in hand asks the user to do. */
-function hintSub(state: FlowState): Pick<Prompt, 'sub' | 'right'> | null {
+/** What the hint in hand says: the pattern to look for, then which piece, then the move itself. */
+function hintSub(game: Game, state: FlowState): Pick<Prompt, 'sub' | 'right'> | null {
   if (state.hint === 0) return null;
-  return { sub: state.hint === 1 ? COPY.hintPiece : COPY.hintMove, right: false };
+  const subs = [lessonFor(game, state.turn).hint, COPY.hintPiece, COPY.hintMove];
+  return { sub: subs[state.hint - 1], right: false };
 }
 
 function questionFor(game: Game, state: FlowState): Pick<Prompt, 'title' | 'sub'> {
@@ -50,7 +52,7 @@ function questionFor(game: Game, state: FlowState): Pick<Prompt, 'title' | 'sub'
 /** Title and sub line of the steps that play on the board. */
 export function promptFor(game: Game, state: FlowState): Prompt {
   const question = questionFor(game, state);
-  return { ...question, right: false, ...(feedbackSub(game, state) ?? hintSub(state)) };
+  return { ...question, right: false, ...(feedbackSub(game, state) ?? hintSub(game, state)) };
 }
 
 /** Sub line of the spot step: what just happened, then how the answer went. */
@@ -58,8 +60,8 @@ export function spotPromptFor(game: Game, turnIndex: number, state: FlowState): 
   return feedbackSub(game, state) ?? { sub: spotSub(game, turnIndex), right: false };
 }
 
-/** The label of the hint button under a question that plays on the board: Hint, then Show the move, then none. */
+/** The label of the hint button under a question that plays on the board: Hint, Show the piece, Show the move, then none. */
 export function hintLabel(state: FlowState): string | null {
   if (state.phase !== 'solve' && state.phase !== 'hold') return null;
-  return [COPY.hint, COPY.showMove, null][state.hint];
+  return [COPY.hint, COPY.showPiece, COPY.showMove, null][state.hint];
 }

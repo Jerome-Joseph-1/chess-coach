@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Depth } from '../content/types';
 import { flowReducer, initialState, scriptedUci, type FlowContext, type FlowEvent, type FlowState } from './flow';
+import { lessonFor } from '../learn';
 import { hintLabel, promptFor, spotPromptFor } from './prompt';
 import { italian1 } from './testGames';
 
@@ -67,13 +68,14 @@ describe('the play step', () => {
     );
   });
 
-  it('asks to move the marked piece after the first hint, then to play the move shown', () => {
-    expect(promptFor(italian1, after(3, [...toSolve, hint])).sub).toBe('Move the highlighted piece.');
-    expect(promptFor(italian1, after(3, [...toSolve, hint, hint])).sub).toBe('Play the move shown.');
+  it('names the pattern first, then asks to move the marked piece, then to play the move shown', () => {
+    expect(promptFor(italian1, after(3, [...toSolve, hint])).sub).toBe(lessonFor(italian1, TURN).hint);
+    expect(promptFor(italian1, after(3, [...toSolve, hint, hint])).sub).toBe('Move the highlighted piece.');
+    expect(promptFor(italian1, after(3, [...toSolve, hint, hint, hint])).sub).toBe('Play the move shown.');
   });
 
   it('keeps the hint in view after a wrong move, and does not boast of a rare find after a hint', () => {
-    expect(promptFor(italian1, after(3, [...toSolve, hint, move(wrongMove)])).sub).toBe('Move the highlighted piece.');
+    expect(promptFor(italian1, after(3, [...toSolve, hint, hint, move(wrongMove)])).sub).toBe('Move the highlighted piece.');
     expect(promptFor(italian1, after(3, [...toSolve, hint, move(scriptedUci(italian1, TURN))])).sub).toBe('Right.');
   });
 
@@ -84,10 +86,11 @@ describe('the play step', () => {
 });
 
 describe('the hint button', () => {
-  it('is Hint, then Show the move, then gone on the play steps', () => {
+  it('is Hint, Show the piece, Show the move, then gone on the play steps', () => {
     expect(hintLabel(after(3, toSolve))).toBe('Hint');
-    expect(hintLabel(after(3, [...toSolve, hint]))).toBe('Show the move');
-    expect(hintLabel(after(3, [...toSolve, hint, hint]))).toBeNull();
+    expect(hintLabel(after(3, [...toSolve, hint]))).toBe('Show the piece');
+    expect(hintLabel(after(3, [...toSolve, hint, hint]))).toBe('Show the move');
+    expect(hintLabel(after(3, [...toSolve, hint, hint, hint]))).toBeNull();
   });
 
   it('is left out where nothing is played', () => {

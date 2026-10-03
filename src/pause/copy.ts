@@ -13,6 +13,7 @@ export const COPY = {
   solveSub: 'Play the best move on the board.',
   tryAgain: 'Not quite. Try again.',
   hint: 'Hint',
+  showPiece: 'Show the piece',
   showMove: 'Show the move',
   showSolution: 'Show solution',
   hintPiece: 'Move the highlighted piece.',

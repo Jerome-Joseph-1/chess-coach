@@ -48,6 +48,8 @@ describe('key position titles', () => {
 
   it('puts the move number in front', () => {
     expect(momentTitle(moment({ moveNo: 11, kinds: ['trap'] }))).toBe('Move 11 · Avoid the trap');
+    expect(momentTitle(moment({ moveNo: 7, kinds: ['win'] }), undefined, 'Trapped piece')).toBe('Move 7 · Trapped piece');
+    expect(momentTitle(moment({ moveNo: 20, type: 'nothing' }), undefined, 'Quiet position')).toBe('Move 20 · Nothing special');
   });
 
   it('survives a line that does not fit the position', () => {

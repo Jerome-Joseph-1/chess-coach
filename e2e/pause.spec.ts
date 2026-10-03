@@ -75,15 +75,19 @@ test('a wrong move is only an error and the piece goes back; the right one finis
   await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
 });
 
-test('hints show the piece, then the move, and the user still plays it', async ({ page }) => {
+test('hints name the pattern, then show the piece, then the move, and the user still plays it', async ({ page }) => {
   await atStage(page, 3);
   await reachFirstPause(page);
   await page.getByRole('button', { name: "Yes, something's going on" }).click();
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
 
+  const sub = page.locator('.pause-sub');
+  const before = await sub.textContent();
   await page.getByRole('button', { name: 'Hint' }).click();
-  await expect(page.getByText('Move the highlighted piece.')).toBeVisible();
+  await expect(sub).not.toHaveText(before!);
   await expect(page.getByRole('button', { name: 'Hint', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show the piece' }).click();
+  await expect(page.getByText('Move the highlighted piece.')).toBeVisible();
   await page.getByRole('button', { name: 'Show the move' }).click();
   await expect(page.getByText('Play the move shown.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Show the move' })).toHaveCount(0);
@@ -91,6 +95,8 @@ test('hints show the piece, then the move, and the user still plays it', async (
   await tapSquares(page, 'd4', 'e5');
 
   await expect(page.getByText('Solved with a hint')).toBeVisible();
+  await expect(page.locator('.pause-pattern')).not.toBeEmpty();
+  await expect(page.locator('.pause-remember')).toContainText('Remember');
   await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
 });
 

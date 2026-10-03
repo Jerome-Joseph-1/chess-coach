@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { BoardController } from '../board/types';
+import { lessonFor } from '../learn';
 import type { Depth, Game, StepOutcome } from '../content/types';
 import { celebrate, nudge } from '../ui/rewards';
-import { COPY, continuesWith, headline, holdMissHeadline, resultLine } from './copy';
+import { COPY, continuesWith, holdMissHeadline, resultLine } from './copy';
 import {
   flowReducer,
   flowResult,
@@ -68,9 +69,11 @@ function buildReveal(ctx: FlowContext, state: FlowState) {
   const index = revealTurn(ctx, state);
   const missedLate = state.missedUci !== null && index !== ctx.turnIndex;
   const scripted = game.moves[game.turns[state.turn].ply];
+  const lesson = lessonFor(game, ctx.turnIndex);
   return {
     sequence: revealSequence(game, index, state.missedUci),
-    text: missedLate && state.missedUci ? holdMissHeadline(game, index, state.missedUci) : headline(game, index),
+    text: missedLate && state.missedUci ? holdMissHeadline(game, index, state.missedUci) : lesson.idea,
+    lesson: missedLate ? undefined : { name: lesson.name, remember: lesson.remember },
     note: state.alt ? `${COPY.altNote} ${continuesWith(scripted)}` : undefined,
   };
 }
@@ -117,11 +120,11 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
     });
   }
 
-  /** Marks what the hint in hand shows: the piece, then the move itself. */
+  /** Marks what the hint in hand shows on the board: the piece, then the move itself. The first hint is words only. */
   function showHint(at: FlowState) {
-    if (at.hint === 0) return;
+    if (at.hint < 2) return;
     const [from, to] = squaresOf(scriptedUci(game, at.turn));
-    if (at.hint === 1) board.highlight([from], 'hint');
+    if (at.hint === 2) board.highlight([from], 'hint');
     else board.arrow(from, to, 'best');
   }
 
@@ -257,7 +260,8 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
   function revealContent() {
     const result = resultLine(type, state.outcomes, state.hinted);
     if (type === 'nothing') {
-      return <QuietReveal result={result} text={headline(game, turnIndex)} />;
+      const quiet = lessonFor(game, turnIndex);
+      return <QuietReveal result={result} text={quiet.idea} remember={quiet.remember} />;
     }
     if (!reveal) return null;
     return (
@@ -267,6 +271,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone }: Paus
         sequence={reveal.sequence}
         result={result}
         headline={reveal.text}
+        lesson={reveal.lesson}
         note={reveal.note}
         frozen={state.phase === 'done'}
         replays={replays}
