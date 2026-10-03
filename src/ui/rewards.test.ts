@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { particleCount, toUnit } from './confetti';
 import { patternFor } from './haptics';
 import { formatSigned } from './RollingNumber';
+import { rewardFor, type Celebration } from './rewards';
 import { VOICES } from './sound';
 
 describe('confetti', () => {
-  it('scales particles to the milestone', () => {
+  it('scales particles to the reward', () => {
+    expect(particleCount('move')).toBeLessThan(particleCount('silent'));
     expect(particleCount('silent')).toBe(120);
     expect(particleCount('levelup')).toBe(160);
     expect(particleCount('perfect')).toBe(200);
@@ -13,6 +15,23 @@ describe('confetti', () => {
 
   it('normalises viewport pixels', () => {
     expect(toUnit({ x: 195, y: 422 }, { width: 390, height: 844 })).toEqual({ x: 0.5, y: 0.5 });
+  });
+});
+
+describe('rewards', () => {
+  const kinds: Celebration[] = ['step', 'move', 'alt', 'silent', 'levelup', 'perfect'];
+
+  it('keeps confetti for the right move, silent checks, level ups and perfect games', () => {
+    const withConfetti = kinds.filter((kind) => rewardFor(kind).confetti);
+    expect(withConfetti).toEqual(['move', 'silent', 'levelup', 'perfect']);
+  });
+
+  it('gives every kind a sound and a haptic tick', () => {
+    for (const kind of kinds) {
+      const { sound, haptic } = rewardFor(kind);
+      expect(VOICES[sound]).toBeDefined();
+      expect(patternFor(haptic).length).toBeGreaterThan(0);
+    }
   });
 });
 

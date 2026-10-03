@@ -39,7 +39,7 @@
   }
 }
 
-/* Check pop: the quiet confirmation for a right answer or move. */
+/* Marks: the quiet confirmation in a choice row or result line. */
 @keyframes mark-pop {
   from {
     transform: scale(0.6);
@@ -65,6 +65,9 @@
 .mark.is-danger {
   background: var(--danger);
 }
+.mark.is-muted {
+  background: var(--text-muted);
+}
 .mark svg {
   width: 14px;
   height: 14px;
@@ -73,38 +76,6 @@
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.check-pop {
-  position: fixed;
-  z-index: 1500;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  /* Sits in the corner of the square, so the piece that just moved stays visible. */
-  translate: calc(-50% + 15px) calc(-50% - 15px);
-  border-radius: 50%;
-  background: var(--success);
-  color: var(--bg);
-  pointer-events: none;
-  animation:
-    mark-pop var(--t-move) var(--spring) both,
-    check-pop-out 240ms ease-out 900ms forwards;
-}
-.check-pop svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-@keyframes check-pop-out {
-  to {
-    opacity: 0;
-  }
 }
 
 /* Rolling number: the old figure leaves and the new one arrives from the direction of the change. */
