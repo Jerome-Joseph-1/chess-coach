@@ -2,6 +2,7 @@ import { burst, type ConfettiKind } from './confetti';
 import { haptic, type HapticKind } from './haptics';
 import { playSound, type SoundKind } from './sound';
 import { toast } from './toast';
+import { prefersReducedMotion } from './motion';
 
 /**
  * What a right answer earns. Confetti is kept for the right move at step 3 and beyond,
@@ -31,9 +32,8 @@ const REWARDS: Record<Celebration, Reward> = {
   perfect: { sound: 'levelup', haptic: 'perfect', confetti: 'perfect' },
 };
 
-export function prefersReducedMotion(): boolean {
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
+
+export { prefersReducedMotion };
 
 export function rewardFor(kind: Celebration): Reward {
   return REWARDS[kind];

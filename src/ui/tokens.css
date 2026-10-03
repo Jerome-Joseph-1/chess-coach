@@ -41,6 +41,22 @@
   --t-move: 280ms;
   --t-quick: 160ms;
 
+  /* Motion: a press, a small change, a move or content change, a sheet or big reveal. */
+  --d-press: 80ms;
+  --d-quick: 160ms;
+  --d-base: 240ms;
+  --d-slow: 360ms;
+  /* Things leaving the screen speed up; things arriving settle on the spring. */
+  --ease-leave: cubic-bezier(0.4, 0, 1, 1);
+  --stagger: 50ms;
+  --rise: 10px;
+
+  /* The coach's voice: hints, lessons and its arrows. */
+  --coach: var(--brand);
+  --coach-tint: #fbe9df;
+  --coach-text: #b54a14;
+  --text-eyebrow: 600 11px/16px var(--font);
+
   /* aliases for names used before Still */
   --ink: var(--text-strong);
   --muted: var(--text-muted);
@@ -95,6 +111,8 @@
     --board-dark: #7a7a84;
     --top-light: rgba(255, 255, 255, 0.06);
     --focus: rgba(245, 245, 247, 0.6);
+    --coach-tint: #3c2720;
+    --coach-text: #ff9a66;
     color-scheme: dark;
   }
 }
@@ -118,6 +136,8 @@
   --board-dark: #7a7a84;
   --top-light: rgba(255, 255, 255, 0.06);
   --focus: rgba(245, 245, 247, 0.6);
+  --coach-tint: #3c2720;
+  --coach-text: #ff9a66;
   color-scheme: dark;
 }
 
@@ -168,8 +188,30 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Movement becomes a short fade: nothing travels, nothing shakes. */
   :root {
     --t-move: 0ms;
     --t-quick: 0ms;
+    --d-base: 120ms;
+    --d-slow: 160ms;
+    --rise: 0px;
   }
+}
+
+/* Arrives with a short rise and fade; set --i on siblings to stagger them. */
+.rise-in {
+  animation: rise-in var(--d-base) var(--spring) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger));
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise));
+  }
+}
+
+.eyebrow {
+  font: var(--text-eyebrow);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
