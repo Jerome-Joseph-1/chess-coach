@@ -23,6 +23,8 @@ const spot = (pick: Situation): FlowEvent => ({ type: 'spot', pick });
 const move = (uci: string): FlowEvent => ({ type: 'move', uci });
 const hint: FlowEvent = { type: 'hint' };
 const toSolve: FlowEvent[] = [spot('win'), advance];
+/** The second hint at this turn. */
+const KNIGHT = "Look at Black's knight on c6: it guards the pawn on e5.";
 const wrongMove = Object.keys(italian1.turns[TURN].grades).find((uci) => italian1.turns[TURN].grades[uci] >= 10)!;
 
 describe('the spot step', () => {
@@ -79,13 +81,13 @@ describe('the play step', () => {
   it('names the pattern first, then the piece in trouble, then asks for the move shown', () => {
     const pattern = lessonFor(italian1, TURN).hint;
     expect(promptFor(italian1, after(3, [...toSolve, hint]))).toEqual({ title: pattern, sub: 'Play the best move on the board.', tone: 'hint' });
-    expect(promptFor(italian1, after(3, [...toSolve, hint, hint]))).toEqual({ title: pattern, sub: "It's Black's knight on c6.", tone: 'hint' });
-    expect(promptFor(italian1, after(3, [...toSolve, hint, hint, hint])).sub).toBe("It's Black's knight on c6. Play the move shown.");
+    expect(promptFor(italian1, after(3, [...toSolve, hint, hint]))).toEqual({ title: pattern, sub: KNIGHT, tone: 'hint' });
+    expect(promptFor(italian1, after(3, [...toSolve, hint, hint, hint])).sub).toBe(`${KNIGHT} Play the move shown.`);
   });
 
   it('keeps the drawn move in view after a wrong move, and does not boast of a rare find after a hint', () => {
     expect(promptFor(italian1, after(3, [...toSolve, hint, hint, hint, move(wrongMove)]))).toMatchObject({
-      sub: "It's Black's knight on c6. Play the move shown.",
+      sub: `${KNIGHT} Play the move shown.`,
       tone: 'error',
     });
     expect(promptFor(italian1, after(3, [...toSolve, hint, hint, move(wrongMove)])).sub).toBe(whyWrong(italian1, TURN, wrongMove, 2).text);

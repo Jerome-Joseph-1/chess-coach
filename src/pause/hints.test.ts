@@ -1,7 +1,8 @@
+import { Chess, type Square } from 'chess.js';
 import { describe, expect, it } from 'vitest';
 import type { Depth } from '../content/types';
 import { lessonFor } from '../learn';
-import { learnGame } from '../learn/fixtures';
+import { learnGame, learnGames } from '../learn/fixtures';
 import { flowReducer, initialState, scriptedUci, type FlowContext, type FlowEvent, type FlowState } from './flow';
 import { hintButtonLabel, hintLadder, pieceInTrouble } from './hints';
 import { italian1 } from './testGames';
@@ -39,26 +40,68 @@ describe('the hint ladder', () => {
 });
 
 describe('the piece in trouble', () => {
-  it('points at the defender to take away, not at the piece to move', () => {
+  it('points at the defender to take away, not at the piece to move, and says what it guards', () => {
     const trouble = pieceInTrouble(italian1, TURN)!;
-    expect(trouble).toEqual({ squares: ['c6'], text: "It's Black's knight on c6." });
+    expect(trouble).toEqual({ squares: ['c6'], text: "Look at Black's knight on c6: it guards the pawn on e5." });
     expect(trouble.squares).not.toContain(scriptedUci(italian1, TURN).slice(0, 2));
   });
 
-  it('points at the loose piece to win', () => {
+  it('points at the loose piece to win, and says how it is guarded', () => {
     const free = italian1.turns.findIndex((_, i) => lessonFor(italian1, i).theme.id === 'free-piece');
-    expect(pieceInTrouble(italian1, free)).toEqual({ squares: ['e5'], text: "It's Black's pawn on e5." });
+    expect(pieceInTrouble(italian1, free)).toEqual({ squares: ['e5'], text: "Look at Black's pawn on e5: it isn't defended enough." });
+    const lastFree = italian1.turns.findLastIndex((_, i) => lessonFor(italian1, i).theme.id === 'free-piece');
+    expect(pieceInTrouble(italian1, lastFree)?.text).toBe("Look at Black's bishop on e6: nothing guards it.");
   });
 
-  it('points at the pinned piece', () => {
+  it('points at the piece to pin, and does not call it pinned before it is', () => {
     const pinned = italian1.turns.findIndex((_, i) => lessonFor(italian1, i).theme.id === 'pin');
-    expect(pieceInTrouble(italian1, pinned)).toEqual({ squares: ['e6'], text: "It's Black's knight on e6." });
+    expect(pieceInTrouble(italian1, pinned)).toEqual({ squares: ['e6'], text: "Look at Black's knight on e6: it can be pinned." });
   });
 
   it('points at the trapped piece', () => {
     const game = learnGame('italian-1400-0003');
     expect(lessonFor(game, 3).theme.id).toBe('trapped-piece');
-    expect(pieceInTrouble(game, 3)).toEqual({ squares: ['a5'], text: "It's Black's knight on a5." });
+    expect(pieceInTrouble(game, 3)).toEqual({ squares: ['a5'], text: "Look at Black's knight on a5: it can be trapped." });
+  });
+
+  it('says which of your pieces is in danger, and why when it can', () => {
+    const game = learnGame('italian-1400-0003');
+    expect(lessonFor(game, 6).theme.id).toBe('hanging-own');
+    expect(pieceInTrouble(game, 6)?.text).toBe("Your knight on f3 is in danger: it isn't defended enough.");
+    const caroKann = learnGame('caro-kann-1100-0025');
+    expect(pieceInTrouble(caroKann, 25)?.text).toBe('Your rook on e2 is in danger: nothing guards it.');
+    expect(pieceInTrouble(caroKann, 28)?.text).toBe('Your rooks on c8 and e2 are in danger.');
+    expect(pieceInTrouble(caroKann, 15)?.text).toBe('Your king on g8 is in danger.');
+  });
+
+  it('warns about the piece a trap would cost, without naming the tempting move', () => {
+    const game = learnGame('caro-kann-1100-0025');
+    expect(lessonFor(game, 6).theme.id).toBe('bait');
+    expect(pieceInTrouble(game, 6)?.text).toBe('Careful with your queen on d8 and rook on h8: a tempting move puts them in danger.');
+  });
+
+  it('names two targets together and what they have in common', () => {
+    const game = learnGame('caro-kann-1100-0001');
+    expect(pieceInTrouble(game, 5)?.text).toBe("Look at White's queen on f3 and rook on d1: they stand on one line.");
+    expect(pieceInTrouble(game, 12)?.text).toBe("Look at White's queen on f3 and king on b1: one move can attack both.");
+  });
+
+  it('points at the king that can be mated', () => {
+    const game = learnGame('italian-1400-0001');
+    expect(lessonFor(game, 13).theme.id).toBe('mate-threat');
+    expect(pieceInTrouble(game, 13)?.text).toBe("Look at Black's king on h8: you can threaten mate.");
+  });
+
+  it('never names a square the move goes to', () => {
+    for (const game of [italian1, ...learnGames]) {
+      game.turns.forEach((turn, i) => {
+        if (turn.label !== 'critical') return;
+        const to = scriptedUci(game, i).slice(2, 4);
+        const text = pieceInTrouble(game, i)?.text ?? '';
+        const captures = new Chess(turn.fen).get(to as Square);
+        if (!captures) expect(text, `${game.id} turn ${i}`).not.toContain(to);
+      });
+    }
   });
 
   it('is left out where the lesson names no piece on the board', () => {

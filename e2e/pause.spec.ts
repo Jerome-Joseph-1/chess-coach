@@ -23,6 +23,7 @@ test.beforeEach(({ page }) => readAllNotes(page));
 
 const ANSWERS = ['Win material', 'Attack the king', 'Defend', 'Avoid a trap', 'Nothing urgent'];
 const RIGHT_PICK = "Yes: there's material to win. Find the move.";
+const PAWN_HINT = "Look at Black's pawn on e5: it isn't defended enough.";
 
 async function atStage(page: Page, stage: number) {
   await page.addInitScript((depth) => {
@@ -180,13 +181,13 @@ test('hints climb Idea, Piece, Move: the pattern, then the piece in trouble, the
 
   // The second hint points at the loose pawn on e5, not at the pawn on d4 that takes it.
   await hintButton(page).click();
-  await expect(page.getByText("It's Black's pawn on e5.")).toBeVisible();
+  await expect(page.getByText(PAWN_HINT)).toBeVisible();
   await expect(page.locator('.cm-chessboard .marker-hint')).toHaveCount(1);
   expect(await squareOf(page, '.cm-chessboard .marker-hint')).toBe('e5');
   await expect(hintButton(page)).toHaveText('Hint: the move');
 
   await hintButton(page).click();
-  await expect(page.getByText("It's Black's pawn on e5. Play the move shown.")).toBeVisible();
+  await expect(page.getByText(`${PAWN_HINT} Play the move shown.`)).toBeVisible();
   await expect(page.locator('.cm-chessboard .arrow-best')).toHaveCount(1);
   await expect(page.locator('.hint-stop.is-used')).toHaveCount(3);
   await expect(hintButton(page)).toHaveText('No hints left');
