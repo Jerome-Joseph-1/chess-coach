@@ -1,11 +1,12 @@
-import { Chess, type Move, type Square } from 'chess.js';
+import { Chess } from 'chess.js';
 import { Chessboard, INPUT_EVENT_TYPE, POINTER_EVENTS, type MoveInputEvent } from 'cm-chessboard';
 import { Markers, type MarkerType } from 'cm-chessboard/src/extensions/markers/Markers.js';
 import 'cm-chessboard/assets/chessboard.css';
 import markersSprite from 'cm-chessboard/assets/extensions/markers/markers.svg?no-inline';
 import piecesSprite from 'cm-chessboard/assets/pieces/standard.svg?no-inline';
 import type { Side } from '../content/types';
-import { parseUci, toUci, withTurn } from '../game/position';
+import { parseUci, toUci } from '../game/position';
+import { legalMoves, pickMove } from './moves';
 import type { BoardController, Tone } from './types';
 
 type MoveHandler = (uci: string) => boolean | Promise<boolean>;
@@ -23,20 +24,6 @@ const LAST_MOVE_MARKER: MarkerType = { class: 'marker-last-move', slice: 'marker
 const DIM_MARKER: MarkerType = { class: 'marker-dim', slice: 'markerSquare', position: 'above' };
 
 const ALL_SQUARES = [...'abcdefgh'].flatMap((file) => [1, 2, 3, 4, 5, 6, 7, 8].map((rank) => `${file}${rank}`));
-
-function legalMoves(fen: string, side: Side, square: string): Move[] {
-  try {
-    return new Chess(withTurn(fen, side)).moves({ verbose: true, square: square as Square });
-  } catch {
-    return [];
-  }
-}
-
-/** The move from the first square to the second, queening when it promotes. */
-function pickMove(moves: Move[], to: string): Move | undefined {
-  const candidates = moves.filter((m) => m.to === to);
-  return candidates.find((m) => m.promotion === 'q') ?? candidates[0];
-}
 
 function fullFen(fen: string): string {
   return fen.includes(' ') ? fen : `${fen} w - - 0 1`;

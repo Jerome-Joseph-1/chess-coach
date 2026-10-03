@@ -116,6 +116,17 @@ describe('chooseMoments rules', () => {
     expect(countOf(moments, 'nothing')).toBeGreaterThanOrEqual(2);
   });
 
+  it('adds nothing pauses until they are 40% of the pauses', () => {
+    const turns = Array.from({ length: 20 }, (_, i) => turnAt(i, i % 4 === 0 ? 'critical' : i % 4 === 2 ? 'nothing' : 'gray'));
+    const moments = chooseMoments(turns, 1, { seed: 2 });
+    const pauses = countOf(moments, 'pause');
+    const nothings = countOf(moments, 'nothing');
+    expect(pauses).toBe(4);
+    expect(nothings).toBe(3);
+    expect(nothings / (pauses + nothings)).toBeGreaterThanOrEqual(0.4);
+    expect((nothings - 1) / (pauses + nothings - 1)).toBeLessThan(0.4);
+  });
+
   it('prefers nothing turns that follow a trigger', () => {
     const turns = ['gray', 'nothing', 'gray', 'nothing', 'gray', 'nothing', 'gray'].map((label, i) =>
       turnAt(i, label as Label, { trigger: i === 3 }),
