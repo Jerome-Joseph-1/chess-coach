@@ -2,6 +2,7 @@ import { CoachMark } from '../../pause/Coach';
 import { CrossFade } from '../../pause/CrossFade';
 import { Dock, DockButton, RoundButton } from '../../pause/Dock';
 import type { GameSession, SessionView } from '../../game/session';
+import './coach-line.css';
 
 const WATCHING = "Watching the game. I'll stop at the next key position.";
 const WAITING = "Press Play and I'll stop at the next key position.";
@@ -20,14 +21,36 @@ function coachLine(view: SessionView): string {
   return view.dots.includes('todo') ? WAITING : NONE_LEFT;
 }
 
-/** The coach's one line, with its small mark. */
-export function CoachLine({ text }: { text: string }) {
+interface CoachSays {
+  /** The variation the board has reached, over the line. */
+  name: string | null;
+  text: string;
+  /** The line is a note on the opening rather than what the game is doing. */
+  note: boolean;
+}
+
+/** A note on the opening position shown, under the name of its variation; once known, the name over today's line. */
+function coachSays(view: SessionView): CoachSays {
+  const live = view.phase.kind === 'ready' || view.phase.kind === 'playing';
+  const note = live ? view.note : null;
+  return { name: note?.name ?? null, text: note?.text ?? coachLine(view), note: Boolean(note?.text) };
+}
+
+/** The coach's one line, with its small mark, and the name of the variation over it when there is one. */
+export function CoachLine({ text, name = null, note = false }: Partial<CoachSays> & { text: string }) {
   return (
-    <div class="coach-line">
+    <div class={`coach-line${name ? ' has-name' : ''}`}>
       <CoachMark small />
-      <p aria-live="polite">
-        <CrossFade value={text}>{text}</CrossFade>
-      </p>
+      <div class="coach-line-body">
+        {name && (
+          <CrossFade value={name} class="coach-line-name">
+            {name}
+          </CrossFade>
+        )}
+        <p class={note ? 'is-note' : undefined} aria-live="polite">
+          <CrossFade value={text}>{text}</CrossFade>
+        </p>
+      </div>
     </div>
   );
 }
@@ -48,10 +71,11 @@ export function Controls({ view, session, onAnalyse }: ControlsProps) {
   const { controls } = view;
   const playing = view.phase.kind === 'playing';
   const busy = view.phase.kind === 'busy';
+  const says = coachSays(view);
   return (
     <>
-      <div class="game-panel">
-        <CoachLine text={coachLine(view)} />
+      <div class={`game-panel${says.note ? ' has-note' : says.name ? ' has-name' : ''}`}>
+        <CoachLine {...says} />
       </div>
       <Dock label="Game controls">
         <div class="dock-row is-quiet">

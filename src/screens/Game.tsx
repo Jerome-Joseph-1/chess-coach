@@ -7,12 +7,13 @@ import { loadGame, loadSet } from '../content/loader';
 import type { Level, OpeningId, Side } from '../content/types';
 import { Analysis } from '../engine/Analysis';
 import { GameSession, type SessionDeps, type SessionView } from '../game/session';
+import { noteFor } from '../opening';
 import { CoachBubble } from '../pause/Coach';
 import { CrossFade } from '../pause/CrossFade';
 import { Dock, DockButton } from '../pause/Dock';
 import { PauseSheet, type PauseOutcome, type PauseStage, type Verdict } from '../pause/PauseSheet';
 import { Icon } from '../pause/steps/icons';
-import { dropReview, getDepth, getSettings, playedGameIds, recordGame, recordMoment } from '../progress/store';
+import { dropReview, getDepth, getSettings, markNoteSeen, noteSeenCount, playedGameIds, recordGame, recordMoment } from '../progress/store';
 import { navigate } from '../router';
 import { celebrate, toast } from '../ui/rewards';
 import { Controls, CoachLine } from './game/Controls';
@@ -52,6 +53,9 @@ function sessionDeps(board: BoardController): SessionDeps {
     wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     random: Math.random,
     now: Date.now,
+    noteFor,
+    noteSeenCount,
+    markNoteSeen,
   };
 }
 

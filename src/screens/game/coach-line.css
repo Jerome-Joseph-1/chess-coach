@@ -1,0 +1,35 @@
+/* A note on the opening: the variation's name in the coach's colour over the line. */
+.coach-line.has-name {
+  align-items: flex-start;
+}
+.coach-line-body {
+  flex: 1;
+  min-width: 0;
+}
+.coach-line .coach-line-name {
+  color: var(--coach-text);
+  font: var(--text-label);
+}
+.coach-line p.is-note {
+  color: var(--text);
+}
+
+/* The name and a line fit the panel; a note of up to three lines takes the room of your player bar, never the board's. */
+.game-panel {
+  transition: margin-top var(--d-base) var(--spring);
+}
+.game-panel.has-name {
+  padding-block: 8px;
+}
+.game-panel.has-note {
+  position: relative;
+  z-index: 1;
+  margin-top: calc(-1 * var(--bar));
+  padding-block: 10px;
+  background: var(--bg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-panel {
+    transition: none;
+  }
+}

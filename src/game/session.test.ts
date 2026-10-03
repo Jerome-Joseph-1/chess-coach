@@ -7,6 +7,8 @@ import { chooseMoments } from './pauses';
 import { parseUci } from './position';
 import { beat } from './pacing';
 import { GameSession, RESUME_MS, type SessionDeps } from './session';
+import { epd } from '../opening/epd';
+import { readingMs } from '../opening';
 
 vi.mock('./pauses', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./pauses')>();
@@ -74,7 +76,35 @@ function setIndexOf(games: Game[], side: Side = 'w'): SetIndex {
   return { ...fixtureSet, side, start: games[0].start, games: games.map((g) => ({ id: g.id, moves: g.moves })) };
 }
 
-function startSession(options: { games?: Game[]; review?: { gameId: string; ply: number }; played?: string[]; depth?: Depth; noSet?: boolean } = {}) {
+interface NoteOptions {
+  /** A note on the position after this many scripted moves, by ply: its id. */
+  notes?: Record<number, string>;
+  /** How often each note has been seen before this game. */
+  seen?: Record<string, number>;
+}
+
+const NOTE_NAME = 'Two Knights Defence';
+const noteText = (id: string) => `The coach explains ${id} here.`;
+
+/** Notes on positions of `game`, and a seen counter that behaves like the store's. */
+function fakeNotes(game: Game, { notes = {}, seen = {} }: NoteOptions) {
+  const counts = { ...seen };
+  const ids = new Map(Object.entries(notes).map(([ply, id]) => [epd(positionAfter(game, Number(ply))), id]));
+  return {
+    noteFor: vi.fn<SessionDeps['noteFor']>((fen) => {
+      const id = ids.get(epd(fen));
+      return id ? { id, name: NOTE_NAME, text: noteText(id) } : null;
+    }),
+    noteSeenCount: vi.fn<SessionDeps['noteSeenCount']>((id) => counts[id] ?? 0),
+    markNoteSeen: vi.fn<SessionDeps['markNoteSeen']>((id) => {
+      counts[id] = (counts[id] ?? 0) + 1;
+    }),
+  };
+}
+
+function startSession(
+  options: { games?: Game[]; review?: { gameId: string; ply: number }; played?: string[]; depth?: Depth; noSet?: boolean } & NoteOptions = {},
+) {
   const games = options.games ?? [fixtureGame(GAME_1), fixtureGame(GAME_2)];
   const board = new FakeBoard();
   const deps = {
@@ -92,6 +122,7 @@ function startSession(options: { games?: Game[]; review?: { gameId: string; ply:
     wait: vi.fn<SessionDeps['wait']>(async () => {}),
     random: vi.fn(() => 0.5),
     now: vi.fn(() => 1234),
+    ...fakeNotes(games[0], options),
   };
   const session = new GameSession(games[0].opening, games[0].level, options.review, deps);
   void session.start();
@@ -166,11 +197,11 @@ async function stepBack({ session }: Started, times = 1): Promise<void> {
 /** How many scripted moves the board shows. */
 const shownPly = ({ session }: Started) => session.getView().shown - session.getView().game!.start.length;
 
-const positionAfter = (game: Game, plies: number): string => {
+function positionAfter(game: Game, plies: number): string {
   const chess = new Chess();
   [...game.start, ...game.moves.slice(0, plies)].forEach((san) => chess.move(san));
   return chess.fen();
-};
+}
 
 /** Lets gated autoplay run until a key position opens. */
 async function beatsUntilPause(started: Started, beat: () => Promise<void>): Promise<void> {
@@ -765,6 +796,99 @@ describe('a key position tried again', () => {
     await flush();
     expect(started.board.calls).toHaveLength(callsBefore);
     expect(started.session.getView().phase.kind).toBe('ready');
+  });
+});
+
+describe('opening notes', () => {
+  const full = (id: string) => ({ name: NOTE_NAME, text: noteText(id) });
+  const waits = ({ deps }: Started) => deps.wait.mock.calls.map(([ms]) => ms);
+
+  it('shows the note on the opening position while the game waits for play, and counts it', async () => {
+    const started = await startReady({ notes: { 0: 'start' } });
+    expect(started.session.getView().note).toEqual(full('start'));
+    expect(started.deps.markNoteSeen.mock.calls).toEqual([['start']]);
+    expect(started.deps.noteFor).toHaveBeenCalledWith(positionAfter(fixtureGame(GAME_1), 0), 'Bc4');
+  });
+
+  it('shows a note autoplay reaches, counts it and holds the move long enough to read it', async () => {
+    momentsAt({ 3: 'pause' });
+    const started = await startReady({ notes: { 2: 'two' } });
+    const release = gateBeats(started);
+    started.session.play();
+    await flush();
+    expect(started.session.getView().note).toBeNull();
+    await release();
+    expect(movesPlayed(started)).toBe(2);
+    expect(started.session.getView().note).toEqual(full('two'));
+    expect(started.deps.markNoteSeen.mock.calls).toEqual([['two']]);
+    await beatsUntilPause(started, release);
+    // The note's move waits for the reading time, and the ramp starts again after it.
+    expect(waits(started)).toEqual([beat(0, 3), Math.max(beat(1, 2), readingMs(noteText('two'))), beat(0, 1)]);
+  });
+
+  it('shows only the name once the note has been read twice, without holding the move', async () => {
+    momentsAt({ 3: 'pause' });
+    const started = await startReady({ notes: { 2: 'two' }, seen: { two: 2 } });
+    const release = gateBeats(started);
+    started.session.play();
+    await flush();
+    await release();
+    expect(started.session.getView().note).toEqual({ name: NOTE_NAME, text: null });
+    expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
+    await beatsUntilPause(started, release);
+    expect(waits(started)).toEqual([beat(0, 3), beat(1, 2), beat(2, 1)]);
+  });
+
+  it('shows a note read once before in full a second time', async () => {
+    const started = await startReady({ notes: { 0: 'start' }, seen: { start: 1 } });
+    expect(started.session.getView().note).toEqual(full('start'));
+    expect(started.deps.noteSeenCount('start')).toBe(2);
+  });
+
+  it('keeps the question first where a key position opens, then reads the note as play resumes', async () => {
+    momentsAt({ 3: 'pause' });
+    const started = await playToPause({ notes: { 3: 'three' } });
+    expect(started.session.getView().note).toBeNull();
+    expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
+
+    gateBeats(started);
+    started.session.pauseDone({ outcomes: outcomes(true), resumePly: 3 });
+    await flush();
+    expect(started.session.getView().note).toEqual(full('three'));
+    expect(started.deps.markNoteSeen.mock.calls).toEqual([['three']]);
+    expect(started.deps.wait).toHaveBeenCalledWith(readingMs(noteText('three')));
+  });
+
+  it('shows the note of the position stepped to without counting it', async () => {
+    const started = await startReady({ notes: { 1: 'one' } });
+    await stepForward(started);
+    expect(started.session.getView().note).toEqual(full('one'));
+    await stepForward(started);
+    expect(started.session.getView().note).toBeNull();
+    await stepBack(started);
+    expect(started.session.getView().note).toEqual(full('one'));
+    expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
+  });
+
+  it('keeps a note read in this game in full when the user looks back at it', async () => {
+    const started = await startReady({ notes: { 1: 'one' }, seen: { one: 1 } });
+    const release = gateBeats(started);
+    started.session.play();
+    await flush();
+    await release();
+    started.session.pausePlayback();
+    await release();
+    expect(started.deps.noteSeenCount('one')).toBe(2);
+    await stepBack(started, movesPlayed(started) - 1);
+    expect(shownPly(started)).toBe(1);
+    expect(started.session.getView().note).toEqual(full('one'));
+  });
+
+  it('shows no note while a review replays its moves', async () => {
+    const started = startSession({ review: { gameId: GAME_1, ply: 7 }, notes: { 4: 'four', 5: 'five' } });
+    await waitForPhase(started, 'pause');
+    expect(started.deps.markNoteSeen).not.toHaveBeenCalled();
+    expect(started.session.getView().note).toBeNull();
   });
 });
 

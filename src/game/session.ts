@@ -11,6 +11,7 @@ import type {
   SetIndex,
   Turn,
 } from '../content/types';
+import { readingMs, type OpeningNote } from '../opening';
 import type { PauseResult } from '../pause/PauseSheet';
 import type { Celebration, Point } from '../ui/rewards';
 import { outcomeText } from './outcome';
@@ -23,6 +24,8 @@ export const RESUME_MS = 300;
 const STALE_REVIEW = 'This position is no longer in the course, so it is off your review list.';
 const REPLAY_PLIES = 4;
 const REPLAY_MS = 250;
+/** A note is shown in full this many times; after that only the variation's name is shown. */
+const FULL_READS = 2;
 
 export interface SessionDeps {
   board: BoardController;
@@ -39,6 +42,10 @@ export interface SessionDeps {
   wait(ms: number): Promise<void>;
   random(): number;
   now(): number;
+  /** The coach's note on a position of the opening, reached with `lastSan`. */
+  noteFor(fen: string, lastSan: string | null): OpeningNote | null;
+  noteSeenCount(id: string): number;
+  markNoteSeen(id: string): void;
 }
 
 export type PausedType = 'pause' | 'nothing';
@@ -116,6 +123,8 @@ export class GameSession {
   private results: MomentResult[] = [];
   private doneDots: DotState[] = [];
   private handledPlies = new Set<number>();
+  /** Notes counted as read in this game: they stay in full whenever their position is shown again. */
+  private readNotes = new Set<string>();
   private pauseResolver: ((result: PauseResult) => void) | null = null;
   /** Everything that moves the board runs here, one task at a time. */
   private queue: Promise<void> = Promise.resolve();
@@ -163,7 +172,10 @@ export class GameSession {
     await this.guarded(async () => {
       if (!(await this.setup())) return;
       if (this.review) await this.askNextMoment();
-      else this.update({ phase: { kind: 'ready' }, status: '' });
+      else {
+        this.readNoteAt(0);
+        this.update({ phase: { kind: 'ready' }, status: '' });
+      }
     });
   }
 
@@ -273,7 +285,7 @@ export class GameSession {
   }
 
   /** What follows from the moves played and the one being looked at. */
-  private derived(): Pick<SessionView, 'history' | 'shown' | 'fen' | 'dots' | 'controls' | 'returning'> {
+  private derived(): Pick<SessionView, 'history' | 'shown' | 'fen' | 'dots' | 'controls' | 'returning' | 'note'> {
     const { start, moves } = this.game;
     return {
       history: [...start, ...moves.slice(0, this.ply)],
@@ -282,7 +294,34 @@ export class GameSession {
       dots: this.currentDots(),
       controls: this.currentControls(),
       returning: this.viewPly < this.ply || this.practiced,
+      note: this.shownNote(),
     };
+  }
+
+  /** The note on the position shown: in full while it is new to the user, else only the variation's name. */
+  private shownNote(): SessionView['note'] {
+    // A key position about to open asks its own question first.
+    if (this.viewPly === this.ply && this.nextMoment()) return null;
+    const note = this.noteAt(this.viewPly);
+    if (!note) return null;
+    const full = this.readNotes.has(note.id) || this.deps.noteSeenCount(note.id) < FULL_READS;
+    return { name: note.name, text: full ? note.text : null };
+  }
+
+  private noteAt(ply: number): OpeningNote | null {
+    const { start, moves } = this.game;
+    const lastSan = ply === 0 ? (start.at(-1) ?? null) : moves[ply - 1];
+    return this.deps.noteFor(this.positionAt(ply), lastSan);
+  }
+
+  /** Counts the note on the position after `ply` moves as read, when autoplay brings the user there while it is new. */
+  private readNoteAt(ply: number): OpeningNote | null {
+    if (this.momentAt(ply)) return null;
+    const note = this.noteAt(ply);
+    if (!note || this.readNotes.has(note.id) || this.deps.noteSeenCount(note.id) >= FULL_READS) return null;
+    this.readNotes.add(note.id);
+    this.deps.markNoteSeen(note.id);
+    return note;
   }
 
   private currentDots(): DotState[] {
@@ -462,10 +501,13 @@ export class GameSession {
     this.board.setLastMove(this.lastUciAt(ply));
   }
 
-  /** One move per beat, however long the animation takes: quicker through a long stretch, slower into a stop. */
+  /** One move per beat, however long the animation takes: quicker through a long stretch, slower into a stop and a new note. */
   private async playPaced(): Promise<void> {
-    const wait = beat(this.streak, this.movesUntilStop());
-    this.streak++;
+    const note = this.readNoteAt(this.ply + 1);
+    const pace = beat(this.streak, this.movesUntilStop());
+    const wait = note ? Math.max(pace, readingMs(note.text)) : pace;
+    // After a note the ramp starts again, so the next moves do not rush past it.
+    this.streak = note ? 0 : this.streak + 1;
     await this.until(Promise.all([this.playForward(), this.deps.wait(wait)]));
   }
 
@@ -484,8 +526,9 @@ export class GameSession {
     }
     this.update({ phase: { kind: 'playing' } });
     await this.catchUp(result.resumePly);
-    // One short beat while the panel settles into the dock, then the game plays on.
-    await this.until(this.deps.wait(RESUME_MS));
+    // One short beat while the panel settles into the dock, then the game plays on; longer if a note is new.
+    const note = this.readNoteAt(this.ply);
+    await this.until(this.deps.wait(note ? Math.max(RESUME_MS, readingMs(note.text)) : RESUME_MS));
   }
 
   private async askPause(turnIndex: number, type: PausedType, practice = false): Promise<PauseResult> {
