@@ -2,16 +2,17 @@ import type { ComponentChildren, RefObject } from 'preact';
 import { useLayoutEffect, useRef } from 'preact/hooks';
 import { animateHeight, BASE_MS, prefersReducedMotion } from '../ui/motion';
 import { Dock } from './Dock';
+import { useFitUnderBoard } from './fit';
 import './pause.css';
 
 export interface SheetProps {
   label: string;
-  /** The coach's panel: content-sized, it scrolls inside the room between the board and the dock. */
+  /** The coach's panel: content-sized, it scrolls inside the room between the board and the dock once the board can give no more. */
   innerRef: RefObject<HTMLDivElement>;
   children: ComponentChildren;
   /** The dock's row; it stays at the bottom while the panel scrolls. */
   footer?: ComponentChildren;
-  /** A new stage grows or shrinks the panel smoothly to its new height. */
+  /** A new stage grows or shrinks the panel smoothly to its new height, and starts at its top. */
   stage?: string;
 }
 
@@ -30,14 +31,6 @@ function useGrowOnStage(ref: RefObject<HTMLElement>, stage: string | undefined) 
   });
 }
 
-/** Glides the panel so `el` is in view, e.g. a hint ladder or a takeaway that arrived under the fold. */
-export function scrollIntoPanel(el: HTMLElement | null): void {
-  const panel = el?.closest<HTMLElement>('.coach-scroll');
-  if (!el || !panel) return;
-  const below = el.getBoundingClientRect().bottom - panel.getBoundingClientRect().bottom;
-  if (below > 0) panel.scrollBy({ top: below + 12, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-}
-
 /** --ease-leave in tokens.css: things leaving speed up. */
 const EASE_LEAVE = 'cubic-bezier(0.4, 0, 1, 1)';
 
@@ -52,10 +45,12 @@ export function leavePanel(el: HTMLElement | null, done: () => void): void {
 
 /** The coach's panel under the board, in the flow so it can never cover the board, over the dock. */
 export function Sheet({ label, innerRef, children, footer, stage }: SheetProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   useGrowOnStage(innerRef, stage);
+  useFitUnderBoard(scrollRef, innerRef, stage);
   return (
     <div class="pause-sheet" role="region" aria-label={label}>
-      <div class="coach-scroll">
+      <div class="coach-scroll" ref={scrollRef}>
         <div class="coach-panel" ref={innerRef}>
           {children}
         </div>

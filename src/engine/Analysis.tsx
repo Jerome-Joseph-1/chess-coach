@@ -3,6 +3,7 @@ import type { BoardController } from '../board/types';
 import type { Side } from '../content/types';
 import { lineSequence } from '../pause/lines';
 import { Dock, DockButton } from '../pause/Dock';
+import { useFitUnderBoard } from '../pause/fit';
 import { LineStepper, NavButton } from '../pause/LineStepper';
 import '../pause/pause.css';
 import { playLine, samePosition, sanOf, squaresOf, type PlayedMove } from '../pause/position';
@@ -83,6 +84,8 @@ export function Analysis({ board, fen, userSide, played, closeLabel = COPY.done,
   const cache = useRef(new Map<string, Line[]>());
   const entry = useRef(board.fen());
   const released = useRef(false);
+  const panel = useRef<HTMLDivElement>(null);
+  useFitUnderBoard(panel, panel, docked ? 'analysis' : undefined);
 
   const lookup: Lookup = (at) => cache.current.get(at) ?? finishedLines(at) ?? undefined;
   const line = useMemo(() => playLine(fen, moves), [fen, moves]);
@@ -198,7 +201,7 @@ export function Analysis({ board, fen, userSide, played, closeLabel = COPY.done,
 
   return (
     <>
-      <div class={`analysis${docked ? ' is-docked' : ''}`}>
+      <div class={`analysis${docked ? ' is-docked' : ''}`} ref={docked ? panel : undefined}>
         {sequence ? (
           <LineStepper board={board} userSide={userSide} sequence={sequence} frozen={frozen} />
         ) : (

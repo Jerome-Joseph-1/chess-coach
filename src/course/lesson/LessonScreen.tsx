@@ -4,6 +4,7 @@ import type { BoardController } from '../../board/types';
 import type { OpeningId } from '../../content/types';
 import { lessonFor } from '../../learn';
 import { CrossFade } from '../../pause/CrossFade';
+import { boardSize } from '../../pause/fit';
 import type { PauseOutcome, PauseStage } from '../../pause/PauseSheet';
 import { Icon } from '../../pause/steps/icons';
 import { getSettings, recordDrill, recordLearned, recordLessonDone } from '../../progress/store';
@@ -24,7 +25,7 @@ export interface LessonScreenProps {
 }
 
 type Stage = 'intro' | 'example' | 'practice' | 'summary';
-/** What the screen shows, which sets the board's size: the same sizes as the game screen's. */
+/** What the screen shows, which sets the board's size, as on the game screen. */
 type Layout = 'intro' | ExampleLayout | PauseStage | 'summary';
 
 const LAYOUT_OF: Record<Stage, Layout> = { intro: 'intro', example: 'example', practice: 'ask', summary: 'summary' };
@@ -112,8 +113,9 @@ export function LessonScreen({ opening, unit }: LessonScreenProps) {
     practice: `Practice ${drillAt + 1} of ${lesson?.drills.length ?? 0}`,
     summary: 'Summary',
   }[stage];
+  const mode = lesson === null ? 'intro' : layout;
   return (
-    <main class="game lesson" data-mode={lesson === null ? 'intro' : layout}>
+    <main class="game lesson" data-mode={mode} data-size={boardSize(mode)}>
       <header class="game-top">
         <button class="game-back" type="button" aria-label="Back" onClick={back}>
           <Icon name="chevron-left" />

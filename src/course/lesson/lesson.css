@@ -1,37 +1,14 @@
-/*
- * The lesson uses the game screen's frame: the nav bar, the board sized by what each step keeps under it,
- * the coach under the board and one dock. Nothing sits between the nav bar and the board.
- */
-.game.lesson {
-  --above: calc(var(--nav) + 8px);
-  /* A step of the worked example: the coach's bubble with what to do, then the dock. */
-  --below: 240px;
-}
-.game.lesson .game-board {
-  padding-top: 8px;
-}
-/* A practice question names its pattern and shows the hint ladder from the start, so it keeps more room. */
-.game.lesson[data-mode='ask'] {
-  --below: 268px;
-}
-/* The line and the takeaway, as on the answer: the board steps back to about 320pt. */
-.game.lesson[data-mode='line'],
-.game.lesson[data-mode='answer'] {
-  --below: 372px;
-  --board-max: 320px;
-}
-.game.lesson[data-mode='explore'] {
-  --below: 322px;
-}
+/* The lesson uses the game screen's frame and board sizes, so a practice position looks like a key position. */
 
 /* What a step asks the player to do on the board. */
 .lesson-ask {
-  margin: 2px 0 0;
+  margin: 0;
   color: var(--coach-text);
-  font: 600 15px/22px var(--font);
+  font: var(--text-body);
+  font-weight: 600;
 }
 
-/* Pages without the board: the intro, the summary and notices. Their content scrolls over the dock. */
+/* Pages without the board: the intro, the summary and notices, under the same nav bar. Their content scrolls over the dock. */
 .lesson-page {
   display: flex;
   flex: 1;
@@ -58,24 +35,13 @@
   margin: 0;
   color: var(--text-muted);
 }
+/* The unit's tile as on Today and the Course list; green only once the lesson is done. */
 .lesson-icon {
-  display: grid;
-  place-items: center;
   width: 56px;
   height: 56px;
   margin-bottom: 8px;
-  border-radius: 16px;
-  background: var(--coach-tint);
-  color: var(--coach-text);
+  border-radius: var(--r-row);
   animation: coach-pop var(--d-base) var(--spring) both;
-}
-.lesson-icon.is-done {
-  background: color-mix(in srgb, var(--success) 16%, var(--surface));
-  color: var(--success);
-}
-.lesson-title {
-  font: var(--text-title);
-  letter-spacing: -0.01em;
 }
 .lesson-score {
   font: var(--text-number);
@@ -84,13 +50,9 @@
 .lesson-intro {
   margin: 0;
   color: var(--text);
-  font: 400 17px/24px var(--font);
+  font: var(--text-headline);
+  font-weight: 400;
   text-wrap: pretty;
-}
-.lesson-notice {
-  margin: 0;
-  color: var(--text-muted);
-  font: var(--text-body);
 }
 
 /* How to spot it: numbered steps on a card. */
@@ -130,7 +92,8 @@
   height: 24px;
   border-radius: 50%;
   background: var(--surface-3);
-  font: 600 12px/16px var(--font);
+  font: var(--text-label);
+  font-weight: 600;
 }
 
 @media (prefers-reduced-motion: reduce) {

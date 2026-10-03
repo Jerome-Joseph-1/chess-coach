@@ -145,6 +145,7 @@ export function Example({ board, position, onLayout, onDone }: ExampleProps) {
       <CoachBubble
         tone={wrong ? 'error' : 'neutral'}
         eyebrow={wrong ? COPY.tryAgain : 'Worked example'}
+        result={wrong}
         aside={<StepDots step={at + 1} total={beats.length} />}
         body={beat.text}
         live
@@ -179,11 +180,7 @@ export function Example({ board, position, onLayout, onDone }: ExampleProps) {
           }
           body={beat.text}
         />
-        {(lineDone || !playable) && (
-          <div class="remember-in">
-            <Remember text={lesson.remember} />
-          </div>
-        )}
+        <Remember text={lesson.remember} shown={lineDone || !playable} />
       </div>
     );
   }

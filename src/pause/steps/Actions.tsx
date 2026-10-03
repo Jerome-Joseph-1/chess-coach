@@ -24,12 +24,12 @@ export interface PlayActionsProps {
   onSolution: () => void;
 }
 
-/** Hint is the grey pill; Show solution stays a quiet text button beside it. */
+/** Show solution is quiet text; Hint, the grey pill, comes last and takes the rest of the row. */
 export function PlayActions({ hintLabel, hintsLeft, disabled, onHint, onSolution }: PlayActionsProps) {
   return (
     <div class="dock-row">
-      <DockButton look="secondary" wide icon="lightbulb" label={hintLabel} fade disabled={disabled || !hintsLeft} onClick={onHint} />
       <DockButton look="quiet" icon="eye" label={COPY.showSolution} disabled={disabled} onClick={onSolution} />
+      <DockButton look="secondary" wide icon="lightbulb" label={hintLabel} fade disabled={disabled || !hintsLeft} onClick={onHint} />
     </div>
   );
 }
@@ -43,7 +43,7 @@ export interface RevealActionsProps {
   nudge?: boolean;
 }
 
-/** Continue is the white pill; "Why this move?" sits beside it as the grey one. */
+/** "Why this move?" is the grey pill; Continue, the white one, comes last and is never the narrower. */
 export function RevealActions({ onContinue, onWhy, whyDisabled = false, nudge = false }: RevealActionsProps) {
   return (
     <div class="dock-row">

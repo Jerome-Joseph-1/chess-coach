@@ -11,6 +11,7 @@ import { noteFor } from '../opening';
 import { CoachBubble } from '../pause/Coach';
 import { CrossFade } from '../pause/CrossFade';
 import { Dock, DockButton } from '../pause/Dock';
+import { boardSize } from '../pause/fit';
 import { PauseSheet, type PauseOutcome, type PauseStage, type Verdict } from '../pause/PauseSheet';
 import { Icon } from '../pause/steps/icons';
 import { dropReview, getDepth, getSettings, markNoteSeen, noteSeenCount, playedGameIds, recordGame, recordMoment } from '../progress/store';
@@ -128,7 +129,7 @@ export function Game({ opening, level, review }: GameProps) {
 
   const fen = view?.fen ?? DEFAULT_POSITION;
   return (
-    <main class="game" data-mode={mode}>
+    <main class="game" data-mode={mode} data-size={boardSize(mode)}>
       <header class="game-top">
         <button class="game-back" type="button" aria-label="Back" onClick={() => navigate('/')}>
           <Icon name="chevron-left" />

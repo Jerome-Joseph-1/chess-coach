@@ -1,11 +1,11 @@
 import type { ComponentChildren } from 'preact';
 import { Dock, DockButton } from '../../pause/Dock';
 import { Remember } from '../../pause/steps/Result';
+import { EmptyCard } from '../../screens/shared/EmptyCard';
 import { Icon } from '../../screens/shared/icons';
 import { UNIT_ICONS } from '../../screens/shared/unitIcons';
 import type { Score } from '../path';
 import type { UnitId } from '../types';
-import { UNITS } from '../units';
 import { INTROS } from './intros';
 import '../../pause/pause.css';
 
@@ -37,16 +37,15 @@ export interface IntroProps {
   action?: PageProps['action'];
 }
 
-/** What the pattern is and how to spot it, before the worked example. */
+/** What the pattern is and how to spot it, before the worked example; the nav bar already names the lesson. */
 export function Intro({ unit, action }: IntroProps) {
   const { intro, spot } = INTROS[unit];
   return (
     <Page label="About this pattern" action={action}>
       <div class="lesson-hero rise-in">
-        <span class="lesson-icon" aria-hidden="true">
+        <span class="tile lesson-icon" aria-hidden="true">
           <Icon name={UNIT_ICONS[unit]} size={28} />
         </span>
-        <h2 class="lesson-title">{UNITS[unit].title}</h2>
         <p class="lesson-intro">{intro}</p>
       </div>
       <section class="lesson-spot rise-in" style={{ '--i': 2 }} aria-labelledby="spot-title">
@@ -74,7 +73,7 @@ export function Summary({ score, remember, onContinue }: SummaryProps) {
   return (
     <Page label="Lesson done" action={{ label: 'Continue', onClick: onContinue }}>
       <div class="lesson-hero rise-in">
-        <span class="lesson-icon is-done" aria-hidden="true">
+        <span class="tile lesson-icon tile--right" aria-hidden="true">
           <Icon name="check" size={28} />
         </span>
         <p class="eyebrow">Lesson done</p>
@@ -89,9 +88,7 @@ export function Summary({ score, remember, onContinue }: SummaryProps) {
           <p class="lesson-intro">You will meet this pattern again in your next games.</p>
         )}
       </div>
-      <div class="rise-in" style={{ '--i': 2 }}>
-        <Remember text={remember} />
-      </div>
+      <Remember text={remember} />
     </Page>
   );
 }
@@ -100,7 +97,7 @@ export function Summary({ score, remember, onContinue }: SummaryProps) {
 export function Notice({ text, action }: { text: string; action?: PageProps['action'] }) {
   return (
     <Page label="Lesson" action={action}>
-      <p class="lesson-notice">{text}</p>
+      <EmptyCard text={text} />
     </Page>
   );
 }

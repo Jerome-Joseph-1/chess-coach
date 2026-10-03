@@ -21,6 +21,7 @@
   }
 }
 .coach-panel {
+  position: relative;
   display: grid;
   align-content: start;
   gap: 12px;
@@ -65,7 +66,7 @@
 .coach {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
 }
 .coach-mark {
   flex: none;
@@ -107,10 +108,10 @@
 .coach-bubble {
   display: grid;
   flex: 1;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
-  padding: 12px 14px 14px;
-  border-radius: 4px 18px 18px 18px;
+  padding: 12px 16px 16px;
+  border-radius: 4px var(--r-card) var(--r-card);
   background: var(--surface-2);
 }
 .coach-bubble > .rise-in {
@@ -121,25 +122,26 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 6px 12px;
+  gap: 4px 12px;
   min-height: 16px;
 }
 .coach-eyebrow > * {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
+/* Where we are is grey; only an eyebrow that gives the result takes its colour: green, red, or the coach's for a hint. */
 .coach-eyebrow .eyebrow {
   color: var(--text-muted);
 }
-.coach.is-hint .coach-eyebrow .eyebrow {
+.coach.is-result.is-hint .coach-eyebrow .eyebrow {
   color: var(--coach-text);
 }
-.coach.is-error .coach-eyebrow .eyebrow {
-  color: var(--danger);
+.coach.is-result.is-error .coach-eyebrow .eyebrow {
+  color: var(--danger-text);
 }
-.coach.is-success .coach-eyebrow .eyebrow {
-  color: var(--success);
+.coach.is-result.is-success .coach-eyebrow .eyebrow {
+  color: var(--success-text);
 }
 .tone-icon {
   flex: none;
@@ -148,7 +150,8 @@
 .coach-title {
   margin: 0;
   color: var(--text-strong);
-  font: 600 17px/24px var(--font);
+  font: var(--text-headline);
+  font-weight: 600;
   letter-spacing: -0.005em;
   text-wrap: pretty;
 }
@@ -203,13 +206,14 @@
 .pattern-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   height: 28px;
   padding: 0 12px 0 8px;
-  border-radius: 14px;
+  border-radius: 999px;
   background: var(--surface-3);
   color: var(--text-strong);
-  font: 600 13px/16px var(--font);
+  font: var(--text-caption);
+  font-weight: 600;
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
@@ -249,7 +253,7 @@
 
 /* Hint ladder: Pattern · Piece · Move. The rule fills to the next stop, then the stop fills with a check. */
 .coach-ladder {
-  padding-top: 6px;
+  padding-top: 4px;
 }
 .hint-ladder {
   display: flex;
@@ -264,9 +268,10 @@
   display: flex;
   flex: none;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   color: var(--text-muted);
-  font: 500 13px/16px var(--font);
+  font: var(--text-caption);
+  font-weight: 500;
   letter-spacing: 0.01em;
 }
 .hint-rule + .hint-stop {
@@ -284,7 +289,7 @@
   height: 20px;
   border-radius: 50%;
   box-shadow: inset 0 0 0 1.5px currentColor;
-  font: 600 11px/12px var(--font);
+  font: var(--text-eyebrow);
 }
 .hint-dot > * {
   grid-area: 1 / 1;
@@ -349,38 +354,41 @@
   }
 }
 
-/* The takeaway, on the coach's tint. It rises in once the line has played. */
+/* The takeaway, on the coach's tint. Its room is kept while the line plays; it rises in once the line has played. */
 .remember-in {
   animation: rise-in var(--d-slow) var(--spring) both;
 }
+.remember-wait {
+  visibility: hidden;
+}
 .remember-card {
   display: grid;
-  gap: 6px;
-  padding: 14px 16px 16px;
-  border-radius: 16px;
+  gap: 4px;
+  padding: 12px 16px 16px;
+  border-radius: var(--r-row);
   background: var(--coach-tint);
 }
 .remember-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--coach-text);
 }
 .remember-card p {
   margin: 0;
   color: var(--text-strong);
-  font: 500 16px/22px var(--font);
+  font: var(--text-headline);
   letter-spacing: -0.005em;
 }
 
-/* Line stepper: ‹ the move on show and what it does › then replay. */
+/* Line stepper: ‹ the move on show and what it does › then replay. Tall enough for a two-line caption, so it holds its size. */
 .stepper {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 52px;
-  padding: 3px 6px;
-  border-radius: 26px;
+  min-height: 64px;
+  padding: 4px;
+  border-radius: 999px;
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--hairline);
   touch-action: pan-y;
@@ -389,7 +397,7 @@
   display: grid;
   flex: 1;
   min-width: 0;
-  min-height: 40px;
+  min-height: 56px;
   place-items: center;
   margin: 0;
   color: var(--text-muted);
@@ -413,7 +421,7 @@
 }
 .stepper-move b {
   color: var(--text-strong);
-  font: 500 15px/20px var(--font-mono);
+  font: var(--text-code);
   font-weight: 700;
 }
 .stepper-says {
@@ -514,7 +522,7 @@
 
 /* A quiet text link, e.g. the way back from the engine to the line. */
 .pause-link {
-  min-height: 36px;
+  min-height: var(--tap);
   padding: 0 16px;
   border: 0;
   background: transparent;
@@ -528,8 +536,12 @@
   transform: scale(0.97);
 }
 
-/* The dock: one bar at the bottom, the main action always in its last row. */
+/*
+ * The dock: one bar at the bottom of every board screen. In a row the main action comes last and takes the
+ * rest, never less than half; secondary pills take their own width and tertiary actions are quiet text.
+ */
 .dock {
+  container-type: inline-size;
   flex: none;
   display: grid;
   gap: 4px;
@@ -552,26 +564,34 @@
 }
 .dock-btn {
   display: inline-flex;
-  flex: none;
+  flex: 0 1 auto;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-width: 0;
   min-height: 52px;
-  padding: 0 24px;
-  border-radius: 26px;
-  font: 500 16px/20px var(--font);
-  letter-spacing: -0.002em;
+  padding: 0 16px;
+  border-radius: 999px;
+  font: var(--text-callout);
   white-space: nowrap;
 }
 .dock-btn.btn {
   width: auto;
 }
 .dock-btn.is-wide {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 0;
+  min-width: 50%;
 }
 .dock-btn.btn-primary {
   font-weight: 600;
+}
+.dock-btn svg {
+  flex: none;
+}
+.dock-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .dock .dock-btn {
   transition:
@@ -585,14 +605,17 @@
 .dock .dock-btn:disabled {
   opacity: 0.4;
 }
+.dock-btn .xfade {
+  min-width: 0;
+}
 .dock-btn .xfade > * {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-width: 0;
 }
 .dock-quiet {
-  padding: 0 12px;
   border: 0;
   background: transparent;
   color: var(--text);
@@ -601,6 +624,50 @@
 }
 .dock-quiet:disabled {
   cursor: default;
+}
+/* A row of quiet actions over the main one, e.g. the game's previous key position and analyse. */
+.dock-row.is-quiet {
+  justify-content: space-between;
+  gap: 8px;
+}
+.dock-row.is-quiet .dock-quiet {
+  min-height: var(--tap);
+  padding: 0 12px;
+}
+/* A 52px round button, e.g. a step back or forward beside the main action. */
+.dock-round {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--text-strong);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform var(--d-press) var(--spring),
+    opacity var(--d-quick) ease-out;
+}
+.dock-round:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.dock-round:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+/* On the narrowest phones the side actions drop their icons and some padding, so every label fits whole. */
+@container (max-width: 320px) {
+  .dock-btn:not(.is-wide) {
+    padding: 0 12px;
+  }
+  .dock-btn:not(.is-wide) svg {
+    display: none;
+  }
 }
 
 /* Step 1's answers under the question: two rows of two, then "Nothing urgent" across. */
@@ -613,16 +680,25 @@
 .spot-choices > :last-child {
   grid-column: 1 / -1;
 }
-/* The chosen pill's ring fills and draws a check, or a cross. */
+/* Plain pills until one is picked; the picked one gets a disc with a check, or a cross, and a tint to match. */
 .pause-choice {
   width: 100%;
-  min-height: 44px;
-  padding: 0 12px;
-  font: 500 15px/18px var(--font);
-  white-space: normal;
+  min-height: var(--tap);
+  padding: 0 8px;
+  font: var(--text-callout);
+  white-space: nowrap;
   transition:
     transform var(--d-press) var(--spring),
-    opacity var(--d-quick) ease-out;
+    opacity var(--d-quick) ease-out,
+    background var(--d-quick) ease-out;
+}
+.pause-choice.is-right {
+  background: var(--good-soft);
+  box-shadow: inset 0 0 0 1px var(--success);
+}
+.pause-choice.is-wrong {
+  background: var(--bad-soft);
+  box-shadow: inset 0 0 0 1px var(--danger);
 }
 .pause-choice[aria-disabled='true'] {
   cursor: default;
@@ -636,22 +712,13 @@
 .choice-ring {
   flex: none;
   overflow: visible;
-}
-.choice-ring circle {
-  fill: transparent;
-  stroke: var(--text-muted);
-  stroke-width: 1.5;
-  transition:
-    fill var(--d-quick) ease-out,
-    stroke var(--d-quick) ease-out;
+  animation: coach-pop var(--d-quick) var(--spring) both;
 }
 .choice-ring.is-right circle {
   fill: var(--success);
-  stroke: var(--success);
 }
 .choice-ring.is-wrong circle {
   fill: var(--danger);
-  stroke: var(--danger);
 }
 .choice-ring path {
   fill: none;
@@ -667,7 +734,8 @@
 /* Under reduced motion every movement becomes a short fade. */
 @media (prefers-reduced-motion: reduce) {
   .coach-mark,
-  .tone-mark {
+  .tone-mark,
+  .choice-ring {
     animation-name: fade-in;
   }
   .stepper-replay .is-turning,

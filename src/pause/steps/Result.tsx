@@ -1,8 +1,6 @@
-import { useEffect, useRef } from 'preact/hooks';
 import { CoachBubble, PatternLabel, type PatternLabelProps } from '../Coach';
 import { COPY, type ResultKind, type ResultLine } from '../copy';
 import type { CoachTone } from '../prompt';
-import { scrollIntoPanel } from '../Sheet';
 import { Icon } from './icons';
 
 const TONES: Record<ResultKind, CoachTone> = { success: 'success', danger: 'error', hint: 'hint', quiet: 'quiet' };
@@ -22,6 +20,7 @@ export function ResultBubble({ result, text, pattern, note }: ResultBubbleProps)
     <CoachBubble
       tone={TONES[result.kind]}
       eyebrow={result.text}
+      result
       aside={pattern && <span class="pattern-in">{<PatternLabel {...pattern} />}</span>}
       body={text}
     >
@@ -34,17 +33,20 @@ export function ResultBubble({ result, text, pattern, note }: ResultBubbleProps)
   );
 }
 
-/** The takeaway to reuse in other games, on the coach's tint. It glides into view if it arrives under the fold. */
-export function Remember({ text }: { text: string }) {
-  const card = useRef<HTMLElement>(null);
-  useEffect(() => scrollIntoPanel(card.current), []);
+/**
+ * The takeaway to reuse in other games, on the coach's tint. Its room is kept from the start, so the panel
+ * and the board hold still when it rises in, e.g. once the line has played.
+ */
+export function Remember({ text, shown = true }: { text: string; shown?: boolean }) {
   return (
-    <section class="remember-card" aria-label={COPY.remember} ref={card}>
-      <span class="remember-head">
-        <Icon name="bookmark" size={16} />
-        <span class="eyebrow">{COPY.remember}</span>
-      </span>
-      <p>{text}</p>
-    </section>
+    <div class={shown ? 'remember-in' : 'remember-wait'}>
+      <section class="remember-card" aria-label={COPY.remember}>
+        <span class="remember-head">
+          <Icon name="bookmark" size={16} />
+          <span class="eyebrow">{COPY.remember}</span>
+        </span>
+        <p>{text}</p>
+      </section>
+    </div>
   );
 }

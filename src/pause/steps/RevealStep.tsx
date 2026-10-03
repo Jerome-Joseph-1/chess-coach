@@ -74,11 +74,7 @@ export function RevealStep(props: RevealStepProps) {
         }}
       />
       <ResultBubble result={props.result} text={props.headline} pattern={props.lesson?.pattern} note={props.note} />
-      {props.lesson && (lineDone || !props.sequence.steps.length) && (
-        <div class="remember-in">
-          <Remember text={props.lesson.remember} />
-        </div>
-      )}
+      {props.lesson && <Remember text={props.lesson.remember} shown={lineDone || !props.sequence.steps.length} />}
     </div>
   );
 }

@@ -6,6 +6,7 @@
 }
 /* On the game screen it fills the room under the board and scrolls there, over its own dock. */
 .analysis.is-docked {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -15,10 +16,10 @@
   animation: coach-rise var(--d-slow) var(--spring) both;
 }
 .analysis .stepper {
-  border-radius: 20px;
+  border-radius: var(--r-card);
 }
 .analysis-caption {
-  padding: 6px 0;
+  padding: 4px 0;
   color: var(--text);
   font: var(--text-callout);
   text-wrap: pretty;
@@ -32,7 +33,7 @@
   min-height: calc(3 * 44px + 8px);
   padding: 4px 0;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: var(--r-row);
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--hairline);
 }
@@ -67,11 +68,12 @@
 .analysis-score {
   display: grid;
   place-items: center;
-  height: 26px;
+  height: 24px;
   border-radius: 6px;
   background: var(--surface-3);
   color: var(--text-strong);
-  font: 600 13px/16px var(--font-mono);
+  font: var(--text-code);
+  font-weight: 600;
   white-space: nowrap;
 }
 .analysis-row.is-ref .analysis-score {
@@ -82,7 +84,8 @@
   visibility: hidden;
 }
 .analysis-san {
-  font: 600 13px/18px var(--font-mono);
+  font: var(--text-code);
+  font-weight: 600;
   white-space: nowrap;
 }
 .analysis-detail {
@@ -113,7 +116,7 @@
   inset: 0 auto 0 0;
   width: 40%;
   border-radius: 1px;
-  background: var(--coach);
+  background: var(--text-muted);
   animation: analysis-progress 1.1s ease-in-out infinite;
 }
 @keyframes analysis-progress {

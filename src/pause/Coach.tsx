@@ -71,6 +71,8 @@ export interface CoachBubbleProps {
   tone: CoachTone;
   /** The small capitals line at the top: where we are, or how the answer went. */
   eyebrow?: string;
+  /** The eyebrow says how the answer went, so it takes the tone's colour; where we are stays grey. */
+  result?: boolean;
   /** Sits at the right of the eyebrow row: the step dots or the pattern label. */
   aside?: ComponentChildren;
   /** Takes the eyebrow's place, e.g. the pattern label once a hint has named it. */
@@ -87,9 +89,9 @@ export interface CoachBubbleProps {
  * The coach speaks under the board: its mark, then a bubble whose lines fade up one after another.
  * A line that changes later cross-fades in place, with a short slide.
  */
-export function CoachBubble({ tone, eyebrow, aside, lead, title, body, live = false, innerRef, children }: CoachBubbleProps) {
+export function CoachBubble({ tone, eyebrow, result = false, aside, lead, title, body, live = false, innerRef, children }: CoachBubbleProps) {
   return (
-    <div class={`coach is-${tone}`}>
+    <div class={`coach is-${tone}${result ? ' is-result' : ''}`}>
       <CoachMark />
       <div class="coach-bubble" ref={innerRef}>
         {(eyebrow || lead || aside) && (
