@@ -13,7 +13,7 @@ if (!contentDir || !reportPath) {
   process.exit(1);
 }
 const MAX_PLIES = 16;
-const TOP = 60;
+const TOP = Number(process.env.TOP ?? 60);
 
 interface Ply {
   position: string;

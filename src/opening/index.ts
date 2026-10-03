@@ -3,7 +3,7 @@ import { Chess } from 'chess.js';
 import type { OpeningId } from '../content/types';
 import { epd } from './epd';
 import names from './names.json';
-import { FAMILIES } from './notes';
+import { FAMILIES, moveNoteId } from './notes';
 
 export interface OpeningName {
   eco: string;
@@ -90,7 +90,7 @@ function buildIndex(): NoteIndex {
     }
     for (const [after, text] of Object.entries(family.notes)) {
       const sans = [...split(first), ...split(after)];
-      moves.set(`${epd(play(sans))} ${sans.at(-1)}`, { id: `${family.id}:${after}`, name: family.name, text });
+      moves.set(`${epd(play(sans))} ${sans.at(-1)}`, { id: moveNoteId(family, after), name: family.name, text });
     }
   }
   return { plans, moves };
