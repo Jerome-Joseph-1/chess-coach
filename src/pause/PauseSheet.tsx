@@ -327,8 +327,8 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
   function answer() {
     const result = resultLine(type, state.outcomes, state.hinted);
     if (type === 'nothing') {
-      const { lesson, pattern } = lessonLabel(game, turnIndex);
-      return <QuietReveal result={result} text={lesson.idea} remember={lesson.remember} pattern={pattern} />;
+      const lesson = lessonFor(game, turnIndex);
+      return <QuietReveal result={result} text={lesson.idea} remember={lesson.remember} />;
     }
     if (!reveal) return null;
     return (

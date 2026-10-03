@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from '../../ui/motion';
 import { CoachBubble, PatternLabel, type PatternLabelProps } from '../Coach';
 import { COPY, type ResultKind, type ResultLine } from '../copy';
 import type { CoachTone } from '../prompt';
@@ -33,13 +34,22 @@ export function ResultBubble({ result, text, pattern, note }: ResultBubbleProps)
   );
 }
 
+/** The takeaway is the last thing in the coach's panel: scrolling the panel to its end shows it whole over the dock. */
+function scrollPanelToEnd(el: Element) {
+  const panel = el.closest('.coach-scroll');
+  panel?.scrollTo({ top: panel.scrollHeight, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+}
+
 /**
  * The takeaway to reuse in other games, on the coach's tint. Its room is kept from the start, so the panel
- * and the board hold still when it rises in, e.g. once the line has played.
+ * and the board hold still when it rises in, e.g. once the line has played; once in, it is scrolled into view.
  */
 export function Remember({ text, shown = true }: { text: string; shown?: boolean }) {
   return (
-    <div class={shown ? 'remember-in' : 'remember-wait'}>
+    <div
+      class={shown ? 'remember-in' : 'remember-wait'}
+      onAnimationEnd={(e) => e.target === e.currentTarget && scrollPanelToEnd(e.currentTarget)}
+    >
       <section class="remember-card" aria-label={COPY.remember}>
         <span class="remember-head">
           <Icon name="bookmark" size={16} />
