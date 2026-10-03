@@ -2,13 +2,13 @@ import { Chess, type Color, type Move, type PieceSymbol, type Square } from 'che
 import type { Side } from '../content/types';
 import { parseUci } from '../game/position';
 
-interface Piece {
+export interface Piece {
   square: Square;
   type: PieceSymbol;
 }
 
-const VALUE: Record<PieceSymbol, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: Infinity };
-const NAME: Record<PieceSymbol, string> = {
+export const VALUE: Record<PieceSymbol, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: Infinity };
+export const NAME: Record<PieceSymbol, string> = {
   p: 'pawn',
   n: 'knight',
   b: 'bishop',
@@ -30,15 +30,15 @@ const STRAIGHTS = [
   [0, 1],
   [0, -1],
 ];
-const SLIDER_DIRECTIONS: Partial<Record<PieceSymbol, number[][]>> = {
+export const SLIDER_DIRECTIONS: Partial<Record<PieceSymbol, number[][]>> = {
   b: DIAGONALS,
   r: STRAIGHTS,
   q: [...DIAGONALS, ...STRAIGHTS],
 };
 
-const otherColor = (color: Color): Color => (color === 'w' ? 'b' : 'w');
+export const otherColor = (color: Color): Color => (color === 'w' ? 'b' : 'w');
 
-function squareAt(file: number, rank: number): Square | null {
+export function squareAt(file: number, rank: number): Square | null {
   if (file < 0 || file > 7 || rank < 0 || rank > 7) return null;
   return `${'abcdefgh'[file]}${rank + 1}` as Square;
 }
@@ -55,7 +55,7 @@ function attackedBy(chess: Chess, attacker: Square, color: Color): Piece[] {
 }
 
 /** Enemy pieces worth the attention of a piece of type `mover`: the king, bigger pieces and loose pieces. */
-function attackedTargets(chess: Chess, attacker: Square, mover: PieceSymbol, color: Color): Piece[] {
+export function attackedTargets(chess: Chess, attacker: Square, mover: PieceSymbol, color: Color): Piece[] {
   return attackedBy(chess, attacker, color).filter((t) => {
     if (t.type === 'p') return false;
     return t.type === 'k' || VALUE[t.type] > VALUE[mover] || chess.attackers(t.square, otherColor(color)).length === 0;
