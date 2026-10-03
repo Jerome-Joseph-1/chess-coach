@@ -48,6 +48,10 @@ class FakeBoard implements BoardController {
   badge() {}
   arrow() {}
   clearArrows() {}
+  burst() {}
+  onMoved() {
+    return () => {};
+  }
   evalBar() {}
 }
 

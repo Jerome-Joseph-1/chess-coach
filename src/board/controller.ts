@@ -15,7 +15,7 @@ import { gridCell } from './geometry';
 import { soundBetween, soundForMove } from './moveSound';
 import { legalMoves, pickMove } from './moves';
 import { SquareOverlay } from './overlay';
-import type { ArrowTone, BadgeKind, BarScore, BoardController, Tone } from './types';
+import type { ArrowTone, BadgeKind, BarScore, BoardController, MovedPiece, Tone } from './types';
 
 type MoveHandler = (uci: string) => boolean | Promise<boolean>;
 
@@ -173,6 +173,12 @@ export class CmBoardController implements BoardController {
 
   clearArrows(): void {
     if (!this.destroyed) this.removeArrows();
+  }
+
+  burst(_square: string): void {}
+
+  onMoved(_listener: (move: MovedPiece) => void): () => void {
+    return () => {};
   }
 
   evalBar(score: BarScore | null): void {

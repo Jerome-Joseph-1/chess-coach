@@ -2,6 +2,12 @@ import type { Side } from '../content/types';
 
 export type Tone = 'focus' | 'good' | 'bad' | 'hint';
 export type BadgeKind = 'good' | 'bad';
+/** What just happened on the board, for things outside it that react to moves (the captured-pieces tray, the move strip). */
+export interface MovedPiece {
+  uci: string;
+  captured: { type: 'p' | 'n' | 'b' | 'r' | 'q'; color: Side } | null;
+  check: boolean;
+}
 export type ArrowTone = 'best' | 'threat' | 'mistake';
 /** An evaluation from White's point of view: centipawns, mate in n (negative when Black mates), or a finished game. */
 export type BarScore = { cp: number } | { mate: number } | { winner: Side };
@@ -35,6 +41,10 @@ export interface BoardController {
   /** Draw a move arrow; it stays until clearArrows. The player's own right-click drawings are separate. */
   arrow(from: string, to: string, tone: ArrowTone): void;
   clearArrows(): void;
+  /** A small burst of specks from a square, for a found move. */
+  burst(square: string): void;
+  /** Listens to every move the board animates; returns the way to stop listening. */
+  onMoved(listener: (move: MovedPiece) => void): () => void;
   /** A thin evaluation bar along the left edge of the board; null hides it. */
   evalBar(score: BarScore | null): void;
 }
