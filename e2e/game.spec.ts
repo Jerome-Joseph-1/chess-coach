@@ -235,6 +235,11 @@ test('leaving a game keeps its place: it opens again at the key position left, w
   const played = await moveList(page).count();
 
   await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page.getByText('0 of 1 key positions handled well this week.')).toBeVisible();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Progress' }).click();
+  await expect(page.getByText('Not started yet')).toHaveCount(0);
+  await expect(page.locator('.stat-tile').first()).toContainText('0 / 1');
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Today' }).click();
   await page.getByRole('link', { name: 'Continue your game instead' }).click();
 
   await expect(page.getByText(SPOT_QUESTION)).toBeVisible();

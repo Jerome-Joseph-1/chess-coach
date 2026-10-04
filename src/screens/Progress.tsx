@@ -2,7 +2,7 @@ import type { OpeningId } from '../content/types';
 import { dayKey, lastWeeks } from '../progress/days';
 import { STAGES, stageNumber } from '../progress/depth';
 import { weekStats, type PatternStat, type RateCount } from '../progress/stats';
-import { getActiveDays, getDepth, getMoments, getSetStats, getSettings, getStageProgress, hasPlayed } from '../progress/store';
+import { getActiveDays, getDepth, getMoments, getSettings, getStageProgress, hasProgress } from '../progress/store';
 import { navigate } from '../router';
 import { Button } from '../ui/Button';
 import { TabBar } from '../ui/TabBar';
@@ -90,8 +90,7 @@ function Patterns({ opening }: { opening: OpeningId }) {
 }
 
 function OpeningProgress({ opening }: { opening: OpeningId }) {
-  const started = getSetStats(opening, getSettings().levels[opening]).games > 0;
-  if (!started) {
+  if (!hasProgress({ opening, level: getSettings().levels[opening] })) {
     return (
       <EmptyCard
         label={OPENING_SHORT[opening]}
@@ -152,7 +151,7 @@ export function Progress() {
       </header>
       <div class="stack">
         <OpeningSwitch value={opening} onChange={setOpening} />
-        {hasPlayed() ? (
+        {hasProgress() ? (
           <>
             <OpeningProgress key={opening} opening={opening} />
             <Activity />

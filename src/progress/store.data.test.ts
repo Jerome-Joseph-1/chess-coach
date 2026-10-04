@@ -241,4 +241,15 @@ describe('a game left before its end', () => {
     storage.data.set('cc.progress.v1', saved(messy));
     expect((await openStore()).getUnfinishedGame('italian', 1400)).toEqual({ ...left(), moments: [{ ply: 3, type: 'pause' }], quiet: [3], noteStops: 0 });
   });
+
+  it('counts its answers as progress before it is finished, as Today does', async () => {
+    const store = await openStore();
+    expect(store.hasProgress()).toBe(false);
+    store.recordMoment(moment({ ply: 3 }));
+    expect(store.hasProgress()).toBe(true);
+    expect(store.hasProgress({ opening: 'italian', level: 1400 })).toBe(true);
+    expect(store.hasProgress({ opening: 'italian', level: 1700 })).toBe(false);
+    expect(store.hasProgress({ opening: 'caro-kann', level: 1400 })).toBe(false);
+    expect(store.hasPlayed()).toBe(false);
+  });
 });

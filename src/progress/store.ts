@@ -262,6 +262,13 @@ export function hasPlayed(): boolean {
   return state().games.length > 0;
 }
 
+/** A game finished or a key position answered, in this set if one is given: an answer counts once it is given. */
+export function hasProgress(set?: { opening: OpeningId; level: Level }): boolean {
+  const p = state();
+  const inSet = (r: { opening: OpeningId; level: Level }) => !set || (r.opening === set.opening && r.level === set.level);
+  return p.games.some(inSet) || p.moments.some(inSet);
+}
+
 export function exportProgress(now = Date.now()): string {
   return JSON.stringify(createBackup(getSettings(), state(), now), null, 2);
 }
