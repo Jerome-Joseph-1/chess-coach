@@ -9,7 +9,7 @@ export interface Intro {
 
 export const INTROS: Record<UnitId, Intro> = {
   'free-piece': {
-    intro: 'A free piece is an enemy piece you can take without losing anything back. Either nothing guards it, or it is not guarded well enough.',
+    intro: 'A free piece is an enemy piece you can take and come out ahead. Nothing guards it, it is not guarded well enough, or it is worth more than the piece that takes it.',
     spot: [
       'After every move, check each enemy piece: what guards it?',
       'Count your attackers against its guards.',
