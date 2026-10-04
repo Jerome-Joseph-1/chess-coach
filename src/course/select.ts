@@ -8,7 +8,10 @@ import { isWin } from '../learn/themes';
 import { tradeOf } from '../learn/trade';
 import { shownLine } from '../learn/walkthrough';
 import { getLessons, playedGameIds } from '../progress/store';
-import { UNIT_IDS, positionKey, type CourseFile, type LessonId, type PositionRef, type UnitEntry, type UnitId } from './types';
+import { OPENING_LESSONS } from './openings';
+import { trapEntry } from './openings/trapGames';
+import type { TrapGame } from './openings/types';
+import { OPENING_LESSON_IDS, UNIT_IDS, isOpeningLessonId, positionKey, type CourseFile, type LessonId, type PositionRef, type UnitEntry } from './types';
 import { unitOfTheme } from './units';
 
 const MAX_EXAMPLES = 3;
@@ -22,10 +25,10 @@ const LURE_SHARE = 0.1;
 /** Win% by which the best move must beat every other analysed move to be the clear answer. */
 const CLEAR_MARGIN = 2;
 
-/** A key position that teaches a unit. */
+/** A key position that teaches a lesson. */
 export interface Candidate {
   ref: PositionRef;
-  unit: UnitId;
+  unit: LessonId;
   /** The board without move counters, so a position reached in two games counts once. */
   position: string;
   /** How many of the example rules it passes, most important first; a clean example passes them all. */
@@ -38,6 +41,8 @@ export interface Candidate {
   contested: boolean;
   /** The pattern and the squares it plays on, so a unit doesn't show the same picture twice. */
   picture: string;
+  /** A plan position: whether the worked example's text holds here; false keeps it to practice. */
+  textbook?: boolean;
 }
 
 /** What makes a key position a clear worked example. */
@@ -91,7 +96,7 @@ export function exampleFacts(turn: Turn, theme: Theme, shown: Move[], side: Colo
   };
 }
 
-function boardOf(fen: string): string {
+export function boardOf(fen: string): string {
   return fen.split(' ').slice(0, 4).join(' ');
 }
 
@@ -222,9 +227,10 @@ const textbookFirst = (a: Candidate, b: Candidate) => a.tier - b.tier || Number(
 /**
  * The sound positions in the order to show them: the clearest first; within a clarity the set's own pool before
  * the other levels, each textbook cases with a clear answer first, then nearest level, then easiest. `pools` hold one unit's candidates.
+ * A plan position whose example text would not hold is left to practice.
  */
 export function rankExamples(pools: Candidate[][]): Candidate[] {
-  const sound = pools.map((pool) => pool.filter((c) => c.sound).sort(easiestFirst));
+  const sound = pools.map((pool) => pool.filter((c) => c.sound && c.textbook !== false).sort(easiestFirst));
   const clarities = [...new Set(sound.flat().map((c) => c.clarity))].sort((a, b) => b - a);
   return clarities.flatMap((clarity) => {
     const [own = [], ...others] = sound.map((pool) => pool.filter((c) => c.clarity === clarity));
@@ -265,7 +271,7 @@ export function pickDrills(pools: Candidate[][], examples: Candidate[]): Candida
 const MAX_SHARED_FIRST = 2;
 
 /** The set's candidates for a unit, one pool per level: its own first, then the nearest. */
-function unitPools(set: string, unit: UnitId, candidates: ReadonlyMap<string, Candidate[]>): Candidate[][] {
+function unitPools(set: string, unit: LessonId, candidates: ReadonlyMap<string, Candidate[]>): Candidate[][] {
   const { opening, level } = setOf(set)!;
   return levelsByDistance(level).map((l) => (candidates.get(`${opening}-${l}`) ?? []).filter((c) => c.unit === unit));
 }
@@ -276,7 +282,7 @@ const refsOf = (cs: Candidate[]) => cs.map((c) => c.ref);
  * The entry for a unit of each set that has an example. Sets whose best example is their own choose first,
  * so a set keeps its own position when others would borrow it too.
  */
-function unitEntries(unit: UnitId, sets: string[], candidates: ReadonlyMap<string, Candidate[]>): Map<string, UnitEntry> {
+function unitEntries(unit: LessonId, sets: string[], candidates: ReadonlyMap<string, Candidate[]>): Map<string, UnitEntry> {
   const pools = new Map(sets.map((set) => [set, unitPools(set, unit, candidates)]));
   const ownsBest = (set: string) => rankExamples(pools.get(set)!)[0]?.ref.set === set;
   const order = [...sets].sort((a, b) => Number(ownsBest(b)) - Number(ownsBest(a)));
@@ -298,16 +304,29 @@ function emptyCourse(set: string): CourseFile {
   return { v: 1, ...parsed, units: [] };
 }
 
+const isTrapLesson = (id: LessonId) => isOpeningLessonId(id) && OPENING_LESSONS[id].kind === 'traps';
+
+/** Each set's entry for a lesson: a trap lesson's from the analysed traps, any other's from the candidates. */
+function lessonEntries(lesson: LessonId, opening: OpeningId, sets: string[], candidates: ReadonlyMap<string, Candidate[]>, traps: TrapGame[]) {
+  if (!isTrapLesson(lesson)) return unitEntries(lesson, sets, candidates);
+  const entries = new Map<string, UnitEntry>();
+  for (const set of sets) {
+    const entry = trapEntry(set, opening, traps);
+    if (entry) entries.set(set, entry);
+  }
+  return entries;
+}
+
 /**
- * Every set's course, keyed by set name, from the candidates of every set. The levels of an opening are built
- * together, each unit at a time, so they borrow from each other but share a first example at most twice.
+ * Every set's course, keyed by set name, from the candidates of every set and the analysed traps. The levels of an
+ * opening are built together, each lesson at a time, so they borrow from each other but share a first example at most twice.
  */
-export function buildCourses(candidates: ReadonlyMap<string, Candidate[]>): Map<string, CourseFile> {
+export function buildCourses(candidates: ReadonlyMap<string, Candidate[]>, traps: TrapGame[] = []): Map<string, CourseFile> {
   const courses = new Map([...candidates.keys()].map((set) => [set, emptyCourse(set)]));
   for (const { id: opening } of OPENINGS) {
     const sets = [...courses].filter(([, course]) => course.opening === opening).map(([set]) => set);
-    for (const unit of UNIT_IDS) {
-      for (const [set, entry] of unitEntries(unit, sets, candidates)) courses.get(set)!.units.push(entry);
+    for (const lesson of [...UNIT_IDS, ...OPENING_LESSON_IDS[opening]]) {
+      for (const [set, entry] of lessonEntries(lesson, opening, sets, candidates, traps)) courses.get(set)!.units.push(entry);
     }
   }
   return courses;

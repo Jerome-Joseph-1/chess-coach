@@ -17,6 +17,11 @@
       "id": "traps",
       "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0002", "ply": 3, "findShare": 0.522 }],
       "drills": []
+    },
+    {
+      "id": "italian-slow",
+      "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0002", "ply": 13, "findShare": 0.936 }],
+      "drills": [{ "set": "italian-1400", "gameId": "italian-1400-0002", "ply": 11, "findShare": 0.91 }]
     }
   ]
 }
