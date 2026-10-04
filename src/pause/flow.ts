@@ -77,6 +77,7 @@ export type FlowEvent =
   | { type: 'solution' }
   | { type: 'advance' }
   | { type: 'replied' }
+  | { type: 'retry' }
   | { type: 'continue' };
 
 export function initialState(ctx: FlowContext): FlowState {
@@ -189,6 +190,8 @@ export function flowReducer(ctx: FlowContext, state: FlowState, event: FlowEvent
       return advance(state);
     case 'replied':
       return state.phase === 'reply' ? { ...state, phase: 'hold', turn: state.turn + 1, feedback: null } : state;
+    case 'retry':
+      return state.feedback?.kind === 'wrong' ? { ...state, feedback: null } : state;
     case 'continue':
       return state.phase === 'reveal' ? { ...state, phase: 'done', feedback: null } : state;
   }

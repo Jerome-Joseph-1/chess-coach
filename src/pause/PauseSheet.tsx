@@ -211,6 +211,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
     setPunishing(false);
     board.enableMoves(game.side, tryMove, sayIllegal);
     showHint(latest.current);
+    send({ type: 'retry' });
   }
 
   async function hintAfterTakeBack() {

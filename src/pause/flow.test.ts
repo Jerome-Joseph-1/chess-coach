@@ -300,6 +300,13 @@ describe('the play step', () => {
     expect(state.outcomes).toEqual([{ step: 'spot', correct: true }]);
   });
 
+  it('clears the wrong move\'s line when the move is taken back, and changes nothing else', () => {
+    const tried = run(ctx, [move(wrong)], toSolve());
+    const retried = run(ctx, [{ type: 'retry' }], tried);
+    expect(retried).toEqual({ ...tried, feedback: null });
+    expect(run(ctx, [{ type: 'retry' }], retried)).toBe(retried);
+  });
+
   it('counts the right move as right after wrong ones, without a hint', () => {
     const state = run(ctx, [move(wrong), move(wrong), move(scripted)], toSolve());
     expect(state.outcomes.at(-1)).toEqual({ step: 'solve', correct: true });
