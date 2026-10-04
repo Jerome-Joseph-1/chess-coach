@@ -245,14 +245,15 @@ export function pickExamples(pools: Candidate[][], overused: (position: string) 
 }
 
 /**
- * Up to sixteen practice positions spread over the range of difficulty, never an example's position.
+ * Up to sixteen sound practice positions spread over the range of difficulty, never an example's position.
  * The set's own positions come first; other levels only fill the gap, nearest first.
  */
 export function pickDrills(pools: Candidate[][], examples: Candidate[]): Candidate[] {
   const taken = new Set(examples.map((c) => c.position));
   const drills: Candidate[] = [];
   for (const pool of pools) {
-    const fresh = uniquePositions([...pool].sort(easiestFirst), new Set(taken));
+    const sound = pool.filter((c) => c.sound).sort(easiestFirst);
+    const fresh = uniquePositions(sound, new Set(taken));
     const picked = spread(fresh, MAX_DRILLS - drills.length);
     picked.forEach((c) => taken.add(c.position));
     drills.push(...picked);

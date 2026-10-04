@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { continueButton, hintButton, rememberCard, tapSquares } from './board';
 
-// The test course: free pieces teach with game 0001 at ply 19 (Rxe6+) and practise at ply 3 (dxe5);
-// traps have an example (the Nxe5 trap, answered by h3) and no practice positions.
+// The test course: free pieces teach with game 0001 at ply 19 (Rxe6+); traps have an example (the Nxe5 trap,
+// answered by h3). Neither has practice positions: the course leaves out dxe5 at ply 3 as unsound, so tests add it back.
 test.use({ serviceWorkers: 'block' });
 
 const bubble = (page: Page) => page.locator('.coach-bubble').first();
@@ -17,11 +17,21 @@ async function expectBoardUncovered(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 }
 
+/** Free pieces practised on these plies of game 0001: dxe5 at 3 unless told otherwise. */
+async function practise(page: Page, plies = [3]) {
+  await page.route('**/content/italian-1400/course.json', async (route) => {
+    const course = await (await route.fetch()).json();
+    course.units[0].drills = plies.map((ply) => ({ set: 'italian-1400', gameId: 'italian-1400-0001', ply, findShare: 0.4 }));
+    await route.fulfill({ json: course });
+  });
+}
+
 async function storedLesson(page: Page, unit: string) {
   return page.evaluate((id) => JSON.parse(localStorage.getItem('cc.progress.v1') ?? '{}').lessons?.italian?.[id], unit);
 }
 
 test('goes from the intro through the worked example and practice to the summary', async ({ page }) => {
+  await practise(page);
   await page.goto('./#/lesson/italian/free-piece');
   await expect(page.getByRole('heading', { name: 'Free pieces', level: 1 })).toBeVisible();
   await expect(page.locator('.game-sub')).toHaveText('Italian Game lesson');
@@ -100,6 +110,7 @@ test('a unit without practice positions goes from the example straight to the su
 
 test('a practice position solved with a hint comes back on Today and is asked again as practice', async ({ page }) => {
   const stored = () => page.evaluate(() => JSON.parse(localStorage.getItem('cc.progress.v1')!));
+  await practise(page);
   await page.goto('./#/lesson/italian/free-piece');
   await showExample(page).click();
   await page.getByRole('button', { name: 'Next', exact: true }).click();
@@ -145,15 +156,6 @@ test('the back button returns to the course', async ({ page }) => {
   await expect(page).toHaveURL(/#\/course$/);
 });
 
-/** Free pieces with a second practice position: the queen trade at ply 7 of the same game. */
-async function twoPracticePositions(page: Page) {
-  await page.route('**/content/italian-1400/course.json', async (route) => {
-    const course = await (await route.fetch()).json();
-    course.units[0].drills.push({ set: 'italian-1400', gameId: 'italian-1400-0001', ply: 7, findShare: 0.4 });
-    await route.fulfill({ json: course });
-  });
-}
-
 async function finishExample(page: Page) {
   await showExample(page).click();
   await page.getByRole('button', { name: 'Next', exact: true }).click();
@@ -163,7 +165,8 @@ async function finishExample(page: Page) {
 }
 
 test('leaving a lesson keeps its place: it reopens on the same practice, and the summary lists the misses', async ({ page }) => {
-  await twoPracticePositions(page);
+  // The second is the queen trade at ply 7.
+  await practise(page, [3, 7]);
   await page.goto('./#/lesson/italian/free-piece');
   await finishExample(page);
   await expect(page.getByText('Practice 1 of 2')).toBeVisible();
@@ -213,6 +216,7 @@ test('the summary offers four more practice positions while the unit has new one
 });
 
 test('a done lesson offers new practice positions from the Course tab until none are left', async ({ page }) => {
+  await practise(page);
   await page.addInitScript(() => {
     const lessons = { italian: { 'free-piece': { learnedAt: 1, doneAt: 2, drills: [] } } };
     if (!localStorage.getItem('cc.progress.v1')) localStorage.setItem('cc.progress.v1', JSON.stringify({ v: 1, lessons }));

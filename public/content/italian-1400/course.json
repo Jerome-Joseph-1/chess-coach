@@ -6,7 +6,7 @@
     {
       "id": "free-piece",
       "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0001", "ply": 19, "findShare": 0.747 }],
-      "drills": [{ "set": "italian-1400", "gameId": "italian-1400-0001", "ply": 3, "findShare": 0.455 }]
+      "drills": []
     },
     {
       "id": "pin",

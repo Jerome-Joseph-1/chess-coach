@@ -207,6 +207,19 @@ describe('pickDrills', () => {
     expect(drills).toHaveLength(16);
     expect(drills.map((c) => c.ref.set)).toEqual(['italian-1400', ...Array(10).fill('italian-1100'), ...Array(5).fill('italian-1700')]);
   });
+
+  it('leaves out positions that do not hold up', () => {
+    const own = [0.9, 0.8, 0.7].map((share, i) => ({ ...candidate('italian-1400', i, share), sound: i !== 1 }));
+    expect(games(pickDrills([own], []))).toEqual(['italian-1400-0000', 'italian-1400-0002']);
+  });
+
+  it('fills the places of unsound positions from the nearest level', () => {
+    const own = Array.from({ length: 16 }, (_, i) => ({ ...candidate('italian-1400', i, 0.5), sound: i < 2 }));
+    const near = Array.from({ length: 20 }, (_, i) => candidate('italian-1100', i, 0.5));
+    const far = Array.from({ length: 20 }, (_, i) => candidate('italian-1700', i, 0.5));
+    const drills = pickDrills([own, near, far], []);
+    expect(drills.map((c) => c.ref.set)).toEqual([...Array(2).fill('italian-1400'), ...Array(14).fill('italian-1100')]);
+  });
 });
 
 describe('buildCourses', () => {
