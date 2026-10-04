@@ -1137,6 +1137,17 @@ describe('reviewing a moment', () => {
     expect(started.deps.recordGame).not.toHaveBeenCalled();
   });
 
+  it('drops a review of a quiet position that is no longer calm, with the same word', async () => {
+    const game = fixtureGame(GAME_1);
+    // A win this clear is not a quiet position any more.
+    game.turns[11].bestWin = 99;
+    const started = startSession({ games: [game, fixtureGame(GAME_2)], review: { gameId: GAME_1, ply: 23 } });
+    await waitForPhase(started, 'done');
+    expect(started.deps.dropReview).toHaveBeenCalledWith('italian', 1400, GAME_1, 23);
+    expect(started.session.getView().phase).toEqual({ kind: 'done', outcome: expect.stringMatching(/^This position is no longer in the course/) });
+    expect(started.deps.recordMoment).not.toHaveBeenCalled();
+  });
+
   it('drops a review whose game is no longer in the set', async () => {
     const started = startSession({ review: { gameId: 'italian-1400-9999', ply: 7 } });
     await waitForPhase(started, 'done');

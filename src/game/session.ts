@@ -18,7 +18,7 @@ import type { PauseResult, Verdict } from '../pause/PauseSheet';
 import type { Celebration, Point } from '../ui/rewards';
 import { outcomeText } from './outcome';
 import { beat } from './pacing';
-import { chooseMoments, hashSeed } from './pauses';
+import { chooseMoments, hashSeed, isCalm } from './pauses';
 import { placement, playSan } from './position';
 
 /** After a key position, the game waits this long before it plays on. */
@@ -463,11 +463,12 @@ export class GameSession {
     return saved && set.games.some((g) => g.id === saved.gameId) ? saved : null;
   }
 
-  /** New content can drop a game or move its key positions; a review saved before then points nowhere. */
+  /** New content can drop a game, move its key positions or find a quiet one no longer calm; a review saved before then points nowhere. */
   private async reviewStillThere({ gameId, ply }: { gameId: string; ply: number }): Promise<boolean> {
     try {
       const game = await this.deps.loadGame(this.opening, this.level, gameId);
-      return game.turns.some((t) => t.ply === ply);
+      const turn = game.turns.find((t) => t.ply === ply);
+      return turn !== undefined && (turn.label !== 'nothing' || isCalm(turn));
     } catch {
       return false;
     }
