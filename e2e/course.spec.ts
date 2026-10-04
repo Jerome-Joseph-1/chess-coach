@@ -44,12 +44,22 @@ test.describe('Course', () => {
     }
   });
 
-  test('the next lesson opens and later ones are not links', async ({ page }) => {
+  test('every lesson opens from the list, the later ones too', async ({ page }) => {
     await page.goto('./#/course');
     const lessons = page.getByRole('region', { name: 'Lessons' });
-    await expect(lessons.getByRole('link')).toHaveCount(1);
-    await lessons.getByRole('link', { name: /The slow plan/ }).click();
+    await expect(lessons.getByRole('link')).toHaveCount(5);
+    await lessons.getByRole('link', { name: /Italian traps/ }).click();
+    await expect(page).toHaveURL(/#\/lesson\/italian\/italian-traps$/);
+    await page.goBack();
+    await page.getByRole('region', { name: 'Lessons' }).getByRole('link', { name: /The slow plan/ }).click();
     await expect(page).toHaveURL(/#\/lesson\/italian\/italian-slow$/);
+  });
+
+  test('tags the lessons on the opening itself', async ({ page }) => {
+    await page.goto('./#/course');
+    const rows = page.getByRole('region', { name: 'Lessons' }).getByRole('listitem');
+    await expect(rows.nth(0).locator('.unit-tag')).toHaveText('Opening');
+    await expect(rows.nth(1).locator('.unit-tag')).toHaveCount(0);
   });
 
   test('a done lesson shows its score and opens again; the next one waits for two games', async ({ page }) => {
@@ -65,7 +75,7 @@ test.describe('Course', () => {
     await expect(rows.nth(0)).toContainText('Done');
     await expect(rows.nth(0)).toContainText('1 of 2 right');
     await expect(rows.nth(1)).toContainText('Next');
-    await expect(lessons.getByRole('link')).toHaveCount(2);
+    await expect(lessons.getByRole('link')).toHaveCount(5);
 
     await lessons.getByRole('link', { name: /Free pieces/ }).click();
     await expect(page).toHaveURL(/#\/lesson\/italian\/free-piece$/);
@@ -174,7 +184,7 @@ test.describe('Opening lessons in the path', () => {
     await expect(rows.nth(2)).toContainText('Pins');
     await expect(rows.nth(4)).toContainText('Traps');
     const links = lessons.getByRole('link');
-    await expect(links).toHaveCount(2);
+    await expect(links).toHaveCount(8);
     await expect(links.nth(0)).toHaveAttribute('href', '#/lesson/italian/italian-idea');
     await expect(links.nth(1)).toHaveAttribute('href', '#/lesson/italian/free-piece');
   });

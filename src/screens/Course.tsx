@@ -1,7 +1,7 @@
 import type { OpeningId } from '../content/types';
 import { OPENING_LESSONS_IN_PATH, gamesUntilLesson, morePractice, sectionRows, unitRows, type UnitRow } from '../course/path';
 import { lessonInfo } from '../course/lessonInfo';
-import type { CourseFile } from '../course/types';
+import { isOpeningLessonId, type CourseFile } from '../course/types';
 import { gamesSinceLastLesson, useCourse } from '../course/useCourse';
 import { VariationsMet } from '../opening/VariationsMet';
 import { getLessons, getSettings } from '../progress/store';
@@ -51,21 +51,19 @@ function UnitItem({ row, opening, index, more }: { row: UnitRow; opening: Openin
         <span class="row-title">{title}</span>
         <span class="row-sub">{line}</span>
         <span class="unit-status">
+          {isOpeningLessonId(row.id) && <span class="unit-tag">Opening</span>}
           <Status row={row} />
         </span>
       </span>
-      <Icon name="chevron" class={`chevron ${later ? 'unit-chevron--none' : ''}`} />
+      <Icon name="chevron" class="chevron" />
     </>
   );
+  // Today offers lessons in order, but any of them opens from here.
   return (
     <li class="rise-in" style={{ '--i': index }}>
-      {later ? (
-        <div class="row unit-row unit-row--later">{content}</div>
-      ) : (
-        <a class="row unit-row" href={`#${lessonPath(opening, row.id)}`}>
-          {content}
-        </a>
-      )}
+      <a class={`row unit-row${later ? ' unit-row--later' : ''}`} href={`#${lessonPath(opening, row.id)}`}>
+        {content}
+      </a>
       {more > 0 && (
         <a class="unit-more" href={`#${morePracticePath(opening, row.id)}`}>
           Practice {more} more

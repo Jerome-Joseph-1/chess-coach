@@ -12,8 +12,16 @@
 .unit-row .chevron {
   align-self: center;
 }
-.unit-chevron--none {
-  visibility: hidden;
+/* Marks a lesson on the opening itself, apart from the pattern lessons. */
+.unit-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font: var(--text-label);
 }
 .unit-status {
   display: flex;
