@@ -60,8 +60,18 @@ export interface TrapLesson extends Base {
 export type OpeningLesson = PlanLesson | TrapLesson;
 
 /** A curated trap position, analysed by pipeline/traps.py: a one-turn game from the initial position. */
-export interface TrapGame extends Omit<Game, 'level'> {
+export interface TrapGame extends Omit<Game, 'level'>, Partial<TrapTexts> {
   lesson: OpeningLessonId;
   /** The worked example, or a practice position. */
   role: 'example' | 'drill';
+}
+
+/** What one trap position says in practice, in place of the lesson's own texts. */
+export interface TrapTexts {
+  /** The trap's plain name, for the chip, e.g. "The Blackburne Shilling trap". */
+  title: string;
+  /** The question's line: whether to dodge a trap or punish a mistake, without giving the move away. */
+  ask: string;
+  /** Said once the move is found: what the trap was, and why the move is right. */
+  why: string;
 }
