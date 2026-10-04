@@ -73,10 +73,14 @@ export function whyWrong(game: Game, turnIndex: number, uci: string, hint: HintL
   const turn = game.turns[turnIndex];
   const [move] = playLine(turn.fen, [uci]);
   if (turn.grades[uci] === undefined || !move) return plain('unknown');
-  const best = playLine(turn.fen, turn.lines.best?.slice(0, 1) ?? [])[0];
-  const played = playLine(turn.fen, [uciOfSan(turn.fen, game.moves[turn.ply])])[0];
-  const answers = [best?.san, game.moves[turn.ply]].filter((san) => san !== undefined);
-  const answerSquares = [best?.to, played?.to].filter((square) => square !== undefined);
+  const { answers, answerSquares } = perTurn(answerMoves, turn, () => {
+    const best = playLine(turn.fen, turn.lines.best?.slice(0, 1) ?? [])[0];
+    const played = playLine(turn.fen, [uciOfSan(turn.fen, game.moves[turn.ply])])[0];
+    return {
+      answers: [best?.san, game.moves[turn.ply]].filter((san) => san !== undefined),
+      answerSquares: [best?.to, played?.to].filter((square) => square !== undefined),
+    };
+  });
   const after = pawnsAt(turn.bestWin - turn.grades[uci]);
   const say: Say = { turn, user: game.side, them: colorName(otherColor(game.side)), move, answers, answerSquares, after };
   const found = classify({ game, turnIndex, hint }, say);
@@ -92,8 +96,16 @@ interface Asked {
 }
 
 // Each hint asks about the same move again, so what the lines show is worked out once per turn and move.
+const answerMoves = new WeakMap<Turn, Pick<Say, 'answers' | 'answerSquares'>>();
 const caughtLines = new WeakMap<Turn, Map<string, Caught | null>>();
 const exposures = new WeakMap<Turn, Map<string, Exposure>>();
+const quietFacts = new WeakMap<Turn, Map<string, QuietFacts>>();
+
+/** Worked out once per turn. */
+function perTurn<T>(cache: WeakMap<Turn, T>, turn: Turn, find: () => T): T {
+  if (!cache.has(turn)) cache.set(turn, find());
+  return cache.get(turn)!;
+}
 
 function perMove<T>(cache: WeakMap<Turn, Map<string, T>>, { turn, move }: Say, find: () => T): T {
   const byMove = cache.get(turn) ?? new Map<string, T>();
@@ -361,11 +373,23 @@ function threatDoes(say: Say, reply: Move): string {
 
 // ---- Nothing is lost by force: say what the move does and doesn't do, and where to look instead.
 
+const situations = new WeakMap<Turn, Situation[]>();
+const themes = new WeakMap<Turn, Theme>();
+
 /** The answers to "What's going on here?" that fit the turn: those the user picked from, or the turn's kinds on a follow-up move. */
 function situationsAt({ game, turnIndex }: Asked): Situation[] {
   const turn = game.turns[turnIndex];
-  if (turn.label === 'critical') return situationsOf(game, turnIndex);
-  return turn.kinds.length ? turn.kinds : ['quiet'];
+  return perTurn(situations, turn, () => {
+    if (turn.label === 'critical') return situationsOf(game, turnIndex);
+    return turn.kinds.length ? turn.kinds : ['quiet'];
+  });
+}
+
+/** What a quiet text says about the move: whether nothing hangs after it, whether the threat stands, whether it wins something. */
+interface QuietFacts {
+  safe: boolean;
+  stands: Move | false | null;
+  wins: boolean;
 }
 
 /**
@@ -373,12 +397,17 @@ function situationsAt({ game, turnIndex }: Asked): Situation[] {
  * position stands after it when it gives away a lot, and a question or a place to look that doesn't give the move away.
  */
 function quiet(asked: Asked, say: Say, kind: WrongKind): WrongMove {
-  const situations = situationsAt(asked);
-  const has = (s: Situation) => situations.includes(s);
-  const stands = has('defend') ? threatStands(say) : null;
+  const answers = situationsAt(asked);
+  const has = (s: Situation) => answers.includes(s);
+  // Only a weaker move is ever called safe.
+  const facts = perMove(quietFacts, say, () => ({
+    safe: kind === 'weaker' && nothingHangs(say.move),
+    stands: has('defend') ? threatStands(say) : null,
+    wins: winsSome(say),
+  }));
+  const { stands, safe } = facts;
   const blank = { kind, reply: null, targets: [] as Square[] };
   if (stands) return { ...blank, ...stillThreatened(say, stands, kind) };
-  const safe = nothingHangs(say.move);
   const missed = kind === 'missed';
   const standing = missed ? standingAfter(say) : '';
   if (has('attack') || has('win')) {
@@ -390,7 +419,7 @@ function quiet(asked: Asked, say: Say, kind: WrongKind): WrongMove {
       return { ...blank, text: `${miss}. ${look}` };
     }
     if (missed) {
-      const miss = winsSome(say) ? `Another move wins more: after yours, ${standing}` : `That misses a chance to win material: after it, ${standing}`;
+      const miss = facts.wins ? `Another move wins more: after yours, ${standing}` : `That misses a chance to win material: after it, ${standing}`;
       return { ...blank, text: `${miss}. ${look}` };
     }
     // What the move itself takes is certain; what it may still win later is not.
@@ -446,7 +475,7 @@ const LOOK: Partial<Record<TacticId, string>> = {
 function lookFor(asked: Asked, attack: boolean): string {
   const general = attack ? 'Look at every check and threat you have.' : "Look for an enemy piece that isn't protected enough.";
   if (asked.hint < 1) return general;
-  const theme = themeFor(asked.game, asked.turnIndex);
+  const theme = perTurn(themes, asked.game.turns[asked.turnIndex], () => themeFor(asked.game, asked.turnIndex));
   return (theme.id !== 'bait' && LOOK[theme.id as TacticId]) || general;
 }
 
