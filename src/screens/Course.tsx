@@ -8,7 +8,7 @@ import { getLessons, getSettings } from '../progress/store';
 import { TabBar } from '../ui/TabBar';
 import { Icon } from './shared/icons';
 import { EmptyCard } from './shared/EmptyCard';
-import { lessonPath, morePracticePath, plural } from './shared/labels';
+import { lessonPath, morePracticePath, OPENING_SHORT, plural } from './shared/labels';
 import { OpeningSwitch, useOpening } from './shared/OpeningSwitch';
 import { UNIT_ICONS } from './shared/unitIcons';
 import './shared/screen.css';
@@ -84,12 +84,13 @@ function Lessons({ rows, opening, course }: { rows: UnitRow[]; opening: OpeningI
     <section class="section-block" aria-labelledby="lessons-title">
       <div class="section-head">
         <h2 id="lessons-title" class="section-label">
-          Lessons
+          {OPENING_SHORT[opening]} lessons
         </h2>
         <span class="section-note">
           {done} of {rows.length} done
         </span>
       </div>
+      <p class="course-own">Each opening has its own lessons.</p>
       <ul class="card list">
         {rows.map((row, i) => (
           <UnitItem key={row.id} row={row} opening={opening} index={i} more={moreOf(row)} />

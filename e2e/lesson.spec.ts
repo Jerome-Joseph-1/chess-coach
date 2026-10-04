@@ -24,6 +24,7 @@ async function storedLesson(page: Page, unit: string) {
 test('goes from the intro through the worked example and practice to the summary', async ({ page }) => {
   await page.goto('./#/lesson/italian/free-piece');
   await expect(page.getByRole('heading', { name: 'Free pieces', level: 1 })).toBeVisible();
+  await expect(page.locator('.game-sub')).toHaveText('Italian Game lesson');
   await expect(page.getByText('How to spot it')).toBeVisible();
   await expect(page.locator('.lesson-spot li')).toHaveCount(3);
 

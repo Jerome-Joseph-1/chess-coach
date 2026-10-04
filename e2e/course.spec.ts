@@ -28,8 +28,10 @@ test.describe('Course', () => {
     await expect(page).toHaveURL(/#\/course$/);
     await expect(page.getByRole('heading', { name: 'Course', level: 1 })).toBeVisible();
     await expect(tabs.getByRole('link', { name: 'Course' })).toHaveAttribute('aria-current', 'page');
-    const lessons = page.getByRole('region', { name: 'Lessons' });
+    const lessons = page.getByRole('region', { name: 'Italian Game lessons' });
     await expect(lessons.getByText('0 of 3 done')).toBeVisible();
+    // Each opening's course is taught from its own games, so its progress is its own.
+    await expect(lessons.getByText('Each opening has its own lessons.')).toBeVisible();
     const rows = lessons.getByRole('listitem');
     await expect(rows).toHaveCount(3);
     await expect(rows.nth(0)).toContainText('Free pieces');

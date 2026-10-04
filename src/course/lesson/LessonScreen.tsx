@@ -7,6 +7,7 @@ import { CrossFade } from '../../pause/CrossFade';
 import { boardSize } from '../../pause/fit';
 import type { PauseOutcome, PauseStage } from '../../pause/PauseSheet';
 import { Icon } from '../../pause/steps/icons';
+import { OPENING_SHORT } from '../../screens/shared/labels';
 import { getLessons, getSettings, recordDrill, recordLearned, recordLessonDone, recordLessonPlace, scheduleDrill } from '../../progress/store';
 import { navigate } from '../../router';
 import { openLesson, type Answer, type LessonStage, type OpenedLesson } from '../open';
@@ -155,7 +156,7 @@ function LessonRun({ opening, unit, more, course, opened, onMore }: LessonRunPro
   const asked = answers.length + 1;
   const total = (opened?.answers.length ?? 0) + (opened?.drills.length ?? 0);
   const subtitle = {
-    intro: 'Lesson',
+    intro: `${OPENING_SHORT[opening]} lesson`,
     example: 'Worked example',
     practice: opened ? `Practice ${asked} of ${total}` : 'Practice',
     summary: 'Summary',

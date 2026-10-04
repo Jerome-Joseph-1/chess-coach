@@ -66,3 +66,9 @@
   background: var(--surface-2);
   color: var(--text-muted);
 }
+/* Says why the other opening's lessons are not counted here. */
+.course-own {
+  margin: -4px 0 0;
+  color: var(--text-muted);
+  font: var(--text-caption);
+}
