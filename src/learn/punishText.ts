@@ -65,11 +65,24 @@ function unique(fen: string, color: Color, type: PieceSymbol): boolean {
   return piecesOf(new Chess(fen), color).filter((p) => p.type === type).length <= 1;
 }
 
-/** "your queen and rook on h8": pieces that all belong to the user, with "your" said once. */
-function yourList(refs: string[]): string {
+/**
+ * "your queen and rook on h8": pieces that all belong to the user, with "your" said once; three or more go
+ * without their squares, as "your bishop and both rooks".
+ */
+export function yourList(refs: string[]): string {
   if (refs.length < 2 || !refs.every((r) => r.startsWith('your '))) return listOf(refs);
-  return `your ${listOf(refs.map((r) => r.slice(5)))}`;
+  if (refs.length < 3) return `your ${listOf(refs.map((r) => r.slice(5)))}`;
+  const counts = new Map<string, number>();
+  for (const name of refs.map((r) => r.slice(5).replace(/ on [a-h][1-8]$/, ''))) counts.set(name, (counts.get(name) ?? 0) + 1);
+  return `your ${listOf([...counts].map(([name, n]) => (n === 1 ? name : `${n === 2 ? 'both' : NUMBER[n]} ${name}s`)))}`;
 }
+
+/** The first of the candidate sentences that stays within the word limit, else the last, shortest one. */
+export function fitting(...candidates: string[]): string {
+  return candidates.find((s) => sentences(s).every((one) => wordCount(one) <= MAX_WORDS)) ?? candidates.at(-1)!;
+}
+
+const sentences = (text: string) => text.split(/(?<=[.?])\s+(?=[A-Z])/);
 
 /** The user's piece a capture takes, where it is taken: "your rook on f8", "the new queen on b8". */
 export function capturedRef(say: Say, capture: Move): string {
@@ -149,7 +162,7 @@ export function wordCount(sentence: string): number {
 /** "White's queen takes your queen on d5 for free." */
 export function blunderText(say: Say, caught: Caught): string {
   if (caught.t.id === 'checkmate') return mateText(say, caught.t, '');
-  return told(say, caught, '');
+  return told(say, caught, ['']);
 }
 
 /** The position's common mistake, told the way the lesson opens it: what draws the eye to the move, then what it costs. */
@@ -165,13 +178,16 @@ export function baitText(say: Say, caught: Caught): string {
     return withLoss(say, caught, text, onlyKey(caught, t.key), false, [reply.captured!]);
   }
   const opening = lure(say);
-  return opening && t.at === 0 ? told(say, caught, `${opening}, but`) : told(say, caught, '');
+  return opening && t.at === 0 ? told(say, caught, [`${opening}, but`, '']) : told(say, caught, ['']);
 }
 
-/** "That doesn't stop White's threat: White's bishop takes your rook on f8. You lose a rook and a knight for a bishop." */
-export function afterLead(say: Say, caught: Caught, lead: string): string {
-  if (caught.t.id === 'checkmate') return mateText(say, caught.t, `${lead}:`);
-  return told(say, caught, `${lead}:`);
+/**
+ * "That doesn't stop White's threat: White's bishop takes your rook on f8. You lose a rook and a knight for a bishop."
+ * The leads go from the fullest to the shortest, for a long line to fall back on.
+ */
+export function afterLead(say: Say, caught: Caught, leads: string[]): string {
+  if (caught.t.id === 'checkmate') return mateText(say, caught.t, `${leads.at(-1)}:`);
+  return told(say, caught, leads.map((lead) => `${lead}:`));
 }
 
 /** "That allows checkmate: Black's queen takes your pawn on g2." */
@@ -203,7 +219,7 @@ function lure(say: Say): string | null {
   if (move.captured) return looksFree(move) ? `${taking(move)} looks free` : `You take the ${NAME[move.captured]} on ${capturedSquare(move)}`;
   const hits = newTargets(say);
   const piece = NAME[move.promotion ?? move.piece];
-  if (hits.length) return `Your ${piece} on ${move.to} attacks ${listOf(hits)}`;
+  if (hits.length) return `Your ${piece} on ${move.to} attacks ${hits.length > 1 ? `${NUMBER[hits.length]} of ${say.them}'s pieces` : hits[0]}`;
   if (givesCheck(move)) return `Your ${piece} check on ${move.to} looks strong`;
   return null;
 }
@@ -236,27 +252,34 @@ function theirName(say: Say, move: Move): string {
 /**
  * The punishing line as two sentences, after an opening that is either empty, a lure ending in "but", or a lead
  * ending in a colon: what the opponent does, then what the user loses. The first sentence that fits the word limit
- * wins, from the fullest telling to the barest; a pattern may run a little over before it is given up.
+ * wins, from the fullest telling to the barest and from the fullest opening to the shortest; a pattern may run a
+ * little over before it is given up.
  */
-function told(say: Say, caught: Caught, opening: string): string {
-  const lure = opening.endsWith('but');
-  const sentence = (e: Event, withOpening: boolean) => (withOpening && opening ? `${opening} ${e.text}` : capitalize(e.text));
-  // The user's move is named only when the reply on the board is the move that matters; a lure goes before a pattern does.
-  const tries = (e: Event): [Event, string][] => [
-    ...(!lure || !e.lead ? [[e, sentence(e, true)] as [Event, string]] : []),
-    [e, sentence(e, !lure)],
-  ];
-  const told = (level: Level) => (['reply', 'short'] as const).flatMap((long) => tries(event(say, caught, level, long)));
-  const fit = (limit: number) => ([, text]: [Event, string]) => wordCount(text) <= limit;
-  const [full, short, brief] = [told(0), told(1), told(2)];
-  const [used, first] =
-    full.find(fit(MAX_WORDS)) ??
-    full.find(fit(PATTERN_WORDS)) ??
-    short.find(fit(MAX_WORDS)) ??
-    short.find(fit(PATTERN_WORDS)) ??
-    brief.find(fit(MAX_WORDS)) ??
-    brief.at(-1)!;
-  return withLoss(say, caught, first, used.free, used.later, used.named);
+function told(say: Say, caught: Caught, openings: string[]): string {
+  const sentence = (e: Event, opening: string) => (opening ? `${opening} ${e.text}` : capitalize(e.text));
+  // "for free" closes the sentence when nothing else is lost.
+  const words = ([e, text]: [Event, string]) => wordCount(text) + (e.free ? 2 : 0);
+  // From the fullest telling to the barest: the first opening while it fits, a long way told from the reply on the
+  // board before it is cut short, and a little over the limit for all but a lure. The user's move is named only when
+  // the reply on the board is the move that matters, so a lure takes no lead.
+  const tries = (level: Level, opening: string): [Event, string][] =>
+    (['reply', 'short'] as const).flatMap((long) => {
+      const e = event(say, caught, level, long);
+      if (opening.endsWith('but') && e.lead) return [];
+      const told: [Event, string] = [e, sentence(e, opening)];
+      return words(told) <= MAX_WORDS || (words(told) <= PATTERN_WORDS && !opening.endsWith('but')) ? [told] : [];
+    });
+  // A lure goes before anything of the line does; a lead on the user's own capture stays, as it says what "in return" answers.
+  const levels = [0, 1] as const;
+  const fits = openings[0].endsWith('but')
+    ? levels.flatMap((level) => openings.flatMap((o) => tries(level, o)))
+    : openings.flatMap((o) => levels.flatMap((level) => tries(level, o)));
+  const brief = openings.flatMap((o) => (['reply', 'short'] as const).map((long): [Event, string] => {
+    const e = event(say, caught, 2, long);
+    return [e, sentence(e, o.endsWith('but') && e.lead ? '' : o)];
+  }));
+  const [used, text] = fits[0] ?? brief.find((told) => words(told) <= MAX_WORDS) ?? brief.at(-1)!;
+  return withLoss(say, caught, text, used.free, used.later, used.named);
 }
 
 /** What the opponent does in a line: a clause, whether nothing comes back for the one piece it names, and whether it skips moves. */
@@ -414,7 +437,8 @@ function leadTo(say: Say, t: Tactic, at: number, long: Long): Lead | null {
   const first = takesBack ? `${say.them} takes back on ${reply.to}` : played(say, reply);
   const taken = reply.captured ? [reply.captured] : [];
   if (before.length === 2 && !answer.captured) {
-    if (givesCheck(reply) && !reply.captured) return { text: 'after a check, ', later: false };
+    if (givesCheck(reply) && (!reply.captured || long === 'short')) return { text: 'after a check, ', later: false };
+    if (long === 'short') return { text: 'a move later, ', later: false };
     // The user's reply puts the piece where it is then taken: say there was one.
     const moved = answer.to === capturedSquare(t.moves[at]) || answer.to === t.moves[at].to;
     return { text: `${first}, and ${moved ? 'after your reply,' : 'then'} `, later: false, told: !takesBack, taken };

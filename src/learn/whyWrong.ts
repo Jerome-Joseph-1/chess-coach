@@ -12,9 +12,11 @@ import {
   blunderText,
   capitalize,
   capturedRef,
+  fitting,
   mateInOne,
   played,
   taking,
+  yourList,
   type Caught,
   type Say,
 } from './punishText';
@@ -22,7 +24,7 @@ import { situationsOf, type Situation } from './situation';
 import { tacticIn, type Tactic, type TacticId } from './tactics';
 import { punishment, themeFor, type Role, type Theme } from './themes';
 import { capturedSquare, tradeOf } from './trade';
-import { colorName, listOf } from './words';
+import { colorName } from './words';
 
 /**
  * blunder: the punishing line wins material or mates.
@@ -189,11 +191,11 @@ function punished(say: Say, caught: Caught, named: boolean): WrongMove {
   const bait = uciOf(say.move) === say.turn.mistakeMove;
   const kind: WrongKind = held === 'threat' ? 'ignores-threat' : bait ? 'bait' : 'blunder';
   // The user has moved and the threat stood: showing what it does gives away nothing about how to stop it.
-  if (held === 'threat') return marked(kind, caught, afterLead(say, caught, threatLead(say)));
+  if (held === 'threat') return marked(kind, caught, afterLead(say, caught, threatLeads(say)));
   if (!held) return marked(kind, caught, bait ? baitText(say, caught) : blunderText(say, caught));
   const pawn = caught.t.moves[caught.t.key].captured === 'p';
   if (!named) return { kind, text: hangingText(say, pawn), reply: null, targets: [], pattern: caught.t.id };
-  return marked(kind, caught, afterLead(say, caught, hangingLead(say, pawn)));
+  return marked(kind, caught, afterLead(say, caught, [hangingLead(say, pawn)]));
 }
 
 function heldBack(say: Say, t: Tactic): Held {
@@ -205,6 +207,12 @@ function heldBack(say: Say, t: Tactic): Held {
 /** "That doesn't stop White's threat", or "Taking the knight on f6 doesn't stop Black's threat". */
 function threatLead(say: Say): string {
   return `${say.move.captured ? taking(say.move) : 'That'} doesn't stop ${say.them}'s threat`;
+}
+
+/** The threat's lead, then the short one a long line falls back on. */
+function threatLeads(say: Say): string[] {
+  const short = `That doesn't stop ${say.them}'s threat`;
+  return [...new Set([threatLead(say), short])];
 }
 
 /** "One of your pieces is still in danger", "Taking the knight on d4 leaves one of your pawns in danger". */
@@ -325,7 +333,7 @@ function hanging(say: Say, kind: WrongKind, capture: Move, named: boolean): Wron
   if (!couldTakeBefore(say.turn.fen, capture)) return { kind, text: `After that, ${say.them} can take ${piece}.`, ...shown };
   const pawn = capture.captured === 'p';
   if (threatMoves(say.turn, say.user).some((m) => sameMove(m, capture))) {
-    return { kind: 'ignores-threat', text: `${threatLead(say)}: ${played(say, capture)}.`, ...shown };
+    return { kind: 'ignores-threat', text: fitting(...threatLeads(say).map((lead) => `${lead}: ${played(say, capture)}.`)), ...shown };
   }
   if (!named) return { kind, text: hangingText(say, pawn), reply: null, targets: [] };
   return { kind, text: `${hangingLead(say, pawn)}: ${played(say, capture)}.`, ...shown };
@@ -338,14 +346,15 @@ function hanging(say: Say, kind: WrongKind, capture: Move, named: boolean): Wron
 function threatStillOn(say: Say): WrongMove | null {
   const [reply] = playLine(say.move.after, say.turn.refutations[uciOf(say.move)]?.slice(0, 1) ?? []);
   if (!reply || !threatMoves(say.turn, say.user).some((m) => sameMove(m, reply)) || bestLosesToo(say, reply)) return null;
-  return { kind: 'ignores-threat', text: `${threatLead(say)}: ${threatDoes(say, reply)}.`, reply: uciOf(reply), targets: [] };
+  const text = fitting(...threatLeads(say).map((lead) => `${lead}: ${threatDoes(say, reply)}.`));
+  return { kind: 'ignores-threat', text, reply: uciOf(reply), targets: [] };
 }
 
 /** "White's knight moves to d6, gives check and attacks your bishop on f5". */
 function threatDoes(say: Say, reply: Move): string {
   const hit = attacked(say, reply);
   const text = played(say, reply, false);
-  const extras = [...(reply.san.includes('+') ? ['gives check'] : []), ...(hit.length ? [`attacks ${listOf(hit)}`] : [])];
+  const extras = [...(reply.san.includes('+') ? ['gives check'] : []), ...(hit.length ? [`attacks ${yourList(hit)}`] : [])];
   if (!extras.length) return text;
   return extras.length > 1 ? `${text}, ${extras[0]} and ${extras[1]}` : `${text} and ${extras[0]}`;
 }
@@ -459,5 +468,6 @@ function threatMove(turn: Turn, move: Move, user: Color): Move | false {
 /** "That doesn't stop White's threat: White's knight moves to d6 and attacks your bishop." and the threat shown. */
 function stillThreatened(say: Say, first: Move, kind: WrongKind): Pick<WrongMove, 'text' | 'reply' | 'targets'> {
   const standing = kind === 'missed' ? ` After your move, ${standingAfter(say)}.` : '';
-  return { text: `${threatLead(say)}: ${threatDoes(say, first)}.${standing}`, reply: uciOf(first), targets: [] };
+  const text = fitting(...threatLeads(say).map((lead) => `${lead}: ${threatDoes(say, first)}.${standing}`));
+  return { text, reply: uciOf(first), targets: [] };
 }

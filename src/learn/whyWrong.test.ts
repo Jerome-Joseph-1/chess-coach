@@ -77,6 +77,15 @@ describe('words a beginner can follow', () => {
     });
   });
 
+  it('names three or more attacked pieces without their squares, and drops the user\'s capture from a lead that runs long', () => {
+    expect(told('caro-kann-1100-0130#9', 'a7a6').early.text).toBe(
+      "That doesn't stop White's threat: White's queen takes your pawn on b7 and attacks your rook, bishop and knight.",
+    );
+    expect(told('italian-1100-0092#22', 'h1h4').early.text).toBe(
+      "That doesn't stop Black's threat: Black's queen takes your pawn on f2, gives check and attacks your bishop and both rooks.",
+    );
+  });
+
   it('says castling in words', () => {
     expect(told('italian-1400-0169#9', 'e1g1').early.text).toBe(
       "Castling looks natural, but it allows checkmate: Black's queen takes your pawn on h2.",

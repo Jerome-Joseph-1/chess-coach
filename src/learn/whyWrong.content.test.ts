@@ -51,10 +51,13 @@ function claimedPieces(text: string): string[] {
 const NOTATION = /\b[KQRBN][a-h1-8]?x?[a-h][1-8]|\b[a-h]x[a-h][1-8]|O-O/;
 const sentencesOf = (text: string) => text.split(/(?<=[.?])\s+(?=[A-Z])/);
 
-/** The opponent takes a piece of this type in the line; a promoted piece taken back was only a pawn. */
+/** The opponent takes a piece of this type in the line; a piece promoted before it is taken back was only a pawn. */
 function takes(moves: ReturnType<typeof playedLine>, side: Side, type: string): boolean {
-  const promoted = new Set(moves.filter((m) => m.side === side && m.uci.length === 5).map((m) => m.uci.slice(2, 4)));
-  return moves.some((m) => m.side !== side && (promoted.has(m.uci.slice(2, 4)) ? 'p' : m.captured) === type);
+  const promoted = new Set<string>();
+  return moves.some((m) => {
+    if (m.side === side && m.uci.length === 5) promoted.add(m.uci.slice(2, 4));
+    return m.side !== side && (promoted.has(m.uci.slice(2, 4)) ? 'p' : m.captured) === type;
+  });
 }
 
 /** The line the coach reads for a wrong move: the common mistake's own line or the move's refutation, played to the end of its exchange. */
