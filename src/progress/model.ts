@@ -1,6 +1,6 @@
 import { LEVELS, OPENINGS } from '../content/catalog';
 import { UNIT_IDS, type DrillResult, type LessonPlace, type LessonRecord, type Lessons, type UnitId } from '../course/types';
-import type { Depth, GameSummary, Kind, Level, MomentResult, OpeningId, ReviewItem, Settings, StepOutcome } from '../content/types';
+import type { AskedMoment, Depth, GameSummary, Kind, Level, MomentResult, OpeningId, ReviewItem, Settings, StepOutcome, UnfinishedGame } from '../content/types';
 import { DEPTHS, type DepthState, type WindowEntry } from './depth';
 import { BOXES } from './srs';
 import { isRecord } from './storage';
@@ -41,6 +41,8 @@ export interface Progress {
   lessons: Partial<Record<OpeningId, Lessons>>;
   /** How many times each opening note has been shown in full, by note id. */
   notesSeen: Record<string, number>;
+  /** The game of each opening the user left before its end. */
+  unfinished: Partial<Record<OpeningId, UnfinishedGame>>;
 }
 
 export interface LastGame {
@@ -72,12 +74,14 @@ export function emptyProgress(): Progress {
     lastGame: null,
     lessons: {},
     notesSeen: {},
+    unfinished: {},
   };
 }
 
 const THEMES: Settings['theme'][] = ['system', 'light', 'dark'];
 const BOARDS: Settings['board'][] = ['green', 'brown', 'gray'];
 const MOMENT_TYPES: MomentResult['type'][] = ['pause', 'nothing', 'silent'];
+const ASKED_TYPES: AskedMoment['type'][] = ['pause', 'nothing'];
 const KINDS: Kind[] = ['win', 'defend', 'trap'];
 const STEPS: StepOutcome['step'][] = ['spot', 'find', 'solve', 'hold'];
 const OPENING_IDS = OPENINGS.map((o) => o.id);
@@ -260,6 +264,43 @@ function parseLessonsByOpening(raw: unknown): Progress['lessons'] {
   return result;
 }
 
+function parsePly(raw: unknown): number | null {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw >= 0 ? raw : null;
+}
+
+function parseAsked(raw: unknown): AskedMoment | null {
+  if (!isRecord(raw)) return null;
+  const ply = parsePly(raw.ply);
+  const type = pick<AskedMoment['type'] | undefined>(ASKED_TYPES, raw.type, undefined);
+  return ply !== null && type ? { ply, type } : null;
+}
+
+function parseUnfinished(raw: unknown): UnfinishedGame | null {
+  if (!isRecord(raw)) return null;
+  const level = pick<Level | undefined>(LEVELS, raw.level, undefined);
+  const ply = parsePly(raw.ply);
+  if (!level || typeof raw.gameId !== 'string' || ply === null) return null;
+  return {
+    level,
+    gameId: raw.gameId,
+    ply,
+    moments: list(raw.moments, parseAsked),
+    results: list(raw.results, parseMoment),
+    quiet: list(raw.quiet, parsePly),
+    noteStops: parsePly(raw.noteStops) ?? 0,
+  };
+}
+
+function parseUnfinishedByOpening(raw: unknown): Progress['unfinished'] {
+  const result: Progress['unfinished'] = {};
+  if (!isRecord(raw)) return result;
+  for (const opening of OPENING_IDS) {
+    const game = parseUnfinished(raw[opening]);
+    if (game) result[opening] = game;
+  }
+  return result;
+}
+
 function parseCounts(raw: unknown): Record<string, number> {
   const counts: Record<string, number> = {};
   if (!isRecord(raw)) return counts;
@@ -285,5 +326,6 @@ export function readProgress(raw: Record<string, unknown> | null): Progress | nu
     lastGame: parseLastGame(raw.lastGame),
     lessons: parseLessonsByOpening(raw.lessons),
     notesSeen: parseCounts(raw.notesSeen),
+    unfinished: parseUnfinishedByOpening(raw.unfinished),
   };
 }

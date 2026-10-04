@@ -1,6 +1,7 @@
 import { Chess } from 'chess.js';
 import type { BoardController } from '../board/types';
 import type {
+  AskedMoment,
   Depth,
   Game,
   GameSummary,
@@ -10,9 +11,10 @@ import type {
   OpeningId,
   SetIndex,
   Turn,
+  UnfinishedGame,
 } from '../content/types';
 import type { OpeningNote } from '../opening';
-import type { PauseResult } from '../pause/PauseSheet';
+import type { PauseResult, Verdict } from '../pause/PauseSheet';
 import type { Celebration, Point } from '../ui/rewards';
 import { outcomeText } from './outcome';
 import { beat } from './pacing';
@@ -38,6 +40,9 @@ export interface SessionDeps {
   playedGameIds(opening: OpeningId, level: Level): string[];
   recordMoment(result: MomentResult): { depthChanged?: Depth };
   recordGame(summary: GameSummary): void;
+  /** The game of this opening the user left before its end at this level. */
+  unfinishedGame(opening: OpeningId, level: Level): UnfinishedGame | null;
+  saveUnfinishedGame(opening: OpeningId, game: UnfinishedGame): void;
   dropReview(opening: OpeningId, level: Level, gameId: string, ply: number): void;
   celebrate(kind: Celebration, origin?: Point): void;
   toast(text: string): void;
@@ -91,6 +96,8 @@ export interface SessionView {
   /** Position after the moves shown. */
   fen: string;
   dots: DotState[];
+  /** How each answered key position went, by index into `history`. */
+  marks: ReadonlyMap<number, Verdict>;
   controls: Controls;
   /** The board is away from the live position, or a practice has just ended: the main button says Continue. */
   returning: boolean;
@@ -115,6 +122,17 @@ interface Step {
 
 function isPrompted(type: MomentType | undefined): type is PausedType {
   return type === 'pause' || type === 'nothing';
+}
+
+function isFound(result: MomentResult): boolean {
+  return result.outcomes.length > 0 && result.outcomes.every((o) => o.correct);
+}
+
+/** How an answered key position went, as the pause sheet judged it. */
+function verdictOf(result: MomentResult): Verdict {
+  if (result.type === 'nothing') return 'quiet';
+  if (isFound(result)) return 'found';
+  return result.hinted ? 'hinted' : 'missed';
 }
 
 export class GameSession {
@@ -145,6 +163,8 @@ export class GameSession {
   private autoplayQueued = false;
   private moving = false;
   private practiced = false;
+  /** Opened where the user left it rather than from the start. */
+  private resumed = false;
   private disposed = false;
   private finished = false;
   private readonly firstGame: boolean;
@@ -163,6 +183,7 @@ export class GameSession {
       shown: 0,
       fen: new Chess().fen(),
       dots: [],
+      marks: new Map(),
       controls: NO_CONTROLS,
       returning: false,
       status: '',
@@ -193,6 +214,8 @@ export class GameSession {
       else {
         this.readShownNote();
         this.update({ phase: { kind: 'ready' }, status: '' });
+        // A game left at a key position opens on it again.
+        if (this.resumed && this.nextMoment()) this.play();
       }
     });
   }
@@ -241,8 +264,16 @@ export class GameSession {
     this.runManual(() => this.practice(target));
   }
 
+  /** Leaving the screen: the game is kept to continue later, and nothing moves after this. */
   dispose(): void {
+    this.save();
     this.disposed = true;
+  }
+
+  /** Keeps the game to open again where it stands; a review, an ended game or one not begun has nothing to keep. */
+  save(): void {
+    const game = this.unfinished();
+    if (game) this.deps.saveUnfinishedGame(this.opening, game);
   }
 
   pauseDone(result: PauseResult): void {
@@ -304,13 +335,14 @@ export class GameSession {
   }
 
   /** What follows from the moves played and the one being looked at. */
-  private derived(): Pick<SessionView, 'history' | 'shown' | 'fen' | 'dots' | 'controls' | 'returning' | 'note' | 'intro'> {
+  private derived(): Pick<SessionView, 'history' | 'shown' | 'fen' | 'dots' | 'marks' | 'controls' | 'returning' | 'note' | 'intro'> {
     const { start, moves } = this.game;
     return {
       history: [...start, ...moves.slice(0, this.ply)],
       shown: start.length + this.viewPly,
       fen: this.positionAt(this.viewPly),
       dots: this.currentDots(),
+      marks: new Map(this.results.map((r) => [start.length + r.ply, verdictOf(r)])),
       controls: this.currentControls(),
       returning: this.viewPly < this.ply || this.practiced,
       note: this.shownNote(),
@@ -416,11 +448,19 @@ export class GameSession {
       this.dropStaleReview(this.review);
       return false;
     }
-    const game = await this.until(deps.loadGame(opening, level, this.review?.gameId ?? this.pickGameId(set)));
-    this.startGame(game);
-    await this.until(this.board.setPosition(this.startFen, false));
+    const saved = this.review ? null : this.unfinishedIn(set);
+    const game = await this.until(deps.loadGame(opening, level, this.review?.gameId ?? saved?.gameId ?? this.pickGameId(set)));
+    this.startGame(game, saved);
+    await this.until(this.board.setPosition(this.positionAt(this.ply), false));
+    if (saved) this.board.setLastMove(this.lastUciAt(this.ply));
     if (this.review) await this.replayBeforeReview(this.review.ply);
     return true;
+  }
+
+  /** The game the user left in this set, unless new content has dropped it. */
+  private unfinishedIn(set: SetIndex): UnfinishedGame | null {
+    const saved = this.deps.unfinishedGame(this.opening, this.level);
+    return saved && set.games.some((g) => g.id === saved.gameId) ? saved : null;
   }
 
   /** New content can drop a game or move its key positions; a review saved before then points nowhere. */
@@ -446,7 +486,7 @@ export class GameSession {
     return set.games[Math.floor(this.deps.random() * set.games.length)].id;
   }
 
-  private startGame(game: Game): void {
+  private startGame(game: Game, saved: UnfinishedGame | null): void {
     const chess = new Chess();
     for (const san of game.start) chess.move(san);
     this.game = game;
@@ -454,8 +494,48 @@ export class GameSession {
     this.steps = game.moves.map((san) => ({ uci: playSan(chess, san), fen: chess.fen() }));
     this.ply = 0;
     this.viewPly = 0;
-    this.moments = this.chooseMomentsFor(game);
+    if (saved) this.restore(saved);
+    else this.moments = this.chooseMomentsFor(game);
     this.update({ game });
+  }
+
+  /** Back where the user left the game: the same key positions, the answers given and the notes already passed. */
+  private restore(saved: UnfinishedGame): void {
+    this.resumed = true;
+    this.moments = this.savedMoments(saved.moments);
+    this.ply = this.viewPly = Math.min(saved.ply, this.steps.length);
+    saved.results.forEach((result) => this.countAnswer(result));
+    saved.quiet.forEach((ply) => this.quietPlies.add(ply));
+    this.noteStops = saved.noteStops;
+  }
+
+  /** Key positions saved by ply, keyed by turn index again. */
+  private savedMoments(asked: AskedMoment[]): Map<number, MomentType> {
+    const moments = new Map<number, MomentType>();
+    for (const { ply, type } of asked) {
+      const index = this.game.turns.findIndex((t) => t.ply === ply);
+      if (index >= 0) moments.set(index, type);
+    }
+    return moments;
+  }
+
+  private askedMoments(): AskedMoment[] {
+    return [...this.moments].flatMap(([index, type]) => (isPrompted(type) ? [{ ply: this.game.turns[index].ply, type }] : []));
+  }
+
+  private unfinished(): UnfinishedGame | null {
+    const { phase, game } = this.view;
+    if (this.review || this.finished || this.disposed || !game || phase.kind === 'error') return null;
+    if (this.ply === 0 && this.results.length === 0) return null;
+    return {
+      level: this.level,
+      gameId: game.id,
+      ply: this.ply,
+      moments: this.askedMoments(),
+      results: [...this.results],
+      quiet: [...this.quietPlies],
+      noteStops: this.noteStops,
+    };
   }
 
   private chooseMomentsFor(game: Game): Map<number, MomentType> {
@@ -567,6 +647,7 @@ export class GameSession {
       return;
     }
     this.keepQuiet(this.game.turns[turnIndex].ply, result.resumePly);
+    this.save();
     this.update({ phase: { kind: 'playing' } });
     await this.catchUp(result.resumePly);
     // One short beat while the panel settles into the dock, then the game plays on.
@@ -628,7 +709,7 @@ export class GameSession {
     if (practice) result.practice = true;
     if (hinted) result.hinted = true;
     const { depthChanged } = this.deps.recordMoment(result);
-    if (!practice) this.countAnswer(turn, result);
+    if (!practice) this.countAnswer(result);
     this.update({ depth: depthChanged ?? this.view.depth });
     if (depthChanged) {
       this.deps.celebrate('levelup');
@@ -637,10 +718,10 @@ export class GameSession {
   }
 
   /** Only a first answer counts toward the game's key positions and dots. */
-  private countAnswer(turn: Turn, result: MomentResult): void {
+  private countAnswer(result: MomentResult): void {
     this.results.push(result);
-    this.handledPlies.add(turn.ply);
-    this.doneDots.push(result.outcomes.length > 0 && result.outcomes.every((o) => o.correct) ? 'good' : 'bad');
+    this.handledPlies.add(result.ply);
+    this.doneDots.push(isFound(result) ? 'good' : 'bad');
   }
 
   private finish(): void {

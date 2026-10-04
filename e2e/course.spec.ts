@@ -119,6 +119,18 @@ test.describe('Today with the course', () => {
     }
   });
 
+  test('the game card continues a game left before its end', async ({ page }) => {
+    const left = { level: 1400, gameId: 'italian-1400-0001', ply: 3, moments: [{ ply: 3, type: 'pause' }, { ply: 7, type: 'pause' }], results: [], quiet: [], noteStops: 0 };
+    await seed(page, { ...progress({ 'free-piece': done(Date.now() - DAY) }), unfinished: { italian: left } });
+    await page.goto('./');
+    const card = page.getByRole('region', { name: 'Italian Game' });
+    await expect(card.getByText('Up next · Game 1')).toBeVisible();
+    await card.getByRole('button', { name: 'Continue game' }).click();
+    await expect(page).toHaveURL(/#\/play\/italian\/1400$/);
+    await expect(page.locator('.game-sub')).toHaveText('Key position 1 of 2');
+    await expect(page.locator('.game-moves .game-move').last()).toHaveText('Nxe4');
+  });
+
   test('a set without a course keeps the game card', async ({ page }) => {
     await page.goto('./');
     await page.getByRole('group', { name: 'Opening' }).getByRole('button', { name: 'Caro-Kann' }).click();

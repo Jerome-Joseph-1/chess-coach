@@ -109,6 +109,28 @@ export interface GameSummary {
   at: number;
 }
 
+/** A key position a game asks, by the ply of its turn. */
+export interface AskedMoment {
+  ply: number;
+  type: 'pause' | 'nothing';
+}
+
+/** A game the user left before its end, kept so it opens again where they left it. */
+export interface UnfinishedGame {
+  level: Level;
+  gameId: string;
+  /** Scripted moves played: the live position. */
+  ply: number;
+  /** The key positions chosen when the game began, so a stage reached since does not change them. */
+  moments: AskedMoment[];
+  /** First answers given so far. */
+  results: MomentResult[];
+  /** Plies where no opening note shows: answered key positions and the moves their panel played. */
+  quiet: number[];
+  /** How often autoplay has stopped on a note in this game. */
+  noteStops: number;
+}
+
 export interface ReviewItem {
   opening: OpeningId;
   level: Level;

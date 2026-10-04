@@ -1,6 +1,6 @@
 import { setKey } from '../content/loader';
 import type { DrillResult, LessonPlace, LessonRecord, Lessons, UnitId } from '../course/types';
-import type { Depth, GameSummary, Level, MomentResult, OpeningId, ReviewItem } from '../content/types';
+import type { Depth, GameSummary, Level, MomentResult, OpeningId, ReviewItem, UnfinishedGame } from '../content/types';
 import { createBackup, parseBackup } from './backup';
 import { dayKey, daysBetween } from './days';
 import { applyMoment, newDepthState } from './depth';
@@ -108,11 +108,24 @@ export function recordGame(summary: GameSummary): void {
   p.armed = false;
   p.games.push({ opening: summary.opening, level: summary.level, gameId: summary.gameId, at: summary.at });
   if (p.games.length > GAME_CAP) p.games.splice(0, p.games.length - GAME_CAP);
+  if (p.unfinished[summary.opening]?.gameId === summary.gameId) delete p.unfinished[summary.opening];
   p.lastGame = { summary, bonus };
   if (reachedStage) p.lastGame.unlocked = reachedStage;
   reachedStage = null;
   persist();
   if (p.games.length === 1) requestPersistentStorage();
+}
+
+/** The game of this opening the user left before its end at this level, if any. */
+export function getUnfinishedGame(opening: OpeningId, level: Level): UnfinishedGame | null {
+  const game = state().unfinished[opening];
+  return game?.level === level ? game : null;
+}
+
+/** Keeps a game the user is leaving before its end, so it opens there again; recordGame forgets it. */
+export function saveUnfinishedGame(opening: OpeningId, game: UnfinishedGame): void {
+  state().unfinished[opening] = game;
+  persist();
 }
 
 export function getLastGame(): GameSummary | null {

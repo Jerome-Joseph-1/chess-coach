@@ -223,6 +223,31 @@ test('after a key position the user can stop, look back, step on, continue and t
   await expect.poll(() => moveList(page).count()).toBeGreaterThan(live);
 });
 
+test('leaving a game keeps its place: it opens again at the key position left, with the first answer kept', async ({ page }) => {
+  await page.goto(PLAY_URL);
+  await playButton(page).click();
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible({ timeout: RUN_MS });
+  await winButton(page).click();
+  await page.getByRole('button', { name: 'Show solution' }).click();
+  await continueAfterPause(page);
+  await expect(page.locator('.game-sub')).toHaveText(/^Key position 2 of \d+$/, { timeout: RUN_MS });
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible();
+  const played = await moveList(page).count();
+
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('link', { name: 'Continue your game instead' }).click();
+
+  await expect(page.getByText(SPOT_QUESTION)).toBeVisible();
+  await expect(page.locator('.game-sub')).toHaveText(/^Key position 2 of \d+$/);
+  await expect(moveList(page)).toHaveCount(played);
+  // The second key position also wins material; the move strip shows once it is answered.
+  await winButton(page).click();
+  await page.getByRole('button', { name: 'Show solution' }).click();
+  await continueAfterPause(page);
+  await expect(moveList(page).filter({ hasText: /dxe5$/ }).getByRole('img', { name: 'Missed' })).toBeVisible();
+  await expect(page.locator('.game-sub')).toHaveText(/^Key positions · 2 of \d+$/);
+});
+
 test('the player ahead in material shows by how much', async ({ page }) => {
   await playQuietGame(page, 3);
   await playButton(page).click();

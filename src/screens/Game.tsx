@@ -12,18 +12,20 @@ import { CoachBubble } from '../pause/Coach';
 import { CrossFade } from '../pause/CrossFade';
 import { Dock, DockButton } from '../pause/Dock';
 import { boardSize } from '../pause/fit';
-import { PauseSheet, type PauseOutcome, type PauseStage, type Verdict } from '../pause/PauseSheet';
+import { PauseSheet, type PauseStage } from '../pause/PauseSheet';
 import { Icon } from '../pause/steps/icons';
 import {
   dropReview,
   getDepth,
   getSettings,
+  getUnfinishedGame,
   hasPlayed,
   markNoteSeen,
   noteSeenCount,
   playedGameIds,
   recordGame,
   recordMoment,
+  saveUnfinishedGame,
 } from '../progress/store';
 import { navigate } from '../router';
 import { celebrate, toast } from '../ui/rewards';
@@ -58,6 +60,8 @@ function sessionDeps(board: BoardController): SessionDeps {
     playedGameIds,
     recordMoment,
     recordGame,
+    unfinishedGame: getUnfinishedGame,
+    saveUnfinishedGame,
     dropReview,
     celebrate,
     toast,
@@ -100,7 +104,6 @@ export function Game({ opening, level, review }: GameProps) {
   const [view, setView] = useState<SessionView | null>(null);
   const [analysisFen, setAnalysisFen] = useState<string | null>(null);
   const [staged, setStaged] = useState<{ key: string | null; stage: PauseStage } | null>(null);
-  const [marks, setMarks] = useState<ReadonlyMap<number, Verdict>>(new Map());
   const [fresh, setFresh] = useState<FreshCapture | null>(null);
   const session = useRef<GameSession | null>(null);
   const side = view?.game?.side ?? openingById(opening).side;
@@ -121,6 +124,13 @@ export function Game({ opening, level, review }: GameProps) {
 
   useEffect(() => () => session.current?.dispose(), []);
 
+  // A phone may close the app once it is out of sight, so the game is kept then as well as on Back.
+  useEffect(() => {
+    const keep = () => document.visibilityState === 'hidden' && session.current?.save();
+    document.addEventListener('visibilitychange', keep);
+    return () => document.removeEventListener('visibilitychange', keep);
+  }, []);
+
   // A capture the game plays pops into the taker's tray as the board lands it; a step back just takes it out.
   useEffect(() => {
     if (!board) return;
@@ -128,16 +138,6 @@ export function Game({ opening, level, review }: GameProps) {
       if (captured && !undo && modeRef.current === 'play') setFresh((last) => ({ ...captured, id: (last?.id ?? 0) + 1 }));
     });
   }, [board]);
-
-  function pauseDone(result: PauseOutcome) {
-    const phase = view?.phase;
-    const game = view?.game;
-    if (game && phase?.kind === 'pause' && !phase.practice) {
-      const at = game.start.length + game.turns[phase.turnIndex].ply;
-      setMarks((all) => (all.has(at) ? all : new Map(all).set(at, result.verdict)));
-    }
-    session.current?.pauseDone(result);
-  }
 
   const fen = view?.fen ?? DEFAULT_POSITION;
   return (
@@ -155,7 +155,7 @@ export function Game({ opening, level, review }: GameProps) {
         <span class="game-top-end" aria-hidden="true" />
       </header>
 
-      <MoveStrip moves={view?.history ?? []} shown={view?.shown ?? 0} marks={marks} />
+      <MoveStrip moves={view?.history ?? []} shown={view?.shown ?? 0} marks={view?.marks ?? new Map()} />
       <PlayerBar role="opponent" name={sideName(otherSide(side))} detail={String(level)} fen={fen} color={otherSide(side)} fresh={fresh} />
       <div class="game-board">
         <Board fen={DEFAULT_POSITION} orientation={side} onReady={startSession} />
@@ -176,7 +176,6 @@ export function Game({ opening, level, review }: GameProps) {
             board={board}
             session={session.current}
             onAnalyse={() => setAnalysisFen(board.fen())}
-            onPauseDone={pauseDone}
             onStage={(next) => setStaged({ key, stage: next })}
           />
         )}
@@ -191,11 +190,10 @@ interface SlotProps {
   board: BoardController;
   session: GameSession;
   onAnalyse: () => void;
-  onPauseDone: (result: PauseOutcome) => void;
   onStage: (stage: PauseStage) => void;
 }
 
-function Slot({ view, review, board, session, onAnalyse, onPauseDone, onStage }: SlotProps) {
+function Slot({ view, review, board, session, onAnalyse, onStage }: SlotProps) {
   const { phase, game } = view;
   if (phase.kind === 'error') return <Ending eyebrow="Something went wrong" text={phase.message} action="Back to home" onAction={() => navigate('/')} />;
   if (!game || phase.kind === 'loading') return <CoachLine text="Loading…" />;
@@ -208,7 +206,7 @@ function Slot({ view, review, board, session, onAnalyse, onPauseDone, onStage }:
         type={phase.type}
         depth={view.depth}
         board={board}
-        onDone={onPauseDone}
+        onDone={(result) => session.pauseDone(result)}
         onStage={onStage}
       />
     );

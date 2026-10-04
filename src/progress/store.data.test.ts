@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { UnfinishedGame } from '../content/types';
 import { DAY, FakeStorage, moment, noon, openStore, summary } from './testkit';
 
 let storage: FakeStorage;
@@ -195,5 +196,49 @@ describe('lessons, opening notes and answer flags', () => {
     const due = (await openStore()).dueReviews('italian', 1400, Number.MAX_SAFE_INTEGER).map((r) => r.ply);
     expect(due).toContain(9);
     expect(due).not.toContain(5);
+  });
+});
+
+describe('a game left before its end', () => {
+  const left = (gameId = 'italian-1400-0001'): UnfinishedGame => ({
+    level: 1400,
+    gameId,
+    ply: 9,
+    moments: [
+      { ply: 3, type: 'pause' },
+      { ply: 23, type: 'nothing' },
+    ],
+    results: [moment({ ply: 3 })],
+    quiet: [3, 4],
+    noteStops: 1,
+  });
+
+  it('is kept across a reload for its opening and level', async () => {
+    const store = await openStore();
+    store.saveUnfinishedGame('italian', left());
+    const reloaded = await openStore();
+    expect(reloaded.getUnfinishedGame('italian', 1400)).toEqual(left());
+    expect(reloaded.getUnfinishedGame('italian', 1700)).toBeNull();
+    expect(reloaded.getUnfinishedGame('caro-kann', 1400)).toBeNull();
+  });
+
+  it('is forgotten once that game is finished, and not when another one is', async () => {
+    const store = await openStore();
+    store.saveUnfinishedGame('italian', left());
+    store.recordGame(summary(noon(), [], 'italian-1400-0002'));
+    expect(store.getUnfinishedGame('italian', 1400)).not.toBeNull();
+    store.recordGame(summary(noon(), [moment({ ply: 3 })]));
+    expect((await openStore()).getUnfinishedGame('italian', 1400)).toBeNull();
+  });
+
+  it('is dropped when it cannot be read, and keeps only the parts that can', async () => {
+    const saved = (game: unknown) => JSON.stringify({ v: 1, unfinished: { italian: game } });
+    storage.data.set('cc.progress.v1', saved({ ...left(), level: 1500 }));
+    expect((await openStore()).getUnfinishedGame('italian', 1400)).toBeNull();
+    storage.data.set('cc.progress.v1', saved({ ...left(), ply: -1 }));
+    expect((await openStore()).getUnfinishedGame('italian', 1400)).toBeNull();
+    const messy = { ...left(), moments: [{ ply: 3, type: 'pause' }, { ply: 5, type: 'silent' }], quiet: [3, 'x'], noteStops: 'two' };
+    storage.data.set('cc.progress.v1', saved(messy));
+    expect((await openStore()).getUnfinishedGame('italian', 1400)).toEqual({ ...left(), moments: [{ ply: 3, type: 'pause' }], quiet: [3], noteStops: 0 });
   });
 });

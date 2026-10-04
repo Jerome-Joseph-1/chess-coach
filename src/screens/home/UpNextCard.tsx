@@ -4,7 +4,7 @@ import { courseUnits, nextStep } from '../../course/path';
 import type { UnitId } from '../../course/types';
 import { UNITS } from '../../course/units';
 import { gamesSinceLastLesson, useCourse } from '../../course/useCourse';
-import { getDepth, getLessons, getSetStats, getStageProgress } from '../../progress/store';
+import { getDepth, getLessons, getSetStats, getStageProgress, getUnfinishedGame } from '../../progress/store';
 import { navigate } from '../../router';
 import { Button } from '../../ui/Button';
 import { disabledIf } from '../shared/disabledIf';
@@ -53,7 +53,7 @@ function LessonCard({ opening, level, status, unit, number }: UpNextCardProps & 
       </Button>
       {status === 'ready' && (
         <a class="up-next-instead" href={`#${playPath(opening, level)}`}>
-          Start a game instead
+          {getUnfinishedGame(opening, level) ? 'Continue your game instead' : 'Start a game instead'}
         </a>
       )}
     </section>
@@ -64,6 +64,7 @@ function LessonCard({ opening, level, status, unit, number }: UpNextCardProps & 
 function GameCard({ opening, level, status }: UpNextCardProps) {
   const { start, side } = openingById(opening);
   const gameNumber = getSetStats(opening, level).games + 1;
+  const play = getUnfinishedGame(opening, level) ? 'Continue game' : 'Start game';
   return (
     <section class="card up-next" aria-labelledby="up-next-title">
       <div class="up-next-top">
@@ -83,7 +84,7 @@ function GameCard({ opening, level, status }: UpNextCardProps) {
       {status === 'error' && <p class="up-next-line">Can't reach the games right now. Check your connection.</p>}
       <Button size="lg" class="btn-with-icon" {...disabledIf(status !== 'ready')} onClick={() => navigate(playPath(opening, level))}>
         {status !== 'soon' && <Icon name="play" />}
-        {status === 'soon' ? 'Coming soon' : 'Start game'}
+        {status === 'soon' ? 'Coming soon' : play}
       </Button>
     </section>
   );

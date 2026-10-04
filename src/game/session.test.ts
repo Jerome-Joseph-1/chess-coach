@@ -1,7 +1,7 @@
 import { Chess } from 'chess.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BoardController } from '../board/types';
-import type { Depth, Game, MomentType, SetIndex, Side, StepOutcome, Turn } from '../content/types';
+import type { Depth, Game, MomentResult, MomentType, SetIndex, Side, StepOutcome, Turn, UnfinishedGame } from '../content/types';
 import { fixtureGame, fixtureSet } from './fixtures';
 import { chooseMoments } from './pauses';
 import { parseUci } from './position';
@@ -116,6 +116,8 @@ function startSession(
     depth?: Depth;
     noSet?: boolean;
     firstGame?: boolean;
+    /** The game the user left in this set before its end. */
+    unfinished?: UnfinishedGame;
   } & NoteOptions = {},
 ) {
   const games = options.games ?? [fixtureGame(GAME_1), fixtureGame(GAME_2)];
@@ -129,6 +131,8 @@ function startSession(
     playedGameIds: vi.fn(() => options.played ?? []),
     recordMoment: vi.fn<SessionDeps['recordMoment']>(() => ({})),
     recordGame: vi.fn<SessionDeps['recordGame']>(),
+    unfinishedGame: vi.fn(() => options.unfinished ?? null),
+    saveUnfinishedGame: vi.fn<SessionDeps['saveUnfinishedGame']>(),
     dropReview: vi.fn<SessionDeps['dropReview']>(),
     celebrate: vi.fn(),
     toast: vi.fn(),
@@ -161,6 +165,15 @@ async function waitForPhase(started: Started, kind: string): Promise<void> {
     if (started.session.getView().phase.kind === kind) return;
   }
   throw new Error(`Never reached phase ${kind}, stuck in ${started.session.getView().phase.kind}`);
+}
+
+async function waitForTurn(started: Started, turnIndex: number): Promise<void> {
+  for (let guard = 0; guard < 100; guard++) {
+    await flush();
+    const { phase } = started.session.getView();
+    if (phase.kind === 'pause' && phase.turnIndex === turnIndex) return;
+  }
+  throw new Error(`Never reached the key position at turn ${turnIndex}`);
 }
 
 /** Makes every autoplay beat wait for the returned function, which lets the moves in flight finish. */
@@ -515,6 +528,28 @@ describe('a pause', () => {
     started.session.pauseDone({ outcomes: outcomes(true, true), resumePly: 7 });
     await flush();
     expect(started.session.getView().dots).toEqual(['bad', 'good']);
+  });
+
+  it('marks the move of each answered key position by how it went', async () => {
+    momentsAt({ 3: 'pause', 7: 'pause', 15: 'pause', 23: 'nothing' });
+    const started = await playToPause();
+    started.session.pauseDone({ outcomes: outcomes(true, false), resumePly: 3 });
+    await waitForTurn(started, 3);
+    started.session.pauseDone({ outcomes: outcomes(true, false), resumePly: 7, hinted: true });
+    await waitForTurn(started, 7);
+    started.session.pauseDone({ outcomes: outcomes(true, true), resumePly: 15 });
+    await waitForTurn(started, 11);
+    started.session.pauseDone({ outcomes: outcomes(true), resumePly: 23 });
+    await flush();
+    // Indexes into the moves shown, which start with the five opening moves.
+    expect(started.session.getView().marks).toEqual(
+      new Map([
+        [8, 'missed'],
+        [12, 'hinted'],
+        [20, 'found'],
+        [28, 'quiet'],
+      ]),
+    );
   });
 });
 
@@ -1151,6 +1186,141 @@ describe('leaving the screen', () => {
     await beat();
     await beat();
     expect(started.board.calls.filter((call) => call.startsWith('play'))).toHaveLength(0);
+  });
+});
+
+describe('leaving a game and coming back', () => {
+  const answer = (ply: number, correct: boolean[], gameId = GAME_1): MomentResult => ({
+    opening: 'italian',
+    level: 1400,
+    gameId,
+    ply,
+    moveNo: Math.floor(ply / 2) + 4,
+    type: 'pause',
+    kinds: ['win'],
+    depth: 1,
+    outcomes: outcomes(...correct),
+    stars: correct.filter(Boolean).length,
+    at: 1000,
+  });
+
+  /** GAME_2 left at `ply` with key positions at plies 3, 7 and 11, the first one missed. */
+  const leftAt = (ply: number, extra: Partial<UnfinishedGame> = {}): UnfinishedGame => ({
+    level: 1400,
+    gameId: GAME_2,
+    ply,
+    moments: [
+      { ply: 3, type: 'pause' },
+      { ply: 7, type: 'pause' },
+      { ply: 11, type: 'nothing' },
+    ],
+    results: [answer(3, [true, false], GAME_2)],
+    quiet: [3, 4],
+    noteStops: 1,
+    ...extra,
+  });
+
+  it('keeps the game after each first answer, with its key positions and the answers so far', async () => {
+    momentsAt({ 3: 'pause', 7: 'pause', 9: 'playout' });
+    const started = await playToPause({ played: [GAME_2] });
+    started.session.pauseDone({ outcomes: outcomes(true, false), resumePly: 5 });
+    await flush();
+    expect(started.deps.saveUnfinishedGame).toHaveBeenCalledTimes(1);
+    expect(started.deps.saveUnfinishedGame).toHaveBeenCalledWith('italian', {
+      level: 1400,
+      gameId: GAME_1,
+      ply: 3,
+      moments: [
+        { ply: 3, type: 'pause' },
+        { ply: 7, type: 'pause' },
+      ],
+      results: [expect.objectContaining({ ply: 3, outcomes: outcomes(true, false) })],
+      quiet: [3, 4, 5],
+      noteStops: 0,
+    });
+  });
+
+  it('keeps the place the user leaves at: the live position and the key position open there', async () => {
+    momentsAt({ 3: 'pause', 7: 'pause' });
+    const started = await playToPause();
+    started.session.pauseDone({ outcomes: outcomes(true, false), resumePly: 3 });
+    await waitForTurn(started, 3);
+    started.session.dispose();
+    expect(started.deps.saveUnfinishedGame).toHaveBeenCalledTimes(2);
+    expect(started.deps.saveUnfinishedGame.mock.lastCall![1]).toMatchObject({ gameId: GAME_1, ply: 7, results: [{ ply: 3 }] });
+  });
+
+  it('opens a game left at a key position on that key position, with the answers before it kept', async () => {
+    const started = startSession({ unfinished: leftAt(7), depth: 5 });
+    await waitForPhase(started, 'pause');
+    const { session, board, deps } = started;
+    expect(deps.loadGame).toHaveBeenCalledWith('italian', 1400, GAME_2);
+    // The key positions chosen when the game began, whatever the stage now.
+    expect(chooseMoments).not.toHaveBeenCalled();
+    expect(session.getView().phase).toEqual({ kind: 'pause', turnIndex: 3, type: 'pause' });
+    expect(session.getView().dots).toEqual(['bad', 'now', 'todo']);
+    expect(session.getView().marks).toEqual(new Map([[8, 'missed']]));
+    expect(session.getView().history).toHaveLength(5 + 7);
+    const game = fixtureGame(GAME_2);
+    const last = new Chess(positionAfter(game, 6)).move(game.moves[6]);
+    expect(board.calls).toEqual(['set:false']);
+    expect(board.fen()).toBe(positionAfter(game, 7));
+    expect(board.lastMove).toBe(last.from + last.to);
+    expect(deps.recordMoment).not.toHaveBeenCalled();
+  });
+
+  it('opens a game left between key positions where it was left, and plays on from there with Play', async () => {
+    const started = startSession({ unfinished: leftAt(5) });
+    await flush();
+    const { session, deps } = started;
+    expect(session.getView().phase).toEqual({ kind: 'ready' });
+    expect(session.getView().history).toHaveLength(5 + 5);
+    expect(session.getView().controls.previousKey).toBe(true);
+    expect(session.getView().intro).toBe(false);
+
+    session.play();
+    await waitForPhase(started, 'pause');
+    expect(session.getView().phase).toEqual({ kind: 'pause', turnIndex: 3, type: 'pause' });
+    session.pauseDone({ outcomes: outcomes(true, true), resumePly: 7 });
+    await waitForTurn(started, 5);
+    session.pauseDone({ outcomes: outcomes(true), resumePly: 11 });
+    await waitForPhase(started, 'done');
+    const { moments } = deps.recordGame.mock.calls[0][0];
+    expect(moments.map((m) => m.ply)).toEqual([3, 7, 11]);
+    expect(deps.recordMoment).toHaveBeenCalledTimes(2);
+  });
+
+  it('starts a new game when the game left is no longer in the set', async () => {
+    const started = startSession({ unfinished: leftAt(7, { gameId: 'italian-1400-9999' }) });
+    await flush();
+    expect(started.deps.loadGame).toHaveBeenCalledWith('italian', 1400, GAME_1);
+    expect(chooseMoments).toHaveBeenCalled();
+    expect(started.session.getView().history).toHaveLength(5);
+  });
+
+  it('keeps nothing of a game left before its first move', async () => {
+    const started = await startReady();
+    started.session.dispose();
+    expect(started.deps.saveUnfinishedGame).not.toHaveBeenCalled();
+  });
+
+  it('keeps nothing once the game has ended', async () => {
+    const started = startSession({ games: [makeGame('short', ['Nf6', 'd4'])] });
+    await flush();
+    started.session.play();
+    await waitForPhase(started, 'done');
+    started.session.dispose();
+    expect(started.deps.saveUnfinishedGame).not.toHaveBeenCalled();
+  });
+
+  it('never keeps or opens a review as an unfinished game', async () => {
+    const started = startSession({ review: { gameId: GAME_1, ply: 7 }, unfinished: leftAt(7) });
+    await waitForPhase(started, 'pause');
+    expect(started.deps.unfinishedGame).not.toHaveBeenCalled();
+    started.session.pauseDone({ outcomes: outcomes(true), resumePly: 7 });
+    await flush();
+    started.session.dispose();
+    expect(started.deps.saveUnfinishedGame).not.toHaveBeenCalled();
   });
 });
 
