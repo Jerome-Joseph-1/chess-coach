@@ -3,7 +3,7 @@ import type { Level, OpeningId } from './content/types';
 import { LessonScreen } from './course/lesson/LessonScreen';
 import { PracticeReview } from './course/lesson/PracticeReview';
 import { setOf } from './course/select';
-import { isUnitId } from './course/units';
+import { isLessonOf } from './course/types';
 import { useRoute } from './router';
 import { About } from './screens/About';
 import { Course } from './screens/Course';
@@ -38,8 +38,8 @@ export function App() {
   if (practice && setOf(practice[1])) {
     return <PracticeReview key={route} set={practice[1]} gameId={practice[2]} ply={Number(practice[3])} />;
   }
-  const lesson = path.match(/^\/lesson\/([a-z-]+)\/([a-z-]+)$/);
-  if (lesson && isOpeningId(lesson[1]) && isUnitId(lesson[2])) {
+  const lesson = path.match(/^\/lesson\/([a-z-]+)\/([a-z\d-]+)$/);
+  if (lesson && isOpeningId(lesson[1]) && isLessonOf(lesson[1], lesson[2])) {
     return <LessonScreen key={route} opening={lesson[1]} unit={lesson[2]} more={new URLSearchParams(query).has('more')} />;
   }
   switch (path) {
