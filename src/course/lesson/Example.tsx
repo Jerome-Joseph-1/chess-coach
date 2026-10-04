@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { BoardController, Tone } from '../../board/types';
-import { lessonFor } from '../../learn';
 import { walkthrough, type Beat } from '../../learn/walkthrough';
 import { CoachBubble, PatternLabel, StepDots } from '../../pause/Coach';
 import { COPY } from '../../pause/copy';
@@ -9,9 +8,10 @@ import { DockButton, RoundButton } from '../../pause/Dock';
 import { LineStepper } from '../../pause/LineStepper';
 import { lineSequence } from '../../pause/lines';
 import { BoardMarks } from '../../pause/marks';
-import { patternIcon } from '../../pause/patterns';
+import { pauseLesson } from '../../pause/patterns';
 import { fenAfter, samePosition, squaresOf } from '../../pause/position';
 import { Sheet } from '../../pause/Sheet';
+import type { IconName } from '../../pause/steps/icons';
 import { Remember } from '../../pause/steps/Result';
 import { shake } from '../../ui/motion';
 import { celebrate, nudge } from '../../ui/rewards';
@@ -20,9 +20,20 @@ import type { LessonPosition } from '../select';
 /** The steps of the example, or the line that ends it: the board steps back for the line, as on the answer. */
 export type ExampleLayout = 'example' | 'line';
 
+/** The chip and the takeaway at the end of the example. */
+export interface ExampleLabel {
+  name: string;
+  icon: IconName;
+  remember: string;
+}
+
 export interface ExampleProps {
   board: BoardController;
   position: LessonPosition;
+  /** An opening lesson's own steps, in place of the tactic walkthrough. */
+  beats?: Beat[];
+  /** An opening lesson's chip and takeaway, in place of the tactic's. */
+  label?: ExampleLabel;
   onLayout: (layout: ExampleLayout) => void;
   onDone: () => void;
 }
@@ -34,6 +45,12 @@ const WRONG_FLASH_MS = 600;
 const SETTLE_MS = 400;
 
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+/** The tactic the position shows, as the example's chip and takeaway. */
+function tacticLabel({ game, turnIndex }: LessonPosition): ExampleLabel {
+  const { pattern, remember } = pauseLesson(game, turnIndex);
+  return { ...pattern, remember };
+}
 
 /** Brings the board to the beat's position: slides its move when one move away, else moves the pieces across. */
 function reach(board: BoardController, beat: Beat): Promise<void> {
@@ -55,10 +72,10 @@ function draw(board: BoardController, beat: Beat): void {
  * The worked example: the coach steps through what to see on the board, waits for the key move when a step
  * asks for it, then plays the line on like the answer screen and gives the takeaway.
  */
-export function Example({ board, position, onLayout, onDone }: ExampleProps) {
+export function Example({ board, position, beats: lessonBeats, label: lessonLabel, onLayout, onDone }: ExampleProps) {
   const { game, turnIndex } = position;
-  const beats = useMemo(() => walkthrough(game, turnIndex), [game, turnIndex]);
-  const lesson = useMemo(() => lessonFor(game, turnIndex), [game, turnIndex]);
+  const beats = useMemo(() => lessonBeats ?? walkthrough(game, turnIndex), [lessonBeats, game, turnIndex]);
+  const label = useMemo(() => lessonLabel ?? tacticLabel(position), [lessonLabel, game, turnIndex]);
   const marks = useMemo(() => new BoardMarks(board), [board]);
   const [at, setAt] = useState(0);
   const [wrong, setWrong] = useState(false);
@@ -163,7 +180,6 @@ export function Example({ board, position, onLayout, onDone }: ExampleProps) {
   }
 
   function ending() {
-    const pattern = { name: lesson.name, icon: patternIcon(lesson.theme) };
     return (
       <div class="pause-answer">
         {playable && (
@@ -174,12 +190,12 @@ export function Example({ board, position, onLayout, onDone }: ExampleProps) {
           eyebrow="Worked example"
           aside={
             <span class="pattern-in">
-              <PatternLabel {...pattern} />
+              <PatternLabel name={label.name} icon={label.icon} />
             </span>
           }
           body={beat.text}
         />
-        <Remember text={lesson.remember} shown={lineDone || !playable} />
+        <Remember text={label.remember} shown={lineDone || !playable} />
       </div>
     );
   }
