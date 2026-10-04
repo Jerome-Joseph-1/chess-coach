@@ -220,7 +220,9 @@ test('a move that loses material stays on the board with what it loses until Try
   await expect(page.locator('.cm-chessboard .marker-bad')).toHaveCount(0);
   await expect(retryButton(page)).toHaveCount(0);
   await expect(hintButton(page)).toBeEnabled();
-  await expect(page.getByText(RETRY_WHY)).toBeVisible();
+  // The question is asked again, without the line about the move taken back.
+  await expect(page.getByText(RETRY_WHY)).toHaveCount(0);
+  await expect(page.getByText('Your move', { exact: true })).toBeVisible();
 
   await tapSquares(page, 'd4', 'e5');
   await expect(page.getByText('You found the move')).toBeVisible();
