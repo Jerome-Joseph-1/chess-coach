@@ -407,7 +407,9 @@ function patternOf(say: Say, { t }: Caught): Told | null {
       const king = t.pin.behind.type === 'k';
       const behind = king ? 'because your king would be in check' : `without losing ${your(t.pin.behind)}`;
       const piece = your(t.pin.pinned);
-      if (t.how === 'created' || t.how === 'attacked') return { does: [`attacks ${piece}, which can't move ${behind}`] };
+      // It may still move along the line, onto the attacker: only moving away is ruled out.
+      const away = king ? `can't move away: your king is behind it` : `can't move away ${behind}`;
+      if (t.how === 'created' || t.how === 'attacked') return { does: [`attacks ${piece}, which ${away}`] };
       if (t.how !== 'defender' || t.at !== t.key) return null;
       return { does: [], tail: `, and ${piece} can't take back ${behind}` };
     }

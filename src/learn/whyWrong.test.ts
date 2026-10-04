@@ -195,10 +195,10 @@ describe('a pattern with what it costs (R5)', () => {
       "White's rook takes your rook with check, and your knight on f6 can't take back because your king would be in check. In the end, you lose two rooks.",
     );
     expect(told('caro-kann-1100-0234#26', 'a5c7').early.text).toBe(
-      "After White gives check, White's rook moves to b7 and attacks your queen, which can't move because your king would be in check. You lose your queen and only get a rook back.",
+      "After White gives check, White's rook moves to b7 and attacks your queen, which can't move away: your king is behind it. You lose your queen and only get a rook back.",
     );
     expect(told('italian-1700-0130#15', 'd3b5').early.text).toBe(
-      "Black's rook moves to d6 and attacks your knight, which can't move without losing your queen. You lose a knight.",
+      "Black's rook moves to d6 and attacks your knight, which can't move away without losing your queen. You lose a knight.",
     );
     expect(told('italian-1400-0135#14', 'b2b4').early.text).toBe(
       "That doesn't stop Black's threat: Black's bishop takes your knight, and your bishop on e6 is left unguarded. In the end, you lose a bishop.",
