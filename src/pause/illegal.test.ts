@@ -8,6 +8,7 @@ describe('illegalLine', () => {
   it('names the piece and the square it cannot reach', () => {
     expect(illegalLine(START, 'w', 'e2', 'e5')).toBe("Your pawn on e2 can't go to e5.");
     expect(illegalLine(START, 'b', 'g8', 'g6')).toBe("Your knight on g8 can't go to g6.");
+    expect(illegalLine(START, 'w', 'c2', 'd3')).toBe("Your pawn on c2 can't go to d3: a pawn moves straight ahead and only takes diagonally.");
   });
 
   it('says why a piece cannot move at all', () => {

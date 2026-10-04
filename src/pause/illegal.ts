@@ -10,6 +10,9 @@ const WHY: Record<IllegalReason, string> = {
   blocked: '',
 };
 
+/** Said when a pawn is sent sideways, or diagonally with nothing to take. */
+const PAWN_RULE = 'a pawn moves straight ahead and only takes diagonally';
+
 /** A piece that can't move at all, said plainly. */
 function stuck(who: string, type: string): string {
   if (type === 'p') return `${who} is blocked.`;
@@ -26,5 +29,6 @@ export function illegalLine(fen: string, side: Side, from: string, to: string | 
   const why = WHY[illegalReason(fen, side, from, to)];
   if (!why && !to) return stuck(who, type);
   const what = to ? `${who} can't go to ${to}` : `${who} can't move`;
-  return why ? `${what}: ${why}.` : `${what}.`;
+  const rule = !why && type === 'p' && to && to[0] !== from[0] ? PAWN_RULE : why;
+  return rule ? `${what}: ${rule}.` : `${what}.`;
 }
