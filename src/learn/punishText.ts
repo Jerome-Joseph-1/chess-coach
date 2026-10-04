@@ -259,26 +259,43 @@ function told(say: Say, caught: Caught, openings: string[]): string {
   const sentence = (e: Event, opening: string) => (opening ? `${opening} ${e.text}` : capitalize(e.text));
   // "for free" closes the sentence when nothing else is lost.
   const words = ([e, text]: [Event, string]) => wordCount(text) + (e.free ? 2 : 0);
+  // Each telling is worked out once, and only when the ones before it don't fit.
+  const events = new Map<string, Event>();
+  const eventAt = (level: Level, long: Long) => {
+    const key = `${level}${long}`;
+    if (!events.has(key)) events.set(key, event(say, caught, level, long));
+    return events.get(key)!;
+  };
   // From the fullest telling to the barest: the first opening while it fits, a long way told from the reply on the
   // board before it is cut short, and a little over the limit for all but a lure. The user's move is named only when
   // the reply on the board is the move that matters, so a lure takes no lead.
-  const tries = (level: Level, opening: string): [Event, string][] =>
-    (['reply', 'short'] as const).flatMap((long) => {
-      const e = event(say, caught, level, long);
-      if (opening.endsWith('but') && e.lead) return [];
+  function* tries(level: Level, opening: string): Generator<[Event, string]> {
+    for (const long of ['reply', 'short'] as const) {
+      const e = eventAt(level, long);
+      if (opening.endsWith('but') && e.lead) continue;
       const told: [Event, string] = [e, sentence(e, opening)];
-      return words(told) <= MAX_WORDS || (words(told) <= PATTERN_WORDS && !opening.endsWith('but')) ? [told] : [];
-    });
+      if (words(told) <= MAX_WORDS || (words(told) <= PATTERN_WORDS && !opening.endsWith('but'))) yield told;
+    }
+  }
   // A lure goes before anything of the line does; a lead on the user's own capture stays, as it says what "in return" answers.
-  const levels = [0, 1] as const;
-  const fits = openings[0].endsWith('but')
-    ? levels.flatMap((level) => openings.flatMap((o) => tries(level, o)))
-    : openings.flatMap((o) => levels.flatMap((level) => tries(level, o)));
-  const brief = openings.flatMap((o) => (['reply', 'short'] as const).map((long): [Event, string] => {
-    const e = event(say, caught, 2, long);
-    return [e, sentence(e, o.endsWith('but') && e.lead ? '' : o)];
-  }));
-  const [used, text] = fits[0] ?? brief.find((told) => words(told) <= MAX_WORDS) ?? brief.at(-1)!;
+  const order: [Level, string][] = openings[0].endsWith('but')
+    ? ([0, 1] as const).flatMap((level) => openings.map((o): [Level, string] => [level, o]))
+    : openings.flatMap((o) => ([0, 1] as const).map((level): [Level, string] => [level, o]));
+  let found: [Event, string] | undefined;
+  for (const [level, opening] of order) {
+    found = tries(level, opening).next().value ?? undefined;
+    if (found) break;
+  }
+  if (!found) {
+    const brief = openings.flatMap((o) =>
+      (['reply', 'short'] as const).map((long): [Event, string] => {
+        const e = eventAt(2, long);
+        return [e, sentence(e, o.endsWith('but') && e.lead ? '' : o)];
+      }),
+    );
+    found = brief.find((told) => words(told) <= MAX_WORDS) ?? brief.at(-1)!;
+  }
+  const [used, text] = found;
   return withLoss(say, caught, text, used.free, used.later, used.named);
 }
 
