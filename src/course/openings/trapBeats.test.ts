@@ -8,6 +8,7 @@ import { readTraps } from './trapGames';
 const games: Game[] = readTraps().map((trap) => ({ ...trap, level: 1400 }));
 const examples = games.filter((game) => (game as Game & { role: string }).role === 'example');
 const beatsOf = (id: string) => trapBeats(games.find((game) => game.id === id)!)!;
+const sentences = (text: string) => text.split(/(?<=[.?!])\s+/);
 
 /** Whether the piece on `from` attacks `to`, by its own colour, on `fen`. */
 function attacks(fen: string, from: Square, to: Square): boolean {
@@ -40,6 +41,10 @@ describe('trapBeats', () => {
         expect(beat.text.split(' ').length, beat.text).toBeLessThanOrEqual(28);
         expect(beat.text, game.id).not.toMatch(/#/);
       }
+      for (const text of beats.flatMap((b) => [b.text, b.ask ?? ''])) {
+        for (const sentence of sentences(text)) expect(sentence.split(' ').length, sentence).toBeLessThanOrEqual(20);
+        expect(text, game.id).not.toMatch(/\bhit/i);
+      }
       const last = beats.at(-1)!;
       expect(playLine(last.fen, last.line!), game.id).toHaveLength(last.line!.length);
     }
@@ -59,11 +64,17 @@ describe('trapBeats', () => {
   });
 
   it('says only what is true on the board in the Blackburne Shilling', () => {
-    const [look, whatIf] = beatsOf('trap-italian-shilling');
-    expect(new Chess(look.fen).attackers('e5', 'b')).toEqual([]);
-    expect(new Chess(look.fen).get('d4')).toEqual({ type: 'n', color: 'b' });
+    const [look, whatIf, ask] = beatsOf('trap-italian-shilling');
+    const board = new Chess(look.fen);
+    expect(board.attackers('e5', 'b')).toEqual([]);
+    expect([board.get('c6'), board.get('d4')]).toEqual([undefined, { type: 'n', color: 'b' }]);
+    expect(attacks(look.fen, 'f3', 'e5')).toBe(true);
+    const after = new Chess(whatIf.fen);
     expect(attacks(whatIf.fen, 'g5', 'e5') && attacks(whatIf.fen, 'g5', 'g2')).toBe(true);
-    expect(new Chess(whatIf.fen).get('e5')).toEqual({ type: 'n', color: 'w' });
+    expect([after.get('f5'), after.get('g4'), after.get('g3')]).toEqual([undefined, undefined, undefined]);
+    expect(after.get('e5')).toEqual({ type: 'n', color: 'w' });
+    const traded = new Chess(playLine(ask.fen, [ask.answer!])[0].after);
+    expect(traded.moves({ verbose: true }).filter((m) => m.to === 'd4').map((m) => m.san)).toEqual(['exd4']);
   });
 
   it('says only what is true on the board in the Nd6 mate', () => {
@@ -75,10 +86,15 @@ describe('trapBeats', () => {
       { type: 'p', color: 'b' },
       { type: 'k', color: 'b' },
     ]);
-    expect(new Chess(whatIf.fen).isCheckmate()).toBe(true);
-    expect(new Chess(whatIf.fen).get('d7')).toEqual({ type: 'n', color: 'b' });
+    expect([board.get('e3'), board.get('e5'), board.get('e6')]).toEqual([undefined, undefined, undefined]);
+    const mated = new Chess(whatIf.fen);
+    expect(mated.isCheckmate()).toBe(true);
+    // Only the pawn on e7 stands between the queen on e2 and the king.
+    expect(['e3', 'e4', 'e5', 'e6'].map((s) => mated.get(s as Square))).toEqual([undefined, undefined, undefined, undefined]);
+    expect(mated.get('e7')).toEqual({ type: 'p', color: 'b' });
     const after = playLine(ask.fen, [ask.answer!])[0].after;
     expect(attacks(after, 'f6', 'e4') && attacks(after, 'd8', 'd6')).toBe(true);
+    expect(new Chess(after).get('d7')).toBeUndefined();
     const check = new Chess(ending.fen);
     check.move('Nd6+');
     expect(check.moves()).toContain('Qxd6');

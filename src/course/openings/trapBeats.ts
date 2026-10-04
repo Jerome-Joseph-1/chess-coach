@@ -22,37 +22,37 @@ const arrow = (from: Square, to: Square, tone: ArrowTone) => ({ from, to, tone }
 const SCRIPTS: Record<string, Script> = {
   'trap-italian-shilling': {
     look: {
-      text: "Black's knight moved to d4 and left the pawn on e5 with no guard. It looks free for your knight.",
+      text: "Black's knight jumped from c6 to d4, so nothing guards the pawn on e5 now. Your knight on f3 can take it.",
       marks: [mark('e5', 'focus'), mark('d4', 'focus')],
       arrows: [arrow('f3', 'e5', 'mistake')],
     },
     whatIf: {
-      text: 'If you take it, Qg5 attacks your knight and the pawn on g2 at once. Black wins back more than the pawn.',
+      text: 'If you take, Qg5 attacks two things at once. Through f5, it attacks your knight on e5. Through g4 and g3, it attacks your pawn on g2.',
       marks: [mark('e5', 'bad'), mark('g2', 'bad')],
       arrows: [arrow('g5', 'e5', 'threat'), arrow('g5', 'g2', 'threat')],
     },
     instead: {
-      text: 'Instead, Nxd4 trades off the knight on d4 first. With it gone, the trick is gone too.',
+      text: 'Instead, take the knight on d4 first with Nxd4. Black takes back with the e5 pawn, so nothing is left on e5 to grab.',
       ask: 'Your move: take the knight on d4.',
     },
     ending: 'The knights are traded, so there is no trick left, and you keep a small edge.',
   },
   'trap-caro-kann-qe2': {
     look: {
-      text: "White's queen on e2 and your king share the e-file. Only your e-pawn and White's knight on e4 stand between them.",
+      text: "White's queen on e2 and your king on e8 are on the same file. Between them stand only White's knight on e4 and your pawn on e7.",
       marks: [mark('e2', 'focus'), mark('e8', 'focus'), mark('e7', 'focus'), mark('e4', 'focus')],
       arrows: [],
     },
     whatIf: {
-      text: "If you play Ngf6, Nd6 is checkmate. Your e-pawn can't take: it would open the queen's line to your king. Your knight on d7 blocks your queen.",
-      marks: [mark('e8', 'bad'), mark('d7', 'bad')],
+      text: "If you play Ngf6, Nd6 is checkmate. Your pawn on e7 can't take: with e4 empty, it alone shields your king from the queen on e2.",
+      marks: [mark('e8', 'bad'), mark('e7', 'focus')],
       arrows: [arrow('d6', 'e8', 'threat'), arrow('e2', 'e8', 'threat')],
     },
     instead: {
-      text: 'Instead, Ndf6 attacks the knight on e4 and clears d7, so your queen guards d6.',
+      text: 'Instead, Ndf6 attacks the knight on e4 and empties d7. Now your queen on d8 guards d6, down the d-file.',
       ask: 'Your move: bring the d7 knight to f6.',
     },
-    ending: 'Now Nd6+ would only lose the knight to your queen, and the game is level.',
+    ending: 'Now Nd6+ would only lose the knight to your queen, and the game is about level.',
   },
 };
 

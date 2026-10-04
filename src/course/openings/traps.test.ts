@@ -8,6 +8,9 @@ import { TRAP_LESSONS, TRAP_TEXTS } from './traps';
 
 const traps = readTraps();
 const LOSES = 10;
+const MAX_WORDS = 20;
+
+const sentences = (text: string) => text.split(/(?<=[.?!])\s+/);
 
 /** The position after the game's opening moves, or null when one of them is illegal. */
 function replay(sans: string[]): Chess | null {
@@ -78,6 +81,15 @@ describe('the trap positions in traps.json', () => {
       }
       expect(trap.ask, trap.id).toMatch(/[.?]$/);
       expect(trap.why, trap.id).toMatch(/\.$/);
+    }
+  });
+
+  it('keep every sentence of the trap texts short, and say "attacks", not "hits"', () => {
+    const lessons = Object.values(TRAP_LESSONS).flatMap((l) => [l.line, l.intro, ...l.spot, l.hint, l.idea, l.remember]);
+    const own = Object.values(TRAP_TEXTS).flatMap((t) => [t.title, t.ask, t.why]);
+    for (const text of [...lessons, ...own]) {
+      for (const sentence of sentences(text)) expect(sentence.split(' ').length, sentence).toBeLessThanOrEqual(MAX_WORDS);
+      expect(text).not.toMatch(/\bhit/i);
     }
   });
 });

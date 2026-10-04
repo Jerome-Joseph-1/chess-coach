@@ -16,7 +16,7 @@ export const TRAP_LESSONS: Record<TrapLessonId, TrapLesson> = {
     spotTitle: 'How to stay safe',
     spot: [
       'Before you take a pawn, check what your opponent can do next.',
-      'Watch for a queen move that attacks two things at once.',
+      'Watch for a queen move that attacks two things at once, like Qg5 against e5 and g2.',
       "When your opponent slips, look at f7: early on, only Black's king guards it.",
     ],
     name: 'Italian traps',
@@ -36,8 +36,8 @@ export const TRAP_LESSONS: Record<TrapLessonId, TrapLesson> = {
     spotTitle: 'How to stay safe',
     spot: [
       "Before each move, look at White's checks and captures.",
-      'Early on, only your king guards f7. Watch a white knight on g5 and a bishop on c4.',
-      'If white pawns close in on your bishop, make room for it to step back.',
+      'Early on, only your king guards f7. A white knight on g5 and a bishop on c4 both attack it.',
+      "If White's pawns close in on your bishop, give it a square to retreat to, like h7.",
     ],
     name: 'Caro-Kann traps',
     hint: 'Before you move, check what White can do next.',
@@ -53,17 +53,17 @@ export const TRAP_TEXTS: Record<string, TrapTexts> = {
   'trap-italian-shilling': {
     title: 'The Blackburne Shilling trap',
     ask: 'Your move. The pawn on e5 looks free. Is it?',
-    why: 'Nxe5 runs into Qg5, which attacks your knight and g2 at once. Taking the knight on d4 first keeps you safe.',
+    why: 'Nxe5 runs into Qg5. Through f5, the queen attacks your knight on e5. Through g4 and g3, it attacks g2. Taking the knight on d4 first keeps you safe.',
   },
   'trap-italian-shilling-f7': {
     title: 'The Blackburne Shilling trap',
-    ask: "Your move. Black's queen attacks your knight and g2. One tempting move loses fast.",
-    why: "Nxf7 attacks the queen and the rook, but Black ignores it: Qxg2 hits your rook, and Black's attack wins. Castling keeps g2 guarded.",
+    ask: "Your move. Black's queen on g5 attacks your knight on e5 and your pawn on g2. One tempting move loses fast.",
+    why: "Nxf7 attacks the queen on g5 and the rook on h8. But Black ignores it: Qxg2 then attacks your rook on h1, and Black's attack wins. Castling puts your king on g1, guarding g2.",
   },
   'trap-italian-two-knights': {
     title: 'Black grabs e4',
     ask: 'Your move. Black just took your e-pawn. Punish it.',
-    why: 'Bxf7+ takes a pawn with check. Your knight guards f7, so the king must go to e7, and Black can never castle.',
+    why: "Bxf7+ takes a pawn with check. Your knight on g5 guards your bishop on f7, so the king can't take it. It must go to e7, and Black can never castle.",
   },
   'trap-italian-bc5': {
     title: 'Taking on e5 too soon',
@@ -73,41 +73,41 @@ export const TRAP_TEXTS: Record<string, TrapTexts> = {
   'trap-italian-legal': {
     title: "Légal's mate",
     ask: 'Your move. Black just took your queen. Strike back.',
-    why: 'Bxf7+ forces the king to e7, and Nd5 is checkmate. Your queen was bait.',
+    why: 'Bxf7+ forces the king to e7, as your knight on e5 guards f7. Then Nd5 is checkmate: your bishop and knights cover every free square around the king. Your queen was bait.',
   },
   'trap-italian-d6-ng5': {
     title: 'The fork on f7',
     ask: "Your move. Black's last move left f7 weak. Punish it.",
-    why: "Nxf7 attacks the queen and the rook on h8 at once, and nothing can take your knight. Black can't save both.",
+    why: "Nxf7 attacks the queen on d8 and the rook on h8 at once. The king can't take it: your bishop on c4 guards f7. Black can't save both.",
   },
   'trap-caro-kann-qe2': {
     title: 'The Nd6 mate trap',
     ask: DODGE,
-    why: "Ngf6 would let Nd6 mate: your e-pawn can't take it, and the knight on d7 blocks your queen. Ndf6 clears d7.",
+    why: "Ngf6 would let Nd6 mate. Your pawn on e7 can't take: with e4 empty, it alone shields your king from the queen on e2. Ndf6 empties d7, so your queen on d8 guards d6.",
   },
   'trap-caro-kann-ng5': {
     title: 'Mate on f7',
-    ask: "Your move. White's bishop and knight both aim at f7. Stay safe.",
-    why: "Playing h6 would allow Bxf7, which is checkmate. Playing e6 blocks the bishop's line to f7.",
+    ask: "Your move. White's bishop on c4 and knight on g5 both attack f7. Stay safe.",
+    why: "Playing h6 would allow Bxf7, which is checkmate. Playing e6 puts a pawn in the bishop's path, between c4 and f7.",
   },
   'trap-caro-kann-advance': {
     title: 'The trapped bishop',
-    ask: "Your move. White's pawns are closing in on your bishop. Keep it safe.",
-    why: 'If you play e6, White pushes h5 and traps your bishop on g6: every square it could go to is covered. Playing h5 yourself stops that pawn and frees h7 for your bishop.',
+    ask: "Your move. White's pawns on f3, g4 and h4 close in on your bishop on g6. Keep it safe.",
+    why: 'If you play e6, White pushes h5 and traps your bishop on g6. Your pawn on h7 blocks its way back, and every other square is covered. Playing h5 yourself stops that pawn and frees h7 for your bishop.',
   },
   'trap-caro-kann-qe2-h6': {
     title: 'The knight jump to f7',
     ask: DODGE,
-    why: 'Playing h6 would let Nxf7 attack your queen and your rook on h8 at once. Taking that knight with your king walks into mate. Nb6 is safe.',
+    why: 'Playing h6 would let Nxf7 attack your queen on d8 and your rook on h8 at once. If your king takes the knight, Qxe6+ leads to mate. Nb6 is safe.',
   },
   'trap-caro-kann-exchange': {
     title: 'Guard b7',
-    ask: "Your move. Check what White's queen attacks.",
-    why: 'Your bishop has left c8, so nothing guards b7, and e6 would let Qxb7. Qd7 guards it.',
+    ask: "Your move. White's queen on b3 attacks your pawns on b7 and d5. Check both.",
+    why: 'The queen on b3 attacks b7 up the b-file, through b4, b5 and b6. Your bishop has left c8, so nothing guards b7. After e6, Qxb7 takes it. Qd7 guards b7 along the seventh rank.',
   },
   'trap-caro-kann-qd3': {
     title: 'The queen sacrifice trap',
     ask: 'Your move. The knight on e4 looks free. Is it?',
-    why: 'Nxe4 loses to Qd8+: after Kxd8, Bg5+ checks with two pieces at once, and mate comes next. Be7 guards d8.',
+    why: 'Nxe4 loses to Qd8+, down the open d-file. After Kxd8, Bg5+ is double check: the rook on d1 and the bishop on g5 both check. Mate comes next. Be7 guards d8.',
   },
 };
