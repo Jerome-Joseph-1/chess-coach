@@ -1,7 +1,7 @@
 // Where a lesson opens: at the start, back on the page the user left, or with a round of new practice.
 import { unansweredDrills } from './path';
 import { deviceSource, pickExample, pickPractice, type LessonPosition, type PositionSource } from './select';
-import { DRILLS_PER_LESSON, type CourseFile, type DrillResult, type LessonRecord, type PositionRef, type UnitId } from './types';
+import { DRILLS_PER_LESSON, type CourseFile, type DrillResult, type LessonRecord, type LessonId, type PositionRef } from './types';
 
 export type LessonStage = 'intro' | 'example' | 'practice' | 'summary';
 
@@ -52,7 +52,7 @@ async function resumePractice(record: LessonRecord, since: number, keys: string[
  */
 export async function openLesson(
   course: CourseFile,
-  unit: UnitId,
+  unit: LessonId,
   record: LessonRecord | undefined,
   more: boolean,
   source = deviceSource(course.opening, unit),

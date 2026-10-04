@@ -8,7 +8,7 @@ import { isWin } from '../learn/themes';
 import { tradeOf } from '../learn/trade';
 import { shownLine } from '../learn/walkthrough';
 import { getLessons, playedGameIds } from '../progress/store';
-import { UNIT_IDS, positionKey, type CourseFile, type PositionRef, type UnitEntry, type UnitId } from './types';
+import { UNIT_IDS, positionKey, type CourseFile, type LessonId, type PositionRef, type UnitEntry, type UnitId } from './types';
 import { unitOfTheme } from './units';
 
 const MAX_EXAMPLES = 3;
@@ -357,7 +357,7 @@ export async function loadPosition(ref: PositionRef): Promise<LessonPosition | n
   }
 }
 
-export function deviceSource(opening: OpeningId, unit: UnitId): PositionSource {
+export function deviceSource(opening: OpeningId, unit: LessonId): PositionSource {
   const answered = new Set(getLessons(opening)[unit]?.drills.map((d) => d.key));
   const played = new Map<string, Set<string>>();
   const playedIn = (set: string) => {

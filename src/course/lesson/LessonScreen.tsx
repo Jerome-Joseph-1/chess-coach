@@ -12,7 +12,7 @@ import { navigate } from '../../router';
 import { lessonInfo } from '../lessonInfo';
 import { openLesson, type Answer, type LessonStage, type OpenedLesson } from '../open';
 import { morePractice } from '../path';
-import { positionKey, type CourseFile, type LessonId, type LessonPlace, type UnitId } from '../types';
+import { positionKey, type CourseFile, type LessonId, type LessonPlace } from '../types';
 import { useCourse } from '../useCourse';
 import { Example, type ExampleLayout } from './Example';
 import { Intro, Notice, Summary } from './Pages';
@@ -37,16 +37,13 @@ const NONE_LEFT = 'You have answered every practice position of this lesson.';
 
 const back = () => navigate('/course');
 
-/** The progress store and course helpers still name tactic units; an opening lesson's id works in them all the same. */
-const asUnit = (lesson: LessonId) => lesson as UnitId;
-
 /** The lesson as it opens: undefined while it loads, null when there is no lesson to give. */
 function useOpened(course: CourseFile | null | undefined, opening: OpeningId, unit: LessonId, round: number): OpenedLesson | null | undefined {
   const [opened, setOpened] = useState<{ round: number; lesson: OpenedLesson | null }>();
   useEffect(() => {
     if (course === undefined) return;
     let current = true;
-    const lesson = course ? openLesson(course, asUnit(unit), getLessons(opening)[unit], round > 0).catch(() => null) : Promise.resolve(null);
+    const lesson = course ? openLesson(course, unit, getLessons(opening)[unit], round > 0).catch(() => null) : Promise.resolve(null);
     void lesson.then((found) => current && setOpened({ round, lesson: found }));
     return () => {
       current = false;
@@ -100,18 +97,18 @@ function LessonRun({ opening, unit, more, course, opened, onMore }: LessonRunPro
   const teaching = useMemo(() => drill && practiceTeaching(unit, drill), [drill]);
 
   useEffect(() => {
-    if (stage === 'summary' && opened && !more) recordLessonDone(opening, asUnit(unit), Date.now());
+    if (stage === 'summary' && opened && !more) recordLessonDone(opening, unit, Date.now());
   }, [stage, opened]);
 
   function enter(next: LessonStage, place?: LessonPlace) {
-    if (place && !more) recordLessonPlace(opening, asUnit(unit), place);
+    if (place && !more) recordLessonPlace(opening, unit, place);
     setEntered(next);
     setLayout(LAYOUT_OF[next]);
   }
 
   function exampleDone({ drills }: OpenedLesson) {
     const at = Date.now();
-    recordLearned(opening, asUnit(unit), at);
+    recordLearned(opening, unit, at);
     enter(drills.length > 0 ? 'practice' : 'summary', { page: 'practice', since: at, drills: drills.map((d) => positionKey(d.ref)) });
   }
 
@@ -120,7 +117,7 @@ function LessonRun({ opening, unit, more, course, opened, onMore }: LessonRunPro
     const correct = result.verdict === 'found';
     const { ref } = position;
     const at = Date.now();
-    recordDrill(opening, asUnit(unit), { key: positionKey(ref), correct, at });
+    recordDrill(opening, unit, { key: positionKey(ref), correct, at });
     scheduleDrill({ opening, level: getSettings().levels[opening], drillSet: ref.set, gameId: ref.gameId, ply: ref.ply }, correct, at);
     setGiven([...given, { position, correct }]);
     if (given.length + 1 < lesson.drills.length) setLayout('ask');
@@ -130,7 +127,7 @@ function LessonRun({ opening, unit, more, course, opened, onMore }: LessonRunPro
   function body(lesson: OpenedLesson) {
     const { example, drills } = lesson;
     if (stage === 'summary') {
-      const count = morePractice(course, asUnit(unit), getLessons(opening)[unit]);
+      const count = morePractice(course, unit, getLessons(opening)[unit]);
       return (
         <Summary
           answers={answers}
