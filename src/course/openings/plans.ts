@@ -216,7 +216,7 @@ export const PLAN_LESSONS: Record<PlanLessonId, PlanLesson> = {
     opening: 'italian',
     kind: 'plan',
     title: 'The Italian idea',
-    line: 'Your bishop eyes f7. Get your pieces out and castle.',
+    line: 'Your bishop aims at f7. Get your pieces out and castle early.',
     intro:
       "In the Italian your bishop on c4 aims at f7, the weak pawn next to Black's king. Bring your pieces out quickly and castle early, so your king is safe before the fight starts.",
     spotTitle: 'How to play it',
