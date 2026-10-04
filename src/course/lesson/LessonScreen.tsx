@@ -92,10 +92,7 @@ export function LessonScreen({ opening, unit }: LessonScreenProps) {
 
   function body(lesson: OpenedLesson) {
     const { example, drills } = lesson;
-    if (stage === 'summary') {
-      const score = { right: answers.filter((a) => a.correct).length, total: answers.length };
-      return <Summary score={score} remember={lessonFor(example.game, example.turnIndex).remember} onContinue={back} />;
-    }
+    if (stage === 'summary') return <Summary answers={answers} remember={lessonFor(example.game, example.turnIndex).remember} onContinue={back} />;
     const position = stage === 'example' ? example : drills[given.length];
     return (
       <>

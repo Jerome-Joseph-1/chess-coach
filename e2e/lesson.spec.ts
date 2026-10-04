@@ -111,6 +111,7 @@ test('a practice position solved with a hint comes back on Today and is asked ag
   await expect(page.getByText('Solved with a hint')).toBeVisible();
   await continueButton(page).click();
   await expect(page.getByRole('heading', { name: '0 of 1' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'To review' })).toContainText('Practice 1');
   const missed = { opening: 'italian', level: 1400, gameId: 'italian-1400-0001', ply: 3, drillSet: 'italian-1400', type: 'pause', box: 0 };
   expect((await stored()).reviews).toEqual([{ ...missed, due: expect.any(Number) }]);
 
@@ -160,7 +161,7 @@ async function finishExample(page: Page) {
   await continueButton(page).click();
 }
 
-test('leaving a lesson keeps its place: it reopens on the same practice with the answers kept', async ({ page }) => {
+test('leaving a lesson keeps its place: it reopens on the same practice, and the summary lists the misses', async ({ page }) => {
   await twoPracticePositions(page);
   await page.goto('./#/lesson/italian/free-piece');
   await finishExample(page);
@@ -181,5 +182,8 @@ test('leaving a lesson keeps its place: it reopens on the same practice with the
   await expect(page.getByText('Solved with a hint')).toBeVisible();
   await continueButton(page).click();
   await expect(page.getByRole('heading', { name: '1 of 2' })).toBeVisible();
+  const missed = page.getByRole('region', { name: 'To review' });
+  await expect(missed.locator('li')).toHaveText(['Practice 2']);
+  await expect(missed).toContainText('It comes back for review on Today, starting tomorrow.');
   expect((await storedLesson(page, 'free-piece')).place).toBeUndefined();
 });

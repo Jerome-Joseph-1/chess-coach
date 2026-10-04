@@ -1,10 +1,12 @@
 import type { ComponentChildren } from 'preact';
 import { Dock, DockButton } from '../../pause/Dock';
 import { Remember } from '../../pause/steps/Result';
+import { MiniBoard } from '../../screens/home/MiniBoard';
 import { EmptyCard } from '../../screens/shared/EmptyCard';
 import { Icon } from '../../screens/shared/icons';
 import { UNIT_ICONS } from '../../screens/shared/unitIcons';
-import type { Score } from '../path';
+import type { Answer } from '../open';
+import type { LessonPosition } from '../select';
 import type { UnitId } from '../types';
 import { INTROS } from './intros';
 import '../../pause/pause.css';
@@ -63,13 +65,41 @@ export function Intro({ unit, action }: IntroProps) {
 }
 
 export interface SummaryProps {
-  score: Score;
+  answers: Answer[];
   remember: string;
   onContinue: () => void;
 }
 
-/** How the practice went, and the takeaway to bring into the next games. */
-export function Summary({ score, remember, onContinue }: SummaryProps) {
+/** The moves from the start of the game to a practice position. */
+function movesTo({ game, turnIndex }: LessonPosition): string[] {
+  return [...game.start, ...game.moves.slice(0, game.turns[turnIndex].ply)];
+}
+
+/** The practice positions missed, by number, and where they come back. */
+function Missed({ answers }: { answers: Answer[] }) {
+  const missed = answers.flatMap((answer, i) => (answer.correct ? [] : [{ number: i + 1, position: answer.position }]));
+  if (missed.length === 0) return null;
+  return (
+    <section class="lesson-missed rise-in" style={{ '--i': 1 }} aria-labelledby="missed-title">
+      <h3 id="missed-title" class="eyebrow">
+        To review
+      </h3>
+      <ul>
+        {missed.map(({ number, position }) => (
+          <li key={number}>
+            <MiniBoard moves={movesTo(position)} side={position.game.side} />
+            <span>Practice {number}</span>
+          </li>
+        ))}
+      </ul>
+      <p>{missed.length === 1 ? 'It comes' : 'They come'} back for review on Today, starting tomorrow.</p>
+    </section>
+  );
+}
+
+/** How the practice went, the positions to review, and the takeaway to bring into the next games. */
+export function Summary({ answers, remember, onContinue }: SummaryProps) {
+  const right = answers.filter((a) => a.correct).length;
   return (
     <Page label="Lesson done" action={{ label: 'Continue', onClick: onContinue }}>
       <div class="lesson-hero rise-in">
@@ -77,10 +107,10 @@ export function Summary({ score, remember, onContinue }: SummaryProps) {
           <Icon name="check" size={28} />
         </span>
         <p class="eyebrow">Lesson done</p>
-        {score.total > 0 ? (
+        {answers.length > 0 ? (
           <>
             <h2 class="lesson-score">
-              {score.right} of {score.total}
+              {right} of {answers.length}
             </h2>
             <p class="lesson-intro">Practice positions you found without a hint.</p>
           </>
@@ -88,6 +118,7 @@ export function Summary({ score, remember, onContinue }: SummaryProps) {
           <p class="lesson-intro">You will meet this pattern again in your next games.</p>
         )}
       </div>
+      <Missed answers={answers} />
       <Remember text={remember} />
     </Page>
   );

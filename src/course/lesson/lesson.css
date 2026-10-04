@@ -96,6 +96,39 @@
   font-weight: 600;
 }
 
+/* The practice positions missed, as small boards, and where they come back. */
+.lesson-missed {
+  display: grid;
+  gap: 12px;
+}
+.lesson-missed h3 {
+  color: var(--text-muted);
+}
+.lesson-missed ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lesson-missed li {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font: var(--text-caption);
+}
+.lesson-missed .mini-board {
+  width: 64px;
+  height: 64px;
+}
+.lesson-missed p {
+  margin: 0;
+  color: var(--text);
+  font: var(--text-body);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lesson-icon {
     animation-name: fade-in;
