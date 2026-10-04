@@ -58,7 +58,12 @@ export interface LessonRecord {
   /** The practice positions were finished. */
   doneAt?: number;
   drills: DrillResult[];
+  /** Where the user left the lesson before its summary, so it opens there again. */
+  place?: LessonPlace;
 }
+
+/** An unfinished lesson's page: the worked example, or practice begun at `since` on the positions `drills`, by key. */
+export type LessonPlace = { page: 'example' } | { page: 'practice'; since: number; drills: string[] };
 
 export type Lessons = Partial<Record<UnitId, LessonRecord>>;
 

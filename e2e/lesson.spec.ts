@@ -142,3 +142,44 @@ test('the back button returns to the course', async ({ page }) => {
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(page).toHaveURL(/#\/course$/);
 });
+
+/** Free pieces with a second practice position: the queen trade at ply 7 of the same game. */
+async function twoPracticePositions(page: Page) {
+  await page.route('**/content/italian-1400/course.json', async (route) => {
+    const course = await (await route.fetch()).json();
+    course.units[0].drills.push({ set: 'italian-1400', gameId: 'italian-1400-0001', ply: 7, findShare: 0.4 });
+    await route.fulfill({ json: course });
+  });
+}
+
+async function finishExample(page: Page) {
+  await showExample(page).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await tapSquares(page, 'e1', 'e6');
+  await expect(rememberCard(page)).toBeVisible({ timeout: 10_000 });
+  await continueButton(page).click();
+}
+
+test('leaving a lesson keeps its place: it reopens on the same practice with the answers kept', async ({ page }) => {
+  await twoPracticePositions(page);
+  await page.goto('./#/lesson/italian/free-piece');
+  await finishExample(page);
+  await expect(page.getByText('Practice 1 of 2')).toBeVisible();
+  await tapSquares(page, 'd4', 'e5');
+  await expect(page.getByText('You found the move')).toBeVisible();
+  await continueButton(page).click();
+  await expect(page.getByText('Practice 2 of 2')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page).toHaveURL(/#\/course$/);
+  await page.getByRole('link', { name: 'Today' }).click();
+  await page.getByRole('button', { name: 'Continue lesson' }).click();
+  await expect(page.getByText('Practice 2 of 2')).toBeVisible();
+
+  await hintButton(page).click();
+  await tapSquares(page, 'd1', 'd8');
+  await expect(page.getByText('Solved with a hint')).toBeVisible();
+  await continueButton(page).click();
+  await expect(page.getByRole('heading', { name: '1 of 2' })).toBeVisible();
+  expect((await storedLesson(page, 'free-piece')).place).toBeUndefined();
+});

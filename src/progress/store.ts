@@ -1,5 +1,5 @@
 import { setKey } from '../content/loader';
-import type { DrillResult, LessonRecord, Lessons, UnitId } from '../course/types';
+import type { DrillResult, LessonPlace, LessonRecord, Lessons, UnitId } from '../course/types';
 import type { Depth, GameSummary, Level, MomentResult, OpeningId, ReviewItem } from '../content/types';
 import { createBackup, parseBackup } from './backup';
 import { dayKey, daysBetween } from './days';
@@ -193,8 +193,16 @@ export function recordDrill(opening: OpeningId, unit: UnitId, result: DrillResul
   persist();
 }
 
+/** Remembers the page of an unfinished lesson, so it opens there again. */
+export function recordLessonPlace(opening: OpeningId, unit: UnitId, place: LessonPlace): void {
+  lessonRecord(opening, unit).place = place;
+  persist();
+}
+
 export function recordLessonDone(opening: OpeningId, unit: UnitId, at: number): void {
-  lessonRecord(opening, unit).doneAt = at;
+  const record = lessonRecord(opening, unit);
+  record.doneAt = at;
+  delete record.place;
   persist();
 }
 

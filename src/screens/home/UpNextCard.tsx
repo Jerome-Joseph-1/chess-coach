@@ -49,7 +49,7 @@ function LessonCard({ opening, level, status, unit, number }: UpNextCardProps & 
         </div>
       </div>
       <Button size="lg" onClick={() => navigate(lessonPath(opening, unit))}>
-        Start lesson
+        {getLessons(opening)[unit]?.place ? 'Continue lesson' : 'Start lesson'}
       </Button>
       {status === 'ready' && (
         <a class="up-next-instead" href={`#${playPath(opening, level)}`}>

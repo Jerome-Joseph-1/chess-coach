@@ -369,7 +369,7 @@ export async function loadPosition(ref: PositionRef): Promise<LessonPosition | n
   }
 }
 
-function deviceSource(opening: OpeningId, unit: UnitId): PositionSource {
+export function deviceSource(opening: OpeningId, unit: UnitId): PositionSource {
   const answered = new Set(getLessons(opening)[unit]?.drills.map((d) => d.key));
   const played = new Map<string, Set<string>>();
   const playedIn = (set: string) => {
@@ -385,16 +385,24 @@ function deviceSource(opening: OpeningId, unit: UnitId): PositionSource {
   };
 }
 
+/** Up to `count` of these practice positions that load: from games not played or practised yet and not answered in this unit, else from ones seen before. */
+export function pickPractice(refs: PositionRef[], count: number, source: PositionSource): Promise<LessonPosition[]> {
+  return firstLoaded(practiceOrder(refs, source.seen), count, source.load);
+}
+
+/** The unit's worked example: the first candidate that loads. */
+export async function pickExample(entry: UnitEntry, source: PositionSource): Promise<LessonPosition | null> {
+  const [example] = await firstLoaded(entry.examples, 1, source.load);
+  return example ?? null;
+}
+
 /**
- * The unit's worked example, the first candidate that loads, and up to four practice positions:
- * from games not played or practised yet and not answered in this unit, else from ones seen before.
+ * The unit's worked example and up to four practice positions.
  * Null when the course has no such unit or none of its examples loads.
  */
 export async function pickLesson(course: CourseFile, unit: UnitId, source = deviceSource(course.opening, unit)): Promise<LessonPositions | null> {
   const entry = course.units.find((u) => u.id === unit);
-  if (!entry) return null;
-  const [example] = await firstLoaded(entry.examples, 1, source.load);
+  const example = entry && (await pickExample(entry, source));
   if (!example) return null;
-  const drills = await firstLoaded(practiceOrder(entry.drills, source.seen), DRILLS_PER_LESSON, source.load);
-  return { example, drills };
+  return { example, drills: await pickPractice(entry.drills, DRILLS_PER_LESSON, source) };
 }

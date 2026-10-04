@@ -7,10 +7,10 @@ import { CrossFade } from '../../pause/CrossFade';
 import { boardSize } from '../../pause/fit';
 import type { PauseOutcome, PauseStage } from '../../pause/PauseSheet';
 import { Icon } from '../../pause/steps/icons';
-import { getSettings, recordDrill, recordLearned, recordLessonDone, scheduleDrill } from '../../progress/store';
+import { getLessons, getSettings, recordDrill, recordLearned, recordLessonDone, recordLessonPlace, scheduleDrill } from '../../progress/store';
 import { navigate } from '../../router';
-import { pickLesson, type LessonPositions } from '../select';
-import { positionKey, type UnitId } from '../types';
+import { openLesson, type Answer, type LessonStage, type OpenedLesson } from '../open';
+import { positionKey, type LessonPlace, type UnitId } from '../types';
 import { UNITS } from '../units';
 import { useCourse } from '../useCourse';
 import { Example, type ExampleLayout } from './Example';
@@ -24,75 +24,79 @@ export interface LessonScreenProps {
   unit: UnitId;
 }
 
-type Stage = 'intro' | 'example' | 'practice' | 'summary';
 /** What the screen shows, which sets the board's size, as on the game screen. */
 type Layout = 'intro' | ExampleLayout | PauseStage | 'summary';
 
-const LAYOUT_OF: Record<Stage, Layout> = { intro: 'intro', example: 'example', practice: 'ask', summary: 'summary' };
+const LAYOUT_OF: Record<LessonStage, Layout> = { intro: 'intro', example: 'example', practice: 'ask', summary: 'summary' };
 
-/** The unit's example and practice positions: undefined while they load, null when there is no lesson to give. */
-function useLesson(opening: OpeningId, unit: UnitId): LessonPositions | null | undefined {
+const back = () => navigate('/course');
+
+/** The lesson as it opens: undefined while it loads, null when there is no lesson to give. */
+function useOpened(opening: OpeningId, unit: UnitId): OpenedLesson | null | undefined {
   const course = useCourse(opening, getSettings().levels[opening]);
-  const [lesson, setLesson] = useState<LessonPositions | null>();
+  const [opened, setOpened] = useState<OpenedLesson | null>();
   useEffect(() => {
     if (course === undefined) return;
     let current = true;
-    const picked = course ? pickLesson(course, unit).catch(() => null) : Promise.resolve(null);
-    void picked.then((found) => current && setLesson(found));
+    const lesson = course ? openLesson(course, unit, getLessons(opening)[unit]).catch(() => null) : Promise.resolve(null);
+    void lesson.then((found) => current && setOpened(found));
     return () => {
       current = false;
     };
   }, [course]);
-  return lesson;
+  return opened;
 }
 
-const back = () => navigate('/course');
+/** The page a lesson opens on, known before it loads: the intro, or the page the user left. */
+function startingStage(opening: OpeningId, unit: UnitId): LessonStage {
+  return getLessons(opening)[unit]?.place?.page ?? 'intro';
+}
 
-/** A unit's lesson: what the pattern is, a worked example, then practice positions and a summary. */
+/** A unit's lesson: what the pattern is, a worked example, then practice positions and a summary. Leaving keeps the page for next time. */
 export function LessonScreen({ opening, unit }: LessonScreenProps) {
-  const lesson = useLesson(opening, unit);
-  const [stage, setStage] = useState<Stage>('intro');
-  const [layout, setLayout] = useState<Layout>('intro');
-  const [drillAt, setDrillAt] = useState(0);
-  const [results, setResults] = useState<boolean[]>([]);
+  const opened = useOpened(opening, unit);
+  const [entered, setEntered] = useState<LessonStage | null>(null);
+  const [layout, setLayout] = useState<Layout | null>(null);
+  const [given, setGiven] = useState<Answer[]>([]);
   const [board, setBoard] = useState<BoardController | null>(null);
+  const stage = entered ?? opened?.stage ?? startingStage(opening, unit);
+  const answers = [...(opened?.answers ?? []), ...given];
 
   useEffect(() => {
-    if (stage === 'summary') recordLessonDone(opening, unit, Date.now());
-  }, [stage]);
+    if (stage === 'summary' && opened) recordLessonDone(opening, unit, Date.now());
+  }, [stage, opened]);
 
-  function enter(next: Stage) {
-    setStage(next);
+  function enter(next: LessonStage, place?: LessonPlace) {
+    if (place) recordLessonPlace(opening, unit, place);
+    setEntered(next);
     setLayout(LAYOUT_OF[next]);
   }
 
-  function exampleDone(drills: number) {
-    recordLearned(opening, unit, Date.now());
-    enter(drills > 0 ? 'practice' : 'summary');
+  function exampleDone({ drills }: OpenedLesson) {
+    const at = Date.now();
+    recordLearned(opening, unit, at);
+    enter(drills.length > 0 ? 'practice' : 'summary', { page: 'practice', since: at, drills: drills.map((d) => positionKey(d.ref)) });
   }
 
-  function drillDone({ drills }: LessonPositions, result: PauseOutcome) {
+  function drillDone(lesson: OpenedLesson, result: PauseOutcome) {
+    const position = lesson.drills[given.length];
     const correct = result.verdict === 'found';
-    const { ref } = drills[drillAt];
+    const { ref } = position;
     const at = Date.now();
     recordDrill(opening, unit, { key: positionKey(ref), correct, at });
     scheduleDrill({ opening, level: getSettings().levels[opening], drillSet: ref.set, gameId: ref.gameId, ply: ref.ply }, correct, at);
-    setResults((all) => [...all, correct]);
-    if (drillAt + 1 < drills.length) {
-      setDrillAt(drillAt + 1);
-      setLayout('ask');
-    } else {
-      enter('summary');
-    }
+    setGiven([...given, { position, correct }]);
+    if (given.length + 1 < lesson.drills.length) setLayout('ask');
+    else enter('summary');
   }
 
-  function body(found: LessonPositions) {
-    const { example, drills } = found;
+  function body(lesson: OpenedLesson) {
+    const { example, drills } = lesson;
     if (stage === 'summary') {
-      const score = { right: results.filter(Boolean).length, total: results.length };
+      const score = { right: answers.filter((a) => a.correct).length, total: answers.length };
       return <Summary score={score} remember={lessonFor(example.game, example.turnIndex).remember} onContinue={back} />;
     }
-    const position = stage === 'example' ? example : drills[drillAt];
+    const position = stage === 'example' ? example : drills[given.length];
     return (
       <>
         <div class="game-board">
@@ -100,23 +104,25 @@ export function LessonScreen({ opening, unit }: LessonScreenProps) {
         </div>
         <section class="game-slot">
           {board && stage === 'example' && (
-            <Example board={board} position={example} onLayout={setLayout} onDone={() => exampleDone(drills.length)} />
+            <Example board={board} position={example} onLayout={setLayout} onDone={() => exampleDone(lesson)} />
           )}
           {board && stage === 'practice' && (
-            <Practice key={drillAt} board={board} position={position} onStage={setLayout} onDone={(result) => drillDone(found, result)} />
+            <Practice key={given.length} board={board} position={position} onStage={setLayout} onDone={(result) => drillDone(lesson, result)} />
           )}
         </section>
       </>
     );
   }
 
+  const asked = answers.length + 1;
+  const total = (opened?.answers.length ?? 0) + (opened?.drills.length ?? 0);
   const subtitle = {
     intro: 'Lesson',
     example: 'Worked example',
-    practice: `Practice ${drillAt + 1} of ${lesson?.drills.length ?? 0}`,
+    practice: opened ? `Practice ${asked} of ${total}` : 'Practice',
     summary: 'Summary',
   }[stage];
-  const mode = lesson === null ? 'intro' : layout;
+  const mode = opened === null ? 'intro' : (layout ?? LAYOUT_OF[stage]);
   return (
     <main class="game lesson" data-mode={mode} data-size={boardSize(mode)}>
       <header class="game-top">
@@ -131,12 +137,14 @@ export function LessonScreen({ opening, unit }: LessonScreenProps) {
         </div>
         <span class="game-top-end" aria-hidden="true" />
       </header>
-      {lesson === null ? (
+      {opened === null ? (
         <Notice text="This lesson could not be loaded. Check your connection, then try again." action={{ label: 'Back to the course', onClick: back }} />
       ) : stage === 'intro' ? (
-        <Intro unit={unit} action={lesson && { label: 'Show me an example', onClick: () => enter('example') }} />
+        <Intro unit={unit} action={opened && { label: 'Show me an example', onClick: () => enter('example', { page: 'example' }) }} />
+      ) : opened ? (
+        body(opened)
       ) : (
-        body(lesson!)
+        <section class="lesson-page" aria-busy="true" />
       )}
     </main>
   );

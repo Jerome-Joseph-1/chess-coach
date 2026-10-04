@@ -1,5 +1,5 @@
 import { LEVELS, OPENINGS } from '../content/catalog';
-import { UNIT_IDS, type DrillResult, type LessonRecord, type Lessons, type UnitId } from '../course/types';
+import { UNIT_IDS, type DrillResult, type LessonPlace, type LessonRecord, type Lessons, type UnitId } from '../course/types';
 import type { Depth, GameSummary, Kind, Level, MomentResult, OpeningId, ReviewItem, Settings, StepOutcome } from '../content/types';
 import { DEPTHS, type DepthState, type WindowEntry } from './depth';
 import { BOXES } from './srs';
@@ -226,11 +226,20 @@ function parseDrill(raw: unknown): DrillResult | null {
   return { key: raw.key, correct: raw.correct, at: raw.at };
 }
 
+function parsePlace(raw: unknown): LessonPlace | null {
+  if (!isRecord(raw)) return null;
+  if (raw.page === 'example') return { page: 'example' };
+  if (raw.page !== 'practice' || !isNumber(raw.since)) return null;
+  return { page: 'practice', since: raw.since, drills: list(raw.drills, (key) => (typeof key === 'string' ? key : null)) };
+}
+
 function parseLesson(raw: unknown): LessonRecord | null {
   if (!isRecord(raw)) return null;
   const lesson: LessonRecord = { drills: list(raw.drills, parseDrill) };
   if (isNumber(raw.learnedAt)) lesson.learnedAt = raw.learnedAt;
   if (isNumber(raw.doneAt)) lesson.doneAt = raw.doneAt;
+  const place = parsePlace(raw.place);
+  if (place) lesson.place = place;
   return lesson;
 }
 

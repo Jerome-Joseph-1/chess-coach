@@ -131,6 +131,22 @@ describe('lessons, opening notes and answer flags', () => {
     expect(reloaded.playedGameIds('italian', 1700)).toEqual([]);
   });
 
+  it('keeps the page of an unfinished lesson across a reload, and forgets it once the lesson is done', async () => {
+    const store = await openStore();
+    store.recordLessonPlace('italian', 'fork', { page: 'example' });
+    expect((await openStore()).getLessons('italian').fork?.place).toEqual({ page: 'example' });
+    const practice = { page: 'practice' as const, since: 20, drills: ['italian-1400/italian-1400-0007:21'] };
+    store.recordLessonPlace('italian', 'fork', practice);
+    expect((await openStore()).getLessons('italian').fork?.place).toEqual(practice);
+    store.recordLessonDone('italian', 'fork', 30);
+    expect((await openStore()).getLessons('italian').fork).toEqual({ doneAt: 30, drills: [] });
+  });
+
+  it('drops a lesson page it cannot read', async () => {
+    storage.data.set('cc.progress.v1', JSON.stringify({ v: 1, lessons: { italian: { fork: { drills: [], place: { page: 'practice' } } } } }));
+    expect((await openStore()).getLessons('italian').fork).toEqual({ drills: [] });
+  });
+
   it('counts how often each opening note was shown', async () => {
     const store = await openStore();
     store.markNoteSeen('two-knights');
