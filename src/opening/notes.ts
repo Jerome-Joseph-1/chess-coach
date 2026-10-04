@@ -387,7 +387,7 @@ const ITALIAN: Family[] = [
     lines: [`${IT} Nf6 Ng5`],
     plan: "4.Ng5 hits f7 twice. After 4...d5 5.exd5 Na5 you can keep an extra pawn, but Black's pieces get out faster.",
     notes: {
-      Bc5: '4...Bc5 ignores f7 and hits f2, asking for a wild fight. 5.Bxf7+ is the safe way to take; 5.Nxf7 gets very risky.',
+      Bc5: '4...Bc5 ignores f7 and hits f2. 5.Nxf7 is best, hitting queen and rook; meet 5...Bxf2+ with 6.Kf1, not Kxf2.',
       'Bc5 Bxf7+': "5.Bxf7+ grabs the pawn with check. Black's king must move and can no longer castle.",
       'Bc5 Nxf7': '5.Nxf7 attacks queen and rook at once, but 5...Bxf2+ drags your king out into the open.',
       'Bc5 Nxf7 Bxf2+': '5...Bxf2+ is the point. 6.Kxf2 Nxe4+ exposes your king; 6.Kf1 avoids the knight check.',
@@ -773,7 +773,7 @@ const ITALIAN: Family[] = [
       'O-O Nxf3+': '4...Nxf3+ trades knights. Take back 5.Qxf3: your queen comes out with an eye on f7.',
       'O-O Nxf3+ Qxf3': '5.Qxf3 recaptures, and your queen and bishop both aim at f7. Black must guard it; ...Qf6 offers a trade.',
       'O-O Nxf3+ Qxf3 Qf6': '5...Qf6 offers a queen trade. Step aside with 6.Qg3 or 6.Qe2: you have more pieces out, so keep the queens on.',
-      c3: '4.c3 kicks the knight. If 4...Nxf3+ 5.Qxf3, your queen joins the game.',
+      c3: '4.c3 kicks the knight, but Black just trades with 4...Nxf3+ and the game is about level. 4.Nxd4 was stronger.',
     },
   },
   {
