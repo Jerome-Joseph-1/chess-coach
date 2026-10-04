@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { Board } from '../../board/Board';
 import type { BoardController } from '../../board/types';
 import type { OpeningId } from '../../content/types';
-import { lessonFor } from '../../learn';
 import { CrossFade } from '../../pause/CrossFade';
 import { boardSize } from '../../pause/fit';
 import type { PauseOutcome, PauseStage } from '../../pause/PauseSheet';
@@ -10,20 +9,22 @@ import { Icon } from '../../pause/steps/icons';
 import { OPENING_SHORT } from '../../screens/shared/labels';
 import { getLessons, getSettings, recordDrill, recordLearned, recordLessonDone, recordLessonPlace, scheduleDrill } from '../../progress/store';
 import { navigate } from '../../router';
+import { lessonInfo } from '../lessonInfo';
 import { openLesson, type Answer, type LessonStage, type OpenedLesson } from '../open';
 import { morePractice } from '../path';
-import { positionKey, type CourseFile, type LessonPlace, type UnitId } from '../types';
-import { UNITS } from '../units';
+import { positionKey, type CourseFile, type LessonId, type LessonPlace, type UnitId } from '../types';
 import { useCourse } from '../useCourse';
 import { Example, type ExampleLayout } from './Example';
 import { Intro, Notice, Summary } from './Pages';
 import { Practice } from './Practice';
+import { lessonRemember, openingExample, practiceTeaching } from './teaching';
 import '../../screens/game.css';
 import './lesson.css';
 
 export interface LessonScreenProps {
   opening: OpeningId;
-  unit: UnitId;
+  /** A tactic unit, or one of the opening's own lessons. */
+  unit: LessonId;
   /** A round of practice positions not answered before, for a lesson already done. */
   more?: boolean;
 }
@@ -36,13 +37,16 @@ const NONE_LEFT = 'You have answered every practice position of this lesson.';
 
 const back = () => navigate('/course');
 
+/** The progress store and course helpers still name tactic units; an opening lesson's id works in them all the same. */
+const asUnit = (lesson: LessonId) => lesson as UnitId;
+
 /** The lesson as it opens: undefined while it loads, null when there is no lesson to give. */
-function useOpened(course: CourseFile | null | undefined, opening: OpeningId, unit: UnitId, round: number): OpenedLesson | null | undefined {
+function useOpened(course: CourseFile | null | undefined, opening: OpeningId, unit: LessonId, round: number): OpenedLesson | null | undefined {
   const [opened, setOpened] = useState<{ round: number; lesson: OpenedLesson | null }>();
   useEffect(() => {
     if (course === undefined) return;
     let current = true;
-    const lesson = course ? openLesson(course, unit, getLessons(opening)[unit], round > 0).catch(() => null) : Promise.resolve(null);
+    const lesson = course ? openLesson(course, asUnit(unit), getLessons(opening)[unit], round > 0).catch(() => null) : Promise.resolve(null);
     void lesson.then((found) => current && setOpened({ round, lesson: found }));
     return () => {
       current = false;
@@ -52,7 +56,7 @@ function useOpened(course: CourseFile | null | undefined, opening: OpeningId, un
 }
 
 /** The page a lesson opens on, known before it loads: the intro, or the page the user left. */
-function startingStage(opening: OpeningId, unit: UnitId, more: boolean): LessonStage {
+function startingStage(opening: OpeningId, unit: LessonId, more: boolean): LessonStage {
   return more ? 'practice' : (getLessons(opening)[unit]?.place?.page ?? 'intro');
 }
 
@@ -76,7 +80,7 @@ export function LessonScreen({ opening, unit, more = false }: LessonScreenProps)
 
 interface LessonRunProps {
   opening: OpeningId;
-  unit: UnitId;
+  unit: LessonId;
   more: boolean;
   course: CourseFile | null;
   opened: OpenedLesson | null | undefined;
@@ -91,20 +95,23 @@ function LessonRun({ opening, unit, more, course, opened, onMore }: LessonRunPro
   const [board, setBoard] = useState<BoardController | null>(null);
   const stage = entered ?? opened?.stage ?? startingStage(opening, unit, more);
   const answers = [...(opened?.answers ?? []), ...given];
+  const ownExample = useMemo(() => opened && openingExample(unit, opened.example), [opened]);
+  const drill = stage === 'practice' ? opened?.drills[given.length] : undefined;
+  const teaching = useMemo(() => drill && practiceTeaching(unit, drill), [drill]);
 
   useEffect(() => {
-    if (stage === 'summary' && opened && !more) recordLessonDone(opening, unit, Date.now());
+    if (stage === 'summary' && opened && !more) recordLessonDone(opening, asUnit(unit), Date.now());
   }, [stage, opened]);
 
   function enter(next: LessonStage, place?: LessonPlace) {
-    if (place && !more) recordLessonPlace(opening, unit, place);
+    if (place && !more) recordLessonPlace(opening, asUnit(unit), place);
     setEntered(next);
     setLayout(LAYOUT_OF[next]);
   }
 
   function exampleDone({ drills }: OpenedLesson) {
     const at = Date.now();
-    recordLearned(opening, unit, at);
+    recordLearned(opening, asUnit(unit), at);
     enter(drills.length > 0 ? 'practice' : 'summary', { page: 'practice', since: at, drills: drills.map((d) => positionKey(d.ref)) });
   }
 
@@ -113,7 +120,7 @@ function LessonRun({ opening, unit, more, course, opened, onMore }: LessonRunPro
     const correct = result.verdict === 'found';
     const { ref } = position;
     const at = Date.now();
-    recordDrill(opening, unit, { key: positionKey(ref), correct, at });
+    recordDrill(opening, asUnit(unit), { key: positionKey(ref), correct, at });
     scheduleDrill({ opening, level: getSettings().levels[opening], drillSet: ref.set, gameId: ref.gameId, ply: ref.ply }, correct, at);
     setGiven([...given, { position, correct }]);
     if (given.length + 1 < lesson.drills.length) setLayout('ask');
@@ -123,12 +130,12 @@ function LessonRun({ opening, unit, more, course, opened, onMore }: LessonRunPro
   function body(lesson: OpenedLesson) {
     const { example, drills } = lesson;
     if (stage === 'summary') {
-      const count = morePractice(course, unit, getLessons(opening)[unit]);
+      const count = morePractice(course, asUnit(unit), getLessons(opening)[unit]);
       return (
         <Summary
           answers={answers}
           more={more}
-          remember={lessonFor(example.game, example.turnIndex).remember}
+          remember={lessonRemember(unit, example)}
           moreAction={count > 0 ? { label: `Practice ${count} more`, onClick: onMore } : undefined}
           onContinue={back}
         />
@@ -143,10 +150,24 @@ function LessonRun({ opening, unit, more, course, opened, onMore }: LessonRunPro
         </div>
         <section class="game-slot">
           {board && stage === 'example' && (
-            <Example board={board} position={example} onLayout={setLayout} onDone={() => exampleDone(lesson)} />
+            <Example
+              board={board}
+              position={example}
+              beats={ownExample?.beats}
+              label={ownExample?.label}
+              onLayout={setLayout}
+              onDone={() => exampleDone(lesson)}
+            />
           )}
           {board && stage === 'practice' && (
-            <Practice key={given.length} board={board} position={position} onStage={setLayout} onDone={(result) => drillDone(lesson, result)} />
+            <Practice
+              key={given.length}
+              board={board}
+              position={position}
+              teaching={teaching}
+              onStage={setLayout}
+              onDone={(result) => drillDone(lesson, result)}
+            />
           )}
         </section>
       </>
@@ -169,7 +190,7 @@ function LessonRun({ opening, unit, more, course, opened, onMore }: LessonRunPro
           <Icon name="chevron-left" />
         </button>
         <div class="game-heading">
-          <h1 class="game-title">{UNITS[unit].title}</h1>
+          <h1 class="game-title">{lessonInfo(unit).title}</h1>
           <p class="game-sub">
             <CrossFade value={subtitle}>{subtitle}</CrossFade>
           </p>

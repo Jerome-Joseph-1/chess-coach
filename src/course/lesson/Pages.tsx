@@ -4,11 +4,10 @@ import { Remember } from '../../pause/steps/Result';
 import { MiniBoard } from '../../screens/home/MiniBoard';
 import { EmptyCard } from '../../screens/shared/EmptyCard';
 import { Icon } from '../../screens/shared/icons';
-import { UNIT_ICONS } from '../../screens/shared/unitIcons';
+import { lessonInfo } from '../lessonInfo';
 import type { Answer } from '../open';
 import type { LessonPosition } from '../select';
-import type { UnitId } from '../types';
-import { INTROS } from './intros';
+import type { LessonId } from '../types';
 import '../../pause/pause.css';
 
 interface Action {
@@ -46,25 +45,25 @@ function Page({ label, action, secondary, children }: PageProps) {
 }
 
 export interface IntroProps {
-  unit: UnitId;
+  unit: LessonId;
   /** "Show me an example", or nothing while the lesson loads. */
   action?: PageProps['action'];
 }
 
-/** What the pattern is and how to spot it, before the worked example; the nav bar already names the lesson. */
+/** What the lesson is about and how to use it, before the worked example; the nav bar already names the lesson. */
 export function Intro({ unit, action }: IntroProps) {
-  const { intro, spot } = INTROS[unit];
+  const { intro, spot, spotTitle, icon } = lessonInfo(unit);
   return (
     <Page label="About this pattern" action={action}>
       <div class="lesson-hero rise-in">
         <span class="tile lesson-icon" aria-hidden="true">
-          <Icon name={UNIT_ICONS[unit]} size={28} />
+          <Icon name={icon} size={28} />
         </span>
         <p class="lesson-intro">{intro}</p>
       </div>
       <section class="lesson-spot rise-in" style={{ '--i': 2 }} aria-labelledby="spot-title">
         <h3 id="spot-title" class="eyebrow">
-          How to spot it
+          {spotTitle}
         </h3>
         <ol>
           {spot.map((item) => (
