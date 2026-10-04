@@ -77,11 +77,11 @@ test.describe('Course', () => {
     await expect(page.getByRole('region', { name: 'Lessons' })).toHaveCount(0);
   });
 
-  test('the lesson address only takes a known opening and unit', async ({ page }) => {
-    await page.goto('./#/lesson/italian/forks');
-    await expect(page.getByRole('heading', { name: 'Today', level: 1 })).toBeVisible();
-    await page.goto('./#/lesson/sicilian/fork');
-    await expect(page.getByRole('heading', { name: 'Today', level: 1 })).toBeVisible();
+  test('the lesson address only takes a known opening and one of its lessons', async ({ page }) => {
+    for (const address of ['italian/forks', 'sicilian/fork', 'italian/caro-kann-c5', 'caro-kann/italian-ng5']) {
+      await page.goto(`./#/lesson/${address}`);
+      await expect(page.getByRole('heading', { name: 'Today', level: 1 })).toBeVisible();
+    }
   });
 });
 
@@ -139,5 +139,47 @@ test.describe('Today with the course', () => {
     const card = page.getByRole('region', { name: 'Caro-Kann Defense' });
     await expect(card.getByRole('button', { name: 'Coming soon' })).toBeDisabled();
     await expect(page.getByRole('link', { name: 'Start a game instead' })).toHaveCount(0);
+  });
+});
+
+test.describe('Opening lessons in the path', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  /** The test course with the five Italian lessons, each taught from a position of the test games. */
+  async function withOpeningLessons(page: Page) {
+    await page.route('**/content/italian-1400/course.json', async (route) => {
+      const course = await (await route.fetch()).json();
+      const example = { set: 'italian-1400', gameId: 'italian-1400-0002', ply: 35, findShare: 0.5 };
+      const ids = ['italian-idea', 'italian-centre', 'italian-slow', 'italian-ng5', 'italian-traps'];
+      course.units.push(...ids.map((id) => ({ id, examples: [example], drills: [] })));
+      await route.fulfill({ json: course });
+    });
+  }
+
+  test("put the opening's first lesson first and the next after every two others, keeping lessons done", async ({ page }) => {
+    await withOpeningLessons(page);
+    await seed(page, progress({ 'free-piece': done(Date.now() - DAY) }));
+    await page.goto('./#/course');
+    const lessons = page.getByRole('region', { name: 'Lessons' });
+    await expect(lessons.getByText('1 of 8 done')).toBeVisible();
+    const rows = lessons.getByRole('listitem');
+    await expect(rows).toHaveCount(8);
+    await expect(rows.nth(0)).toContainText('Next');
+    await expect(rows.nth(1)).toContainText('Free pieces');
+    await expect(rows.nth(1)).toContainText('Done');
+    await expect(rows.nth(2)).toContainText('Pins');
+    await expect(rows.nth(4)).toContainText('Traps');
+    const links = lessons.getByRole('link');
+    await expect(links).toHaveCount(2);
+    await expect(links.nth(0)).toHaveAttribute('href', '#/lesson/italian/italian-idea');
+    await expect(links.nth(1)).toHaveAttribute('href', '#/lesson/italian/free-piece');
+  });
+
+  test('number the lessons on Today in path order', async ({ page }) => {
+    const lessonAt = Date.now() - DAY;
+    await withOpeningLessons(page);
+    await seed(page, progress({ 'italian-idea': done(lessonAt - DAY), 'free-piece': done(lessonAt) }, [lessonAt + 1000, lessonAt + 2000]));
+    await page.goto('./');
+    await expect(page.getByRole('region', { name: 'Pins' }).getByText('Up next · Lesson 3')).toBeVisible();
   });
 });
