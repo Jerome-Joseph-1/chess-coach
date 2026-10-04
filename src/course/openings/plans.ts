@@ -83,9 +83,9 @@ const italianSlow: PlanRule = {
       // Nothing stands between the rook and e4.
       case 'Re1':
         return calm(move, board) && !board.get('e2') && !board.get('e3');
-      // A pawn attacks the bishop on c4, and from b3 it attacks the pawn on f7; your king has not castled long.
+      // Black's pawn on b5 attacks the bishop on c4, and from b3 it attacks the pawn on f7; your king has not castled long.
       case 'Bb3': {
-        const kicked = board.attackers('c4', 'b').some((s) => pawnOn(board, s, 'b'));
+        const kicked = pawnOn(board, 'b5', 'b');
         const shortSide = isPiece(board, 'g1', 'k', 'w') || isPiece(board, 'e1', 'k', 'w');
         return kicked && shortSide && pawnOn(board, 'f7', 'b') && attacksAfter(move, 'f7');
       }
@@ -199,26 +199,26 @@ const ITALIAN_WHY: Record<string, string> = {
   d4: 'd4 attacks the pawn on e5, and your pawn on c3 backs it up. Now you have two pawns side by side in the centre.',
   d3: 'd3 guards your pawn on e4 against the knight on f6, and it opens the way for your bishop on c1.',
   Re1: 'Re1 puts your rook right behind your pawn on e4. Now your rook and your pawn on d3 both guard it.',
-  Bb3: "Bb3 steps your bishop away from the pawn's attack, and from b3 it still aims at f7.",
+  Bb3: "Black's pawn on b5 attacks your bishop on c4. Bb3 moves it out of the pawn's reach, and from b3 it still aims at f7.",
   Ng5: 'Ng5 and your bishop both attack f7, and only the king guards it.',
 };
 
 const CARO_WHY: Record<string, string> = {
   d5: 'd5 attacks the pawn on e4, and your pawn on c6 backs it up. Now you have your share of the centre too.',
   cxd5: 'cxd5 takes back with your c-pawn, so you keep a pawn on d5 in the centre.',
-  Bf5: 'Bf5 brings your bishop out in front of your pawns. When you play e6 next, it stays free.',
-  Bg4: 'Bg4 brings your bishop out before e6, and it pins the knight on f3 to the queen.',
-  c5: "c5 attacks the pawn on d4, the pawn that guards e5. Hit the base of White's pawn chain and the whole chain gets shaky.",
+  Bf5: 'Bf5 brings your bishop out in front of your pawns, so playing e6 next will not block it in.',
+  Bg4: 'Bg4 brings your bishop out before e6 and pins the knight on f3: if the knight moves, your bishop can take the queen.',
+  c5: "White's pawns stand on d4 and e5, and the one on d4 guards e5. c5 attacks d4, so the pawn on e5 may lose its guard.",
 };
 
 const EXCHANGE_WHY: Record<string, string> = {
   Nc6: "Nc6 brings your knight out and attacks White's pawn on d4.",
   Bg4: 'Bg4 attacks the knight on f3, one of the pieces that guards the pawn on d4.',
-  Bf5: 'Bf5 brings your bishop out and challenges the bishop on d3.',
+  Bf5: 'Bf5 brings your bishop out and offers to trade it for the bishop on d3.',
   Qc7: 'Qc7 puts your queen on the c-file, where you have no pawn in its way.',
   Qb6: 'Qb6 attacks the pawns on b2 and d4 at the same time.',
-  b5: "b5 starts your b-pawn's march. Next comes b4, to break up White's pawns on the queenside.",
-  b4: "b4 attacks the pawn on c3, to break up White's pawns on the queenside.",
+  b5: "b5 pushes your b-pawn forward. Next comes b4, to attack White's pawn on c3.",
+  b4: "b4 attacks White's pawn on c3, to break up White's pawns on the queenside.",
 };
 
 const whyFrom = (texts: Record<string, string>) => (step: string) => texts[step] ?? '';
@@ -273,15 +273,19 @@ export const PLAN_LESSONS: Record<PlanLessonId, PlanLesson> = {
     title: 'The slow plan',
     line: 'Guard e4 with d3, castle, rook to e1, bishop back to b3.',
     intro:
-      'When the pawns on e4 and e5 block each other, there is no rush. Guard e4 with d3, castle, put your rook on e1 and tuck your bishop back on b3.',
+      "When your pawn on e4 and Black's pawn on e5 block each other, the centre is closed and there is no rush. Build up one move at a time, in a set order.",
     spotTitle: 'How to play it',
-    spot: ['Pawns on e4 and e5 block each other.', 'Guard your pawn on e4 with d3.', 'Then castle, put your rook on e1 and drop your bishop back to b3.'],
+    spot: [
+      'First, push your d-pawn to d3 to guard your pawn on e4.',
+      'Then castle, and put a rook on e1, behind your pawn on e4.',
+      'Move your bishop back from c4 to b3 when a pawn chases it, or before one can.',
+    ],
     name: 'The slow plan',
-    hint: 'Your pawns on e4 and e5 block each other. Play it slow: d3, rook to e1, bishop back to b3.',
+    hint: "Your pawn on e4 and Black's pawn on e5 block each other. The slow plan's moves are d3, the rook to e1, and the bishop back to b3.",
     ask: 'Your move: play the slow plan.',
-    idea: 'Your pawns on d3 and e4 hold the centre, so you can build up one calm move at a time.',
-    remember: 'When the pawns on e4 and e5 block each other, play it slow: d3, castle, rook to e1, bishop back to b3.',
-    offPlan: 'Good move, but the plan here is a slow one: d3, a rook on e1, or the bishop back to b3.',
+    idea: 'Your pawn on d3 guards your pawn on e4. With the centre closed, you can improve your pieces one move at a time.',
+    remember: 'With the centre closed, go in order: d3 to guard e4, then castle, then a rook to e1. Move the bishop back to b3 when a pawn chases it, or before one can.',
+    offPlan: 'Good move, but the plan here is a slow one: d3, the rook to e1, or the bishop back to b3.',
     icon: 'p-quiet',
     listIcon: 'quiet',
     plan: italianSlow,
@@ -292,7 +296,7 @@ export const PLAN_LESSONS: Record<PlanLessonId, PlanLesson> = {
     opening: 'italian',
     kind: 'plan',
     title: 'Ng5 against f7',
-    line: 'Jump your knight to g5 to hit f7, but not when a pawn on h6 can chase it.',
+    line: 'Jump your knight to g5 to attack f7, but not when a pawn on h6 can chase it.',
     intro:
       "At the start only Black's king guards the pawn on f7, and your bishop on c4 already aims at it. Ng5 adds a second attacker, but a pawn on h6 would chase the knight away.",
     spotTitle: 'How to play it',
@@ -301,8 +305,8 @@ export const PLAN_LESSONS: Record<PlanLessonId, PlanLesson> = {
     hint: 'Your knight on f3 can jump in and attack the pawn on f7.',
     ask: 'Your move: go after f7.',
     idea: 'Ng5 attacks the pawn on f7, and no pawn on h6 can chase your knight away.',
-    remember: 'Ng5 hits f7. Play it only when no pawn on h6 can chase the knight away.',
-    offPlan: 'Good move, but the plan here is to bring your knight to g5 and hit f7.',
+    remember: 'Ng5 attacks f7. Play it only when no pawn on h6 can chase the knight away.',
+    offPlan: 'Good move, but the plan here is to bring your knight to g5 and attack f7.',
     icon: 'p-loose',
     listIcon: 'loose',
     plan: italianNg5,
@@ -334,13 +338,14 @@ export const PLAN_LESSONS: Record<PlanLessonId, PlanLesson> = {
     kind: 'plan',
     title: 'Your light bishop first',
     line: 'Bring your bishop from c8 out to f5 or g4 before you play e6.',
-    intro: 'Once you play e6, your own pawns shut in the bishop on c8. So bring it out to f5 or g4 first, then play e6.',
+    intro:
+      'Your light bishop is the one on c8, which moves on the light squares. A pawn on e6 would block it in behind your own pawns, so bring it out to f5 or g4 first, then play e6.',
     spotTitle: 'How to play it',
-    spot: ['Your e-pawn is still on e7.', 'Bring your bishop from c8 out to f5 or g4.', 'Play e6 after it, so the bishop stays outside your pawns.'],
+    spot: ['Your e-pawn is still on e7.', 'Bring your bishop from c8 out to f5 or g4.', 'Then play e6: the bishop is already out, so e6 cannot block it in.'],
     name: 'Light bishop first',
-    hint: 'Your e-pawn is still on e7. Get your bishop out before e6 shuts it in.',
+    hint: 'Your e-pawn is still on e7. Get your bishop on c8 out before a pawn on e6 blocks it in.',
     ask: 'Your move: get your bishop out before e6.',
-    idea: "Your bishop is out before e6, so your own pawns won't shut it in.",
+    idea: 'Your bishop is out before e6, so your own pawns cannot block it in.',
     remember: 'In the Caro-Kann, bring your bishop from c8 out to f5 or g4 first. Play e6 after it.',
     offPlan: 'Good move, but the plan here is to bring your bishop from c8 out before you play e6.',
     icon: 'p-discovered',
@@ -353,16 +358,16 @@ export const PLAN_LESSONS: Record<PlanLessonId, PlanLesson> = {
     opening: 'caro-kann',
     kind: 'plan',
     title: 'The c5 break',
-    line: "Hit White's pawn on d4 with your c-pawn.",
+    line: "Attack White's pawn on d4 with your c-pawn.",
     intro: "White's pawn on d4 holds the centre. Pushing your c-pawn to c5 attacks it and fights for the centre.",
     spotTitle: 'How to play it',
-    spot: ["Look for White's pawn on d4.", 'Push your c-pawn to c5 to attack it.', 'Against pawns on d4 and e5, c5 hits the pawn that guards e5.'],
+    spot: ["Look for White's pawn on d4.", 'Push your c-pawn to c5 to attack it.', 'If White has pawns on d4 and e5, c5 attacks d4, the pawn that guards e5.'],
     name: 'The c5 break',
     hint: "White's pawn on d4 holds the centre. Attack it with a pawn.",
-    ask: 'Your move: hit the centre.',
+    ask: 'Your move: attack the centre.',
     idea: "c5 attacks White's pawn on d4 and fights for the centre.",
-    remember: 'When White has a pawn on d4, push your c-pawn to c5 and hit it.',
-    offPlan: "Good move, but the plan here is to hit White's pawn on d4 with your c-pawn.",
+    remember: 'When White has a pawn on d4, push your c-pawn to c5 and attack it.',
+    offPlan: "Good move, but the plan here is to attack White's pawn on d4 with your c-pawn.",
     icon: 'arrow-right',
     listIcon: 'arrow',
     plan: caroC5,
@@ -372,18 +377,22 @@ export const PLAN_LESSONS: Record<PlanLessonId, PlanLesson> = {
     id: 'caro-kann-exchange',
     opening: 'caro-kann',
     kind: 'plan',
-    title: 'The Exchange structure',
-    line: 'Knight to c6, bishop out, queen to c7 or b6, then the b-pawn forward.',
+    title: 'After the pawn trade on d5',
+    line: 'Knight to c6, bishop out, queen to c7 or b6, then push your b-pawn.',
     intro:
-      'After the pawns trade on d5, White has no e-pawn and you have no c-pawn. Put your pieces on active squares, then push your b-pawn up the board.',
+      "In this line White's e-pawn takes on d5 and your c-pawn takes back, so White has no e-pawn and you have no c-pawn. Bring your knight to c6 and your bishop out, then push your b-pawn to b5 and b4 against White's c-pawn.",
     spotTitle: 'How to play it',
-    spot: ['Pawns on d4 and d5, no White e-pawn, no c-pawn of yours.', 'Knight to c6, bishop out to f5 or g4, queen to c7 or b6.', 'Later, push your b-pawn to b5 and b4.'],
-    name: 'The Exchange structure',
-    hint: 'White has no e-pawn and you have no c-pawn. The plan: knight to c6, bishop out, queen to c7 or b6, b-pawn forward.',
-    ask: 'Your move: follow the Exchange plan.',
-    idea: 'In this structure your pieces go to active squares, and your b-pawn leads the way on the queenside.',
-    remember: 'In the Exchange structure: knight to c6, bishop out, queen to c7 or b6, then push your b-pawn.',
-    offPlan: 'Good move, but the plan here is a move from the Exchange plan: knight to c6, bishop out, queen to c7 or b6, or the b-pawn forward.',
+    spot: [
+      'Pawns on d4 and d5, no White e-pawn, and no c-pawn of yours.',
+      'Put your knight on c6, your bishop on f5 or g4, and your queen on c7 or b6.',
+      "Then push your b-pawn to b5 and b4 to attack White's c-pawn.",
+    ],
+    name: 'After the trade on d5',
+    hint: 'White has no e-pawn and you have no c-pawn. Put your knight on c6, bring your bishop or queen out, or push your b-pawn.',
+    ask: 'Your move: follow the plan for these pawns.',
+    idea: "Your knight, bishop and queen come out first. Then your b-pawn goes forward to attack White's c-pawn.",
+    remember: 'After the pawns trade on d5: knight to c6, bishop out, queen to c7 or b6, then push your b-pawn to b5 and b4.',
+    offPlan: 'Good move, but the plan here is a knight on c6, the bishop or queen out, or the b-pawn forward.',
     icon: 'p-quiet',
     listIcon: 'trend',
     plan: caroExchange,

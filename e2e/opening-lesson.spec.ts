@@ -15,7 +15,7 @@ test('teaches the slow plan: intro, worked example, practice that asks for the p
   await expect(page.locator('.lesson-spot li')).toHaveCount(3);
 
   await page.getByRole('button', { name: 'Show me an example' }).click();
-  await expect(bubble(page)).toContainText('Your pawns on e4 and e5 block each other.');
+  await expect(bubble(page)).toContainText("Your pawn on e4 and Black's pawn on e5 block each other.");
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(bubble(page)).toContainText('Here the plan is to put your bishop on b3.');
   await expect(bubble(page)).toContainText('Your move: play it.');
