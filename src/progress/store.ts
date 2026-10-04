@@ -1,5 +1,5 @@
 import { setKey } from '../content/loader';
-import type { DrillResult, LessonPlace, LessonRecord, Lessons, UnitId } from '../course/types';
+import type { DrillResult, LessonId, LessonPlace, LessonRecord, Lessons } from '../course/types';
 import type { Depth, GameSummary, Level, MomentResult, OpeningId, ReviewItem, UnfinishedGame } from '../content/types';
 import { createBackup, parseBackup } from './backup';
 import { dayKey, daysBetween } from './days';
@@ -190,30 +190,30 @@ export function getLessons(opening: OpeningId): Lessons {
   return state().lessons[opening] ?? {};
 }
 
-function lessonRecord(opening: OpeningId, unit: UnitId): LessonRecord {
+function lessonRecord(opening: OpeningId, lesson: LessonId): LessonRecord {
   const p = state();
-  const byUnit = (p.lessons[opening] ??= {});
-  return (byUnit[unit] ??= { drills: [] });
+  const byLesson = (p.lessons[opening] ??= {});
+  return (byLesson[lesson] ??= { drills: [] });
 }
 
-export function recordLearned(opening: OpeningId, unit: UnitId, at: number): void {
-  lessonRecord(opening, unit).learnedAt ??= at;
+export function recordLearned(opening: OpeningId, lesson: LessonId, at: number): void {
+  lessonRecord(opening, lesson).learnedAt ??= at;
   persist();
 }
 
-export function recordDrill(opening: OpeningId, unit: UnitId, result: DrillResult): void {
-  lessonRecord(opening, unit).drills.push(result);
+export function recordDrill(opening: OpeningId, lesson: LessonId, result: DrillResult): void {
+  lessonRecord(opening, lesson).drills.push(result);
   persist();
 }
 
 /** Remembers the page of an unfinished lesson, so it opens there again. */
-export function recordLessonPlace(opening: OpeningId, unit: UnitId, place: LessonPlace): void {
-  lessonRecord(opening, unit).place = place;
+export function recordLessonPlace(opening: OpeningId, lesson: LessonId, place: LessonPlace): void {
+  lessonRecord(opening, lesson).place = place;
   persist();
 }
 
-export function recordLessonDone(opening: OpeningId, unit: UnitId, at: number): void {
-  const record = lessonRecord(opening, unit);
+export function recordLessonDone(opening: OpeningId, lesson: LessonId, at: number): void {
+  const record = lessonRecord(opening, lesson);
   record.doneAt = at;
   delete record.place;
   persist();

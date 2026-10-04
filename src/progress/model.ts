@@ -1,5 +1,5 @@
 import { LEVELS, OPENINGS } from '../content/catalog';
-import { UNIT_IDS, type DrillResult, type LessonPlace, type LessonRecord, type Lessons, type UnitId } from '../course/types';
+import { LESSON_IDS, type DrillResult, type LessonPlace, type LessonRecord, type Lessons } from '../course/types';
 import type { AskedMoment, Depth, GameSummary, Kind, Level, MomentResult, OpeningId, ReviewItem, Settings, StepOutcome, UnfinishedGame } from '../content/types';
 import { DEPTHS, type DepthState, type WindowEntry } from './depth';
 import { BOXES } from './srs';
@@ -250,9 +250,9 @@ function parseLesson(raw: unknown): LessonRecord | null {
 function parseLessons(raw: unknown): Lessons {
   const lessons: Lessons = {};
   if (!isRecord(raw)) return lessons;
-  for (const id of UNIT_IDS) {
+  for (const id of LESSON_IDS) {
     const lesson = parseLesson(raw[id]);
-    if (lesson) lessons[id as UnitId] = lesson;
+    if (lesson) lessons[id] = lesson;
   }
   return lessons;
 }

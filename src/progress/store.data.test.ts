@@ -143,6 +143,27 @@ describe('lessons, opening notes and answer flags', () => {
     expect((await openStore()).getLessons('italian').fork).toEqual({ doneAt: 30, drills: [] });
   });
 
+  it('keeps opening lessons across a reload, beside the tactic lessons', async () => {
+    const store = await openStore();
+    store.recordLearned('italian', 'italian-slow', 10);
+    store.recordDrill('italian', 'italian-slow', { key: 'italian-1400/italian-1400-0002:9', correct: true, at: 11 });
+    store.recordLessonDone('italian', 'italian-slow', 12);
+    store.recordLessonPlace('caro-kann', 'caro-kann-traps', { page: 'example' });
+    store.recordLessonDone('italian', 'fork', 13);
+    const reloaded = await openStore();
+    expect(reloaded.getLessons('italian')).toEqual({
+      'italian-slow': { learnedAt: 10, doneAt: 12, drills: [{ key: 'italian-1400/italian-1400-0002:9', correct: true, at: 11 }] },
+      fork: { doneAt: 13, drills: [] },
+    });
+    expect(reloaded.getLessons('caro-kann')['caro-kann-traps']).toEqual({ drills: [], place: { page: 'example' } });
+  });
+
+  it('drops a lesson it does not know', async () => {
+    const lessons = { italian: { fork: { drills: [] }, 'italian-gambit': { doneAt: 5, drills: [] } } };
+    storage.data.set('cc.progress.v1', JSON.stringify({ v: 1, lessons }));
+    expect((await openStore()).getLessons('italian')).toEqual({ fork: { drills: [] } });
+  });
+
   it('drops a lesson page it cannot read', async () => {
     storage.data.set('cc.progress.v1', JSON.stringify({ v: 1, lessons: { italian: { fork: { drills: [], place: { page: 'practice' } } } } }));
     expect((await openStore()).getLessons('italian').fork).toEqual({ drills: [] });
