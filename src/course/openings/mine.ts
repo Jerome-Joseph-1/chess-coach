@@ -4,7 +4,7 @@ import type { Game, OpeningId, Turn } from '../../content/types';
 import { uciOf } from '../../learn/board';
 import { nameAt, variationAt } from '../../opening';
 import type { Candidate } from '../select';
-import { positionKey, type PositionRef } from '../types';
+import type { PositionRef } from '../types';
 import { openingLessonsOf } from './index';
 import type { PlanLesson } from './types';
 
@@ -19,8 +19,19 @@ const CLOSE_GAP = 2;
 /** Share of players at the level who play the plan move for it to be the usual move. */
 const TYPICAL_SHARE = 0.4;
 
-/** Positions the Stockfish check (pipeline/check_lessons.py) turned down, by position key. */
-export const EXCLUDE = new Set<string>([]);
+/** Boards, without move counters, where the Stockfish check (pipeline/check_lessons.py) turned the move down. */
+export const EXCLUDE = new Set<string>([
+  'r3kbnr/pp1n1ppp/1qp1p3/3pP3/3P2b1/2N2N2/PPP1BPPP/R1BQ1RK1 b kq -',
+  'rnbqk2r/pp3ppp/2p2n2/3Pp3/1b2P3/2NP1N2/PP3PPP/R1BQKB1R b KQkq -',
+  'r2qkb1r/ppp2ppp/2n1b3/3nP3/2B5/5N2/PPP2PPP/RNBQK2R w KQkq -',
+  'r1bqk1nr/pppp1pp1/2n4p/2b1p3/2B1P3/2P2N2/PP1P1PPP/RNBQK2R w KQkq -',
+  'r1bqk2r/pppp1ppp/2n5/2b1p3/2B1P1n1/2PP1N2/PP3PPP/RNBQK2R w KQkq -',
+  'r1bqkb1r/ppp2ppp/2np1n2/4p3/2BPP3/5N2/PPP2PPP/RNBQK2R w KQkq -',
+  'r1b1k1nr/bpppqppp/p1n5/8/2BPP3/1Q3N2/PP3PPP/RNB1K2R w KQkq -',
+  'r1b1k1nr/pppp1ppp/2n2q2/2b1p3/2B1P3/2P2N2/PP1P1PPP/RNBQK2R w KQkq -',
+  'r1bqk2r/ppp2ppp/5n2/3PbnN1/2B5/2P5/PP3PPP/RNBQK2R w KQkq -',
+  'r1bqk1nr/pppp1ppp/8/2b5/2B1P3/2PP4/P4PPP/RNBQK2R w KQkq -',
+]);
 
 /** A turn's scripted move with the board it is played on. */
 export interface Scripted {
@@ -135,15 +146,16 @@ export function planCandidatesOf(set: string, game: Game): Candidate[] {
     const lesson = planLessonAt(game, index);
     const played = lesson && scriptedMove(game, turn);
     if (!lesson || !played || !isGood(turn, uciOf(played.move))) return [];
+    const position = boardOf(turn.fen);
+    if (EXCLUDE.has(position)) return [];
     const ref: PositionRef = { set, gameId: game.id, ply: turn.ply, findShare: turn.findShare };
-    if (EXCLUDE.has(positionKey(ref))) return [];
     const facts = planFacts(lesson, turn, played);
     families ??= familiesOf(game);
     return [
       {
         ref,
         unit: lesson.id,
-        position: boardOf(turn.fen),
+        position,
         clarity: planClarity(facts),
         sound: facts.gap >= SOUND_GAP || facts.typical,
         tier: 0,

@@ -4,7 +4,8 @@ Usage: python pipeline/check_lessons.py <content dir> [--drills]
 
 Reads each set's course.json and checks every opening lesson's worked examples, and with --drills its practice
 positions too. A move that loses more than 2.5 win% against the best gets a warning, more than 3.5 fails.
-The failures are printed as position keys, ready for EXCLUDE in src/course/openings/mine.ts.
+The failures are printed as boards without move counters, ready for EXCLUDE in src/course/openings/mine.ts:
+a board can come up in many games.
 """
 import argparse
 import json
@@ -65,7 +66,7 @@ def check(job):
     with chess.engine.SimpleEngine.popen_uci(stockfish_path()) as engine:
         engine.configure({"Hash": 64})
         loss = loss_of(engine, board, move)
-    return position_key(ref), lesson, board.san(move), loss
+    return position_key(ref), lesson, board.san(move), loss, " ".join(board.fen().split()[:4])
 
 
 def main():
@@ -80,12 +81,13 @@ def main():
         results = sorted(pool.imap_unordered(check, jobs))
     warned = [r for r in results if HOLD < r[3] <= HOLD + SLACK]
     failed = [r for r in results if r[3] > HOLD + SLACK]
-    for key, lesson, san, loss in warned + failed:
+    for key, lesson, san, loss, _ in warned + failed:
         verdict = "FAIL" if loss > HOLD + SLACK else "warn"
         print(f"{verdict} {key} {lesson} {san} loses {loss:.1f}")
     print(f"Checked {len(results)} positions at depth {DEPTH}: {len(warned)} warnings, {len(failed)} failures.")
     if failed:
-        print("For EXCLUDE:\n" + "\n".join(f"  '{key}'," for key, *_ in failed))
+        boards = dict.fromkeys(r[4] for r in failed)
+        print("For EXCLUDE:\n" + "\n".join(f"  '{board}'," for board in boards))
         sys.exit(1)
 
 
