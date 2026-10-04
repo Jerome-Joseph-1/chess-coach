@@ -186,31 +186,59 @@ test('a lesson practice position says why a move is not allowed and keeps its hi
   await expect(page.getByText('You found the move')).toBeVisible();
 });
 
-test('a move that loses material stays on the board while the reply shows what it loses, then the position comes back', async ({
-  page,
-}) => {
+const RETRY_WHY = "Black's king takes your bishop. You lose a bishop and only get a pawn back.";
+const retryButton = (page: Page) => page.getByRole('button', { name: 'Try again', exact: true });
+const pieceOn = (page: Page, square: string) => page.locator(`.cm-chessboard .pieces g[data-square='${square}']`);
+
+/** Plays Bxf7+ at the first key position, which loses the bishop to ...Kxf7. */
+async function loseTheBishop(page: Page) {
   await atStage(page, 3);
   await reachFirstPause(page);
   await winButton(page).click();
   await expect(page.getByText('Your move', { exact: true })).toBeVisible();
-
   await tapSquares(page, 'c4', 'f7');
-  const why = "Black's king takes your bishop. You lose a bishop and only get a pawn back.";
-  await expect(page.getByText(why)).toBeVisible();
+  await expect(page.getByText(RETRY_WHY)).toBeVisible();
+  await expect(pieceOn(page, 'f7')).toHaveAttribute('data-piece', 'bk');
+}
+
+test('a move that loses material stays on the board with what it loses until Try again takes it back', async ({ page }) => {
+  await loseTheBishop(page);
   await expect(page.locator('.cm-chessboard .arrow-threat')).toHaveCount(1);
-  await expect(page.locator(".cm-chessboard .pieces g[data-square='f7']")).toHaveAttribute('data-piece', 'bk');
   await expect(page.locator('.cm-chessboard .marker-bad')).toHaveCount(1);
   expect(await squareOf(page, '.cm-chessboard .marker-bad')).toBe('f7');
-  await expect(hintButton(page)).toBeDisabled();
+  await expect(retryButton(page)).toHaveClass(/is-nudge/);
+  await expect(hintButton(page)).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Show solution' })).toHaveCount(0);
 
-  await expect(page.locator(".cm-chessboard .pieces g[data-square='c4']")).toHaveAttribute('data-piece', 'wb', { timeout: 8000 });
+  // Longer than the coach's line takes to read: the board waits for the user.
+  await page.waitForTimeout(4500);
+  await expect(pieceOn(page, 'f7')).toHaveAttribute('data-piece', 'bk');
+
+  await retryButton(page).click();
+  await expect(pieceOn(page, 'c4')).toHaveAttribute('data-piece', 'wb');
   await expect(page.locator('.cm-chessboard .arrow-threat')).toHaveCount(0);
   await expect(page.locator('.cm-chessboard .marker-bad')).toHaveCount(0);
+  await expect(retryButton(page)).toHaveCount(0);
   await expect(hintButton(page)).toBeEnabled();
-  await expect(page.getByText(why)).toBeVisible();
+  await expect(page.getByText(RETRY_WHY)).toBeVisible();
 
   await tapSquares(page, 'd4', 'e5');
   await expect(page.getByText('You found the move')).toBeVisible();
+});
+
+test('the hint after a move that loses material takes the move back and gives the next hint', async ({ page }) => {
+  await loseTheBishop(page);
+  await hintButton(page).click();
+
+  await expect(pieceOn(page, 'c4')).toHaveAttribute('data-piece', 'wb');
+  await expect(page.locator('.cm-chessboard .arrow-threat')).toHaveCount(0);
+  await expect(retryButton(page)).toHaveCount(0);
+  await expect(page.getByText('Is any enemy piece not defended enough?')).toBeVisible();
+  await expect(page.locator('.hint-stop.is-used')).toHaveCount(1);
+  await expect(hintButton(page)).toHaveText('Hint: the piece');
+
+  await tapSquares(page, 'd4', 'e5');
+  await expect(page.getByText('Solved with a hint')).toBeVisible();
 });
 
 test('hints climb Idea, Piece, Move: the pattern, then the piece in trouble, then the move', async ({ page }) => {

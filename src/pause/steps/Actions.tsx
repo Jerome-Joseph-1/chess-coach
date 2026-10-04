@@ -34,6 +34,23 @@ export function PlayActions({ hintLabel, hintsLeft, disabled, onHint, onSolution
   );
 }
 
+export interface RetryActionsProps {
+  hintLabel: string;
+  hintsLeft: boolean;
+  onHint: () => void;
+  onRetry: () => void;
+}
+
+/** While the board shows what a wrong move loses: Try again takes it back, and Hint takes it back with the next hint. */
+export function RetryActions({ hintLabel, hintsLeft, onHint, onRetry }: RetryActionsProps) {
+  return (
+    <div class="dock-row">
+      <DockButton look="secondary" icon="lightbulb" label={hintLabel} fade disabled={!hintsLeft} onClick={onHint} />
+      <DockButton look="primary" wide nudge icon="undo" label={COPY.retry} onClick={onRetry} />
+    </div>
+  );
+}
+
 export interface RevealActionsProps {
   onContinue: () => void;
   /** Opens the engine's look at the move on show; left out where there is no line to ask about. */

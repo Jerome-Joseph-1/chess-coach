@@ -10,6 +10,7 @@ export const COPY = {
   solveTitle: 'Your move',
   solveSub: 'Play the best move on the board.',
   tryAgain: 'Not quite. Try again.',
+  retry: 'Try again',
   showSolution: 'Show solution',
   hintPiece: 'Move the highlighted piece.',
   hintMove: 'Play the move shown.',

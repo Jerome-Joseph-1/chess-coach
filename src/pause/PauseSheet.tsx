@@ -33,7 +33,7 @@ import { patternIcon } from './patterns';
 import { moveBefore, samePosition, squaresOf } from './position';
 import { eyebrowFor, promptFor, spotPromptFor } from './prompt';
 import { leavePanel, Sheet } from './Sheet';
-import { PlayActions, RevealActions } from './steps/Actions';
+import { PlayActions, RetryActions, RevealActions } from './steps/Actions';
 import { Question } from './steps/Question';
 import { QuietReveal } from './steps/QuietReveal';
 import { RevealStep } from './steps/RevealStep';
@@ -79,8 +79,6 @@ export interface PauseSheetProps {
 const REPLY_MS = 350;
 /** A wrong answer's cross stays this long, then the piece snaps back. */
 const WRONG_FLASH_MS = 600;
-/** A wrong move's punishing reply stays on the board at least this long, so the coach's line can be read. */
-const PUNISH_MIN_MS = 1800;
 /** A right answer stays on screen this long before the flow moves on. */
 const SETTLE_MS = 400;
 /** The right answer to step 1, shown after two wrong picks, stays this long so it can be found and read. */
@@ -124,8 +122,11 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
   const [lineAt, setLineAt] = useState(0);
   const [lineDone, setLineDone] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  /** The board is showing what a wrong move loses: no moves and no hints until it is put back. */
+  /** The board is showing what a wrong move loses: no moves until the user takes it back. */
   const [punishing, setPunishing] = useState(false);
+  /** Counts punishments and take-backs, so a reply still on its way stops once the move is taken back. */
+  const punishRun = useRef(0);
+  const takingBack = useRef(false);
   /**
    * What the coach says about a move the rules don't allow; it is not an answer and passes by itself.
    * A new object each time, so the same line said again starts its timer again.
@@ -179,27 +180,43 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
     setIllegal({ text: illegalLine(board.fen(), game.side, from, to) });
   }
 
-  /** Plays the reply that punishes a wrong move, marks what it wins while the coach says why, then puts the position back. */
-  async function showPunishment(why: WrongMove, at: number) {
+  /** Plays the reply that punishes a wrong move and marks what it wins; it stays while the coach says why. */
+  async function showPunishment(why: WrongMove) {
+    const run = ++punishRun.current;
+    const current = () => alive.current && punishRun.current === run;
     const reply = why.reply!;
     setPunishing(true);
     board.disableInput();
     await wait(REPLY_MS);
-    if (!alive.current) return;
+    if (!current()) return;
     marks.clearBadges();
     await board.playMove(reply);
+    if (!current()) return;
     board.arrow(...squaresOf(reply), 'threat');
     board.highlight(why.targets, 'bad');
-    await wait(Math.max(PUNISH_MIN_MS, readingMs(why.text)));
-    if (!alive.current) return;
+  }
+
+  /** Puts back the position a wrong move left, so the question can be tried again. */
+  async function takeBack() {
+    if (takingBack.current) return;
+    takingBack.current = true;
+    punishRun.current++;
     marks.clear();
-    await board.setPosition(game.turns[at].fen, true);
+    const at = game.turns[latest.current.turn];
+    await board.setPosition(at.fen, true);
+    takingBack.current = false;
     if (!alive.current) return;
-    const last = moveBefore(game, game.turns[at].ply);
+    const last = moveBefore(game, at.ply);
     board.setLastMove(last ? last.from + last.to : null);
     setPunishing(false);
     board.enableMoves(game.side, tryMove, sayIllegal);
     showHint(latest.current);
+  }
+
+  async function hintAfterTakeBack() {
+    if (takingBack.current) return;
+    await takeBack();
+    if (alive.current) send({ type: 'hint' });
   }
 
   /** Marks what the hint in hand shows on the board: the piece in trouble, then the move itself. */
@@ -235,7 +252,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
       case 'wrong':
         nudge();
         shake(bubbleRef.current);
-        if (feedback.why.reply) void showPunishment(feedback.why, latest.current.turn);
+        if (feedback.why.reply) void showPunishment(feedback.why);
     }
   }
 
@@ -382,18 +399,28 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
       return <RevealActions onContinue={carryOn} onWhy={onWhy} whyDisabled={lineAt === 0} nudge={lineOver && why === null} />;
     }
     const ladder = hintLadder(state);
+    if (punishing) {
+      return (
+        <RetryActions
+          hintLabel={hintButtonLabel(ladder)}
+          hintsLeft={ladder.used < ladder.stops.length}
+          onHint={() => void hintAfterTakeBack()}
+          onRetry={() => void takeBack()}
+        />
+      );
+    }
     return (
       <PlayActions
         hintLabel={hintButtonLabel(ladder)}
         hintsLeft={ladder.used < ladder.stops.length}
-        disabled={state.answered || view === 'reply' || punishing}
+        disabled={state.answered || view === 'reply'}
         onHint={() => send({ type: 'hint' })}
         onSolution={() => send({ type: 'solution' })}
       />
     );
   }
 
-  const dockKind = view === 'reveal' ? `reveal-${stage}` : 'play';
+  const dockKind = view === 'reveal' ? `reveal-${stage}` : punishing ? 'retry' : 'play';
   return (
     <Sheet
       innerRef={panelRef}
