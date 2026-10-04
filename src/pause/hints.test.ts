@@ -4,8 +4,9 @@ import type { Depth } from '../content/types';
 import { lessonFor } from '../learn';
 import { learnGame, learnGames } from '../learn/fixtures';
 import { flowReducer, initialState, scriptedUci, type FlowContext, type FlowEvent, type FlowState } from './flow';
-import { hintButtonLabel, hintLadder, pieceInTrouble } from './hints';
-import { italian1 } from './testGames';
+import { hintButtonLabel, hintLadder, hintSquares, pieceInTrouble } from './hints';
+import { italian1, italian2 } from './testGames';
+import { slowPlan } from './testTeaching';
 
 const TURN = 3;
 
@@ -36,6 +37,25 @@ describe('the hint ladder', () => {
     expect(hintLadder(after(5, toFollowUp))).toEqual({ stops: ['Piece', 'Move'], used: 0 });
     expect(hintButtonLabel(hintLadder(after(5, toFollowUp)))).toBe('Hint: the piece');
     expect(hintButtonLabel(hintLadder(after(5, [...toFollowUp, hint])))).toBe('Hint: the move');
+  });
+});
+
+describe('the squares the second hint marks', () => {
+  const drill: FlowContext = { game: italian2, turnIndex: 5, depth: 1, type: 'pause', mode: 'drill' };
+  const second = flowReducer(drill, initialState(drill), hint);
+
+  it('mark the piece in trouble on the play step', () => {
+    expect(second.hint).toBe(2);
+    expect(hintSquares(italian2, second)).toEqual(['c1']);
+  });
+
+  it("mark the piece of the plan move in an opening lesson, which names no piece in trouble", () => {
+    expect(hintSquares(italian2, second, slowPlan)).toEqual(['d2']);
+  });
+
+  it('mark the piece to move on a follow-up move', () => {
+    const state = after(5, [...toFollowUp, hint]);
+    expect(hintSquares(italian1, state)).toEqual([scriptedUci(italian1, state.turn).slice(0, 2)]);
   });
 });
 

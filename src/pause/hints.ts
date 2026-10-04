@@ -3,7 +3,9 @@ import { NAME } from '../board/captions';
 import type { Game } from '../content/types';
 import { lessonFor, type Role, type Theme, type ThemeId, type ThemePiece } from '../learn';
 import { isLoose, pinOn } from '../learn/board';
-import type { FlowState } from './flow';
+import { scriptedUci, type FlowState } from './flow';
+import { squaresOf } from './position';
+import type { DrillTeaching } from './teaching';
 
 export interface HintLadder {
   /** The rungs, in the order the hint button climbs them. */
@@ -142,4 +144,13 @@ export function pieceInTrouble(game: Game, turnIndex: number): Trouble | null {
 
 function uniqueSquares(pieces: ThemePiece[]): ThemePiece[] {
   return pieces.filter((p, i) => pieces.findIndex((q) => q.square === p.square) === i);
+}
+
+/**
+ * The squares the second hint marks: the piece in trouble on the play step, else the piece to move.
+ * An opening lesson's plan has no piece in trouble, so it marks the piece of the plan move.
+ */
+export function hintSquares(game: Game, state: FlowState, teaching?: DrillTeaching): string[] {
+  const trouble = state.phase === 'solve' && !teaching ? pieceInTrouble(game, state.turn) : null;
+  return trouble?.squares ?? [squaresOf(scriptedUci(game, state.turn))[0]];
 }

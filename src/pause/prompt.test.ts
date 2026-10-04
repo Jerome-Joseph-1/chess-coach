@@ -4,8 +4,10 @@ import { lessonFor } from '../learn';
 import type { Situation } from '../learn/situation';
 import { whyWrong } from '../learn/whyWrong';
 import { flowReducer, initialState, scriptedUci, type FlowContext, type FlowEvent, type FlowState } from './flow';
+import { pieceInTrouble } from './hints';
 import { eyebrowFor, promptFor, spotPromptFor } from './prompt';
-import { italian1 } from './testGames';
+import { italian1, italian2 } from './testGames';
+import { slowPlan } from './testTeaching';
 
 const TURN = 3;
 
@@ -117,6 +119,34 @@ describe('the play step', () => {
     const state = after(5, [...toSolve, move(scriptedUci(italian1, TURN)), advance, { type: 'replied' }]);
     expect(promptFor(italian1, state)).toMatchObject({ title: 'Keep going', sub: "Black has answered. What's your next move?" });
     expect(promptFor(italian1, flowReducer(ctxAt(5), state, hint))).toMatchObject({ title: 'Keep going', sub: 'Move the highlighted piece.' });
+  });
+});
+
+describe("an opening lesson's practice position", () => {
+  const ctx: FlowContext = { game: italian2, turnIndex: 5, depth: 1, type: 'pause', mode: 'drill', teaching: slowPlan };
+  const at = (events: FlowEvent[]) => events.reduce((state, event) => flowReducer(ctx, state, event), initialState(ctx));
+  const offPlan = 'c3e2';
+
+  it("asks in the lesson's words, with its plan as the hint in hand", () => {
+    expect(promptFor(italian2, at([]), slowPlan)).toEqual({ title: slowPlan.hint, sub: slowPlan.ask, tone: 'hint' });
+    expect(promptFor(italian2, at([]), { ...slowPlan, ask: undefined }).sub).toBe('Play the best move on the board.');
+  });
+
+  it('then points at the piece to move and the move, never at a piece in danger', () => {
+    expect(pieceInTrouble(italian2, 5)?.text).toBe('Your bishop on c1 is in danger.');
+    expect(promptFor(italian2, at([hint]), slowPlan)).toEqual({ title: slowPlan.hint, sub: 'Move the highlighted piece.', tone: 'hint' });
+    expect(promptFor(italian2, at([hint, hint]), slowPlan)).toEqual({ title: slowPlan.hint, sub: 'Play the move shown.', tone: 'hint' });
+  });
+
+  it('says what the plan is after another good move, until the next hint', () => {
+    expect(promptFor(italian2, at([move(offPlan)]), slowPlan)).toEqual({ title: slowPlan.hint, sub: slowPlan.offPlan, tone: 'hint' });
+    expect(promptFor(italian2, at([move(offPlan), hint]), slowPlan).sub).toBe('Move the highlighted piece.');
+  });
+
+  it('explains a wrong move as usual, and keeps the drawn move in view once there is nothing to explain', () => {
+    const wrong = Object.keys(italian2.turns[5].grades).find((uci) => italian2.turns[5].grades[uci] >= 10)!;
+    expect(promptFor(italian2, at([move(wrong)]), slowPlan)).toMatchObject({ sub: whyWrong(italian2, 5, wrong, 1).text, tone: 'error' });
+    expect(promptFor(italian2, at([hint, hint, move(offPlan)]), slowPlan)).toMatchObject({ sub: 'Play the move shown.', tone: 'error' });
   });
 });
 
