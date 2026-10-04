@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { Depth, Label, MomentType, Turn } from '../content/types';
 import { fixtureGames } from './fixtures';
-import { chooseMoments, hashSeed } from './pauses';
+import { chooseMoments, hashSeed, isCalm } from './pauses';
 
 const DEPTHS: Depth[] = [1, 2, 3, 4, 5];
 const SPAN: Record<Depth, number> = { 1: 1, 2: 1, 3: 1, 4: 2, 5: 6 };
 
+// A calm position, so a 'nothing' turn made from it can be picked.
+const CALM_TURN = fixtureGames[1].turns[0];
+
 function turnAt(index: number, label: Label, extra: Partial<Turn> = {}): Turn {
-  return { ...fixtureGames[0].turns[0], ply: 1 + 2 * index, label, trigger: false, inCheck: false, ...extra };
+  return { ...CALM_TURN, ply: 1 + 2 * index, label, trigger: false, inCheck: false, ...extra };
 }
 
 function countOf(moments: Map<number, MomentType>, type: MomentType): number {
@@ -206,6 +209,53 @@ describe('chooseMoments rules', () => {
 
   it('returns nothing for a game with no turns', () => {
     expect(chooseMoments([], 3).size).toBe(0);
+  });
+});
+
+describe('isCalm', () => {
+  // italian-1400-0001 at ply 43: Qg7# and Qh7# are on, but every move grades 0 at 100% win.
+  const MATE_IN_ONE = 'r1bq1rk1/bpp2p2/p1np3Q/4P2N/3P4/3B4/PP3PPP/R3R1K1 w - - 1 25';
+  // Ra8# and nothing else going on.
+  const BACK_RANK_MATE = '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1';
+  // Bxg2 wins a pawn.
+  const FREE_PAWN = 'r3kb1r/p4p1p/2b2p2/4p3/1p6/1P6/1PPPNPPP/R1B1K2R b KQkq - 1 15';
+  // The e4 pawn is hit twice and held by nothing.
+  const PAWN_ATTACKED = 'rnbqkbnr/pp2pppp/2p5/6N1/4p3/3P4/PPP2PPP/RNBQKB1R b KQkq - 1 4';
+  const quietAt = (fen: string, bestWin: number) => turnAt(0, 'nothing', { fen, bestWin });
+
+  it('accepts an open position with nothing to win or answer', () => {
+    expect(isCalm(CALM_TURN)).toBe(true);
+  });
+
+  it('turns down a decided game whichever side it favours', () => {
+    expect(isCalm({ ...CALM_TURN, bestWin: 95 })).toBe(false);
+    expect(isCalm({ ...CALM_TURN, bestWin: 5 })).toBe(false);
+  });
+
+  it('turns down a mate in one, even when the win% looks open', () => {
+    expect(isCalm(quietAt(MATE_IN_ONE, 100))).toBe(false);
+    expect(isCalm(quietAt(MATE_IN_ONE, 60))).toBe(false);
+    expect(isCalm(quietAt(BACK_RANK_MATE, 60))).toBe(false);
+    expect(isCalm(quietAt(BACK_RANK_MATE.replace('R5K1', '6K1'), 60))).toBe(true);
+  });
+
+  it('turns down a capture that wins material', () => {
+    expect(isCalm(quietAt(FREE_PAWN, 50))).toBe(false);
+  });
+
+  it('turns down a position where the opponent threatens to win material', () => {
+    expect(isCalm(quietAt(PAWN_ATTACKED, 52))).toBe(false);
+  });
+
+  it('never makes the mate in one a nothing pause', () => {
+    const turns = ['nothing', 'gray', 'nothing', 'gray', 'nothing'].map((label, i) =>
+      turnAt(i, label as Label, i === 2 ? { fen: MATE_IN_ONE, bestWin: 100, trigger: true } : {}),
+    );
+    for (let seed = 1; seed <= 20; seed++) {
+      const moments = chooseMoments(turns, 1, { seed });
+      expect(moments.has(2)).toBe(false);
+      expect(countOf(moments, 'nothing')).toBe(2);
+    }
   });
 });
 

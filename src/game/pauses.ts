@@ -1,4 +1,6 @@
+import { Chess } from 'chess.js';
 import type { Depth, MomentType, Turn } from '../content/types';
+import { captureGain, passTurn } from '../learn/board';
 
 export interface MomentOptions {
   quick?: boolean;
@@ -10,6 +12,8 @@ export interface MomentOptions {
 const SILENT_SHARE = 0.25;
 const NOTHING_SHARE = 0.4;
 const QUICK_MAX_PAUSES = 3;
+// Past this win% either way the game is decided: win% goes flat, so a mate or a free piece grades like any other move.
+const DECIDED_WIN = 90;
 
 /** How many user moves a pause covers, counting the pause move itself. */
 function playoutSpan(depth: Depth): number {
@@ -95,6 +99,18 @@ function markCritical(
   });
 }
 
+/** Whether the side to move has a mate in one or a capture that wins material. */
+function winsAtOnce(fen: string): boolean {
+  return new Chess(fen).moves({ verbose: true }).some((m) => m.san.endsWith('#') || captureGain(m) > 0);
+}
+
+/** A 'nothing' turn that really is calm: the game is open, and neither side can mate or win material at once. */
+export function isCalm(turn: Turn): boolean {
+  if (turn.bestWin >= DECIDED_WIN || turn.bestWin <= 100 - DECIDED_WIN) return false;
+  const passed = passTurn(turn.fen);
+  return passed !== null && !winsAtOnce(turn.fen) && !winsAtOnce(passed);
+}
+
 function addNothings(turns: Turn[], moments: Map<number, MomentType>, rand: () => number, quick: boolean): void {
   const pauses = [...moments.values()].filter((m) => m === 'pause').length;
   const want = quick
@@ -108,7 +124,7 @@ function addNothings(turns: Turn[], moments: Map<number, MomentType>, rand: () =
   const chosen: number[] = [];
   for (const i of ordered) {
     if (chosen.length === want) break;
-    if (chosen.some((c) => Math.abs(c - i) === 1)) continue;
+    if (chosen.some((c) => Math.abs(c - i) === 1) || !isCalm(turns[i])) continue;
     chosen.push(i);
     moments.set(i, 'nothing');
   }
