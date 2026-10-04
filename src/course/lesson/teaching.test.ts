@@ -4,9 +4,9 @@ import type { Beat } from '../../learn/walkthrough';
 import { italian2 } from '../../pause/testGames';
 import { slowPlan } from '../../pause/testTeaching';
 import { OPENING_LESSONS } from '../openings';
-import { openingBeats, teachingFor } from '../openings/teach';
+import { openingBeats, openingLessonAt, teachingFor } from '../openings/teach';
 import type { LessonPosition } from '../select';
-import { lessonRemember, openingExample, practiceTeaching } from './teaching';
+import { lessonRemember, openingExample, practiceTeaching, reviewLesson } from './teaching';
 
 vi.mock('../openings/teach', () => ({ openingBeats: vi.fn(), openingLessonAt: vi.fn(), teachingFor: vi.fn() }));
 
@@ -16,6 +16,7 @@ const beats: Beat[] = [{ fen: italian2.turns[5].fen, text: 'Look at e4.', marks:
 beforeEach(() => {
   vi.mocked(openingBeats).mockReturnValue(beats);
   vi.mocked(teachingFor).mockReturnValue(slowPlan);
+  vi.mocked(openingLessonAt).mockReturnValue('italian-slow');
 });
 
 describe('openingExample', () => {
@@ -42,6 +43,20 @@ describe('practiceTeaching', () => {
   it('gives none when the lesson does not fit the position', () => {
     vi.mocked(teachingFor).mockReturnValue(null);
     expect(practiceTeaching('italian-slow', position)).toBeUndefined();
+  });
+});
+
+describe('reviewLesson', () => {
+  it('asks a missed position again with the opening lesson it belongs to', () => {
+    expect(reviewLesson(position)).toEqual({ lesson: 'italian-slow', teaching: slowPlan });
+    expect(openingLessonAt).toHaveBeenCalledWith(italian2, 5);
+  });
+
+  it('leaves a tactic position, or one its lesson no longer fits, as it was', () => {
+    vi.mocked(teachingFor).mockReturnValue(null);
+    expect(reviewLesson(position)).toBeNull();
+    vi.mocked(openingLessonAt).mockReturnValue(null);
+    expect(reviewLesson(position)).toBeNull();
   });
 });
 

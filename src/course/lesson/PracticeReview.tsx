@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { Board } from '../../board/Board';
 import type { BoardController } from '../../board/types';
 import { themeFor } from '../../learn';
@@ -6,10 +6,13 @@ import type { PauseOutcome, PauseStage } from '../../pause/PauseSheet';
 import { Icon } from '../../pause/steps/icons';
 import { dropDrillReview, scheduleDrill } from '../../progress/store';
 import { navigate } from '../../router';
+import { lessonInfo } from '../lessonInfo';
 import { loadPosition, setOf, type LessonPosition } from '../select';
+import type { OpeningLessonId } from '../types';
 import { UNITS, unitOfTheme } from '../units';
 import { Notice } from './Pages';
 import { Practice } from './Practice';
+import { reviewLesson } from './teaching';
 import '../../screens/game.css';
 import './lesson.css';
 
@@ -24,8 +27,9 @@ const STALE = 'This position is no longer in the course, so it is off your revie
 
 const back = () => navigate('/');
 
-/** The unit a practice position teaches, for the screen's title. */
-function titleOf({ game, turnIndex }: LessonPosition): string {
+/** The lesson a practice position teaches, for the screen's title: its opening lesson, else its tactic unit. */
+function titleOf({ game, turnIndex }: LessonPosition, lesson: OpeningLessonId | undefined): string {
+  if (lesson) return lessonInfo(lesson).title;
   const unit = unitOfTheme(themeFor(game, turnIndex));
   return unit ? UNITS[unit].title : 'Practice';
 }
@@ -35,6 +39,7 @@ export function PracticeReview({ set, gameId, ply }: PracticeReviewProps) {
   const [position, setPosition] = useState<LessonPosition | null>();
   const [layout, setLayout] = useState<PauseStage>('ask');
   const [board, setBoard] = useState<BoardController | null>(null);
+  const review = useMemo(() => position && reviewLesson(position), [position]);
 
   useEffect(() => {
     let current = true;
@@ -61,7 +66,7 @@ export function PracticeReview({ set, gameId, ply }: PracticeReviewProps) {
           <Icon name="chevron-left" />
         </button>
         <div class="game-heading">
-          <h1 class="game-title">{position ? titleOf(position) : 'Practice'}</h1>
+          <h1 class="game-title">{position ? titleOf(position, review?.lesson) : 'Practice'}</h1>
           <p class="game-sub">Review</p>
         </div>
         <span class="game-top-end" aria-hidden="true" />
@@ -73,7 +78,7 @@ export function PracticeReview({ set, gameId, ply }: PracticeReviewProps) {
             <Board fen={position.game.turns[position.turnIndex].fen} orientation={position.game.side} onReady={setBoard} />
           </div>
           <section class="game-slot">
-            {board && <Practice board={board} position={position} onStage={setLayout} onDone={done} />}
+            {board && <Practice board={board} position={position} teaching={review?.teaching} onStage={setLayout} onDone={done} />}
           </section>
         </>
       )}
