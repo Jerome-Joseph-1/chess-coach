@@ -32,6 +32,11 @@ describe('the Italian idea', () => {
     expect(stepOf('italian-idea', both, 'O-O')).toBe('castle');
   });
 
+  it('leaves the textbook when castling meets two attackers on f2', () => {
+    const doubled = 'r1bqk2r/ppp2ppp/2np4/2b1p3/2B1P1n1/3P1N2/PPP2PPP/RNBQK2R w KQkq - 4 7';
+    expect(judge('italian-idea', doubled, 'O-O')).toEqual({ step: 'castle', textbook: false });
+  });
+
   it('leaves the textbook when f7 holds no pawn', () => {
     expect(judge('italian-idea', 'r1bqk2r/ppp1n1pp/2np1p2/8/2BPP3/5N1P/PP1N1PP1/R2QK2R w KQkq - 1 10', 'O-O')).toEqual({ step: 'castle', textbook: false });
   });
@@ -69,6 +74,8 @@ describe('the slow plan', () => {
     const kicked = 'r3kbnr/p4ppp/2pp1q2/1p2p3/2BnP3/2NP3P/PPP2PP1/R1BQ1RK1 w kq - 0 10';
     expect(judge('italian-slow', kicked, 'Bb3')).toEqual({ step: 'Bb3', textbook: true });
     expect(judge('italian-slow', after('e4 e5 Nf3 Nc6 Bc4 Bc5 d3 Nf6 c3 d6'), 'Bb3')).toEqual({ step: 'Bb3', textbook: false });
+    const castledLong = 'r1bqr1k1/2p2pp1/p1np1n1p/1pb1p3/2B1P1P1/2NP1N1P/PPPBQP2/2KR3R w - - 0 11';
+    expect(judge('italian-slow', castledLong, 'Bb3')).toEqual({ step: 'Bb3', textbook: false });
   });
 });
 
@@ -79,6 +86,10 @@ describe('Ng5 against f7', () => {
 
   it('does not fit with a pawn on h6', () => {
     expect(stepOf('italian-ng5', after('e4 e5 Nf3 Nc6 Bc4 Nf6 d3 h6'), 'Ng5')).toBeNull();
+  });
+
+  it('leaves the textbook when the knight only runs from a pawn', () => {
+    expect(judge('italian-ng5', 'r2qkb1r/ppp2pp1/2np1n2/4p3/2B1P1p1/P2P1N2/1PP2PP1/RNBQ1RK1 w kq - 0 9', 'Ng5')).toEqual({ step: 'Ng5', textbook: false });
   });
 
   it('leaves the textbook once a rook guards f7 too', () => {
@@ -131,6 +142,8 @@ describe('the Exchange structure', () => {
     expect(judge('caro-kann-exchange', after('e4 c6 d4 d5 exd5 cxd5 Bd3 Nc6 c3 Nf6 Bf4'), 'Qb6')).toEqual({ step: 'Qb6', textbook: true });
     expect(judge('caro-kann-exchange', after('e4 c6 d4 d5 exd5 cxd5 Bd3 Nc6 c3 Nf6 Bf4 Bg4 Qb3'), 'Qb6')).toEqual({ step: 'Qb6', textbook: false });
     expect(stepOf('caro-kann-exchange', exchange, 'b5')).toBe('b5');
+    // The queen on b6 only runs from the pawn on a5.
+    expect(judge('caro-kann-exchange', 'r4rk1/pp1b1pbp/1q2pp2/PP1p4/3P4/2N2N2/2P2PPP/R2Q1RK1 b - - 0 14', 'Qc7')).toEqual({ step: 'Qc7', textbook: false });
     expect(stepOf('caro-kann-exchange', exchange, 'Nf6')).toBeNull();
   });
 

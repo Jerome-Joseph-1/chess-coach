@@ -46,7 +46,7 @@ const STEPS: [PlanLessonId, string, string][] = [
   ['caro-kann-exchange', `${EXCHANGE} Bf4`, 'Qb6'],
   ['caro-kann-exchange', `${EXCHANGE} Bf4`, 'Qc7'],
   ['caro-kann-exchange', `${CASTLED} Re1`, 'b5'],
-  ['caro-kann-exchange', `${CASTLED} Re1 b5 Nbd2`, 'b4'],
+  ['caro-kann-exchange', `${CASTLED} Re1 b5 Bc2`, 'b4'],
 ];
 
 function walks(): Walk[] {

@@ -29,16 +29,27 @@ function attackersAfter(move: Move, target: Square): Square[] {
 
 const attacksAfter = (move: Move, target: Square) => attackersAfter(move, target).includes(move.to);
 
+/** A capture, or a move of a piece nothing attacks: a plan move, not an escape. */
+function calm(move: Move, board: Chess): boolean {
+  return Boolean(move.captured) || board.attackers(move.from, move.color === 'w' ? 'b' : 'w').length === 0;
+}
+
+/** A worked example only on a calm move. */
+const calmly =
+  (textbook: PlanRule['textbook']): PlanRule['textbook'] =>
+  (move, board) =>
+    calm(move, board) && textbook(move, board);
+
 // --- The Italian: you play White.
 
 /** Castling short. */
 const italianIdea: PlanRule = {
   byMove: 10,
   fits: (move) => (move.isKingsideCastle() ? 'castle' : null),
-  // Your bishop aims at the pawn on f7 and your knight is on f3.
+  // Your bishop aims at the pawn on f7 and your knight is on f3; f2 is not under a double attack.
   textbook: (_move, board) => {
     const bishop = board.attackers('f7', 'w').some((s) => isPiece(board, s, 'b', 'w'));
-    return bishop && pawnOn(board, 'f7', 'b') && isPiece(board, 'f3', 'n', 'w');
+    return bishop && pawnOn(board, 'f7', 'b') && isPiece(board, 'f3', 'n', 'w') && board.attackers('f2', 'b').length < 2;
   },
 };
 
@@ -47,7 +58,7 @@ const italianCentre: PlanRule = {
   byMove: 12,
   fits: (move, board) => (quiet(move, 'p', 'd4', 'd') && pawnOn(board, 'c3', 'w') && pawnOn(board, 'e4', 'w') ? 'd4' : null),
   // d4 attacks a pawn on e5.
-  textbook: (_move, board) => pawnOn(board, 'e5', 'b'),
+  textbook: calmly((_move, board) => pawnOn(board, 'e5', 'b')),
 };
 
 /** d3, Re1 after castling, or Bb3, with the pawns on e4 and e5 blocking each other and a pawn on d3 once the move is played. */
@@ -68,13 +79,16 @@ const italianSlow: PlanRule = {
     switch (slowStep(move, board)) {
       // A knight on f6 attacks e4, and your bishop on c1 is behind the d-pawn.
       case 'd3':
-        return isPiece(board, 'f6', 'n', 'b') && isPiece(board, 'c1', 'b', 'w');
+        return calm(move, board) && isPiece(board, 'f6', 'n', 'b') && isPiece(board, 'c1', 'b', 'w');
       // Nothing stands between the rook and e4.
       case 'Re1':
-        return !board.get('e2') && !board.get('e3');
-      // A pawn attacks the bishop on c4, and from b3 it attacks the pawn on f7.
-      case 'Bb3':
-        return board.attackers('c4', 'b').some((s) => pawnOn(board, s, 'b')) && pawnOn(board, 'f7', 'b') && attacksAfter(move, 'f7');
+        return calm(move, board) && !board.get('e2') && !board.get('e3');
+      // A pawn attacks the bishop on c4, and from b3 it attacks the pawn on f7; your king has not castled long.
+      case 'Bb3': {
+        const kicked = board.attackers('c4', 'b').some((s) => pawnOn(board, s, 'b'));
+        const shortSide = isPiece(board, 'g1', 'k', 'w') || isPiece(board, 'e1', 'k', 'w');
+        return kicked && shortSide && pawnOn(board, 'f7', 'b') && attacksAfter(move, 'f7');
+      }
       default:
         return false;
     }
@@ -86,12 +100,12 @@ const italianNg5: PlanRule = {
   byMove: 10,
   fits: (move, board) => (quiet(move, 'n', 'g5', 'f3') && pawnOn(board, 'f7', 'b') && !pawnOn(board, 'h6', 'b') ? 'Ng5' : null),
   // A bishop attacks f7 too, and only the king guards it.
-  textbook: (move) => {
+  textbook: calmly((move) => {
     const after = new Chess(move.after);
     const guards = after.attackers('f7', 'b');
     const bishop = attackersAfter(move, 'f7').some((s) => after.get(s)?.type === 'b');
     return bishop && guards.length === 1 && after.get(guards[0])?.type === 'k';
-  },
+  }),
 };
 
 // --- The Caro-Kann: you play Black.
@@ -107,11 +121,11 @@ const caroIdea: PlanRule = {
   byMove: 6,
   fits: caroIdeaStep,
   // d5 hits e4 and is backed by c6; the c-pawn takes back a pawn. Either way White has a pawn on d4.
-  textbook: (move, board) => {
+  textbook: calmly((move, board) => {
     const step = caroIdeaStep(move, board);
     if (step === 'd5') return pawnOn(board, 'c6', 'b') && pawnOn(board, 'e4', 'w') && pawnOn(board, 'd4', 'w');
     return step === 'cxd5' && move.captured === 'p' && pawnOn(board, 'd4', 'w');
-  },
+  }),
 };
 
 /** The bishop from c8 out to f5 or g4 while your e-pawn is still on e7, with a pawn on d5. */
@@ -122,10 +136,10 @@ const caroBishop: PlanRule = {
     return out && pawnOn(board, 'e7', 'b') && pawnOn(board, 'd5', 'b') ? `B${move.to}` : null;
   },
   // Your pawns stand on c6 and d5; on g4 the bishop pins a knight on f3 to the queen on d1.
-  textbook: (move, board) => {
+  textbook: calmly((move, board) => {
     const pins = isPiece(board, 'f3', 'n', 'w') && isPiece(board, 'd1', 'q', 'w') && !board.get('e2');
     return pawnOn(board, 'c6', 'b') && (move.to === 'f5' || pins);
-  },
+  }),
 };
 
 /** The c-pawn to c5 against a White pawn on d4, which it then attacks. */
@@ -133,7 +147,7 @@ const caroC5: PlanRule = {
   byMove: 12,
   fits: (move, board) => (quiet(move, 'p', 'c5', 'c') && pawnOn(board, 'd4', 'w') ? 'c5' : null),
   // The Advance chain: White's d4 guards e5, against your d5 and e6.
-  textbook: (_move, board) => pawnOn(board, 'e5', 'w') && pawnOn(board, 'd5', 'b') && pawnOn(board, 'e6', 'b'),
+  textbook: calmly((_move, board) => pawnOn(board, 'e5', 'w') && pawnOn(board, 'd5', 'b') && pawnOn(board, 'e6', 'b')),
 };
 
 /** Pawns on d4 and d5, no White e-pawn, no c-pawn of yours, and White's c-pawn on c2 or c3. */
@@ -155,7 +169,7 @@ function exchangeStep(move: Move, board: Chess): string | null {
 const caroExchange: PlanRule = {
   byMove: 16,
   fits: exchangeStep,
-  textbook: (move, board) => {
+  textbook: calmly((move, board) => {
     switch (exchangeStep(move, board)) {
       case 'Nc6':
       case 'Qc7':
@@ -177,7 +191,7 @@ const caroExchange: PlanRule = {
       default:
         return false;
     }
-  },
+  }),
 };
 
 const ITALIAN_WHY: Record<string, string> = {
