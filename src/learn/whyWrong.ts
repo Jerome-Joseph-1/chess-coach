@@ -409,7 +409,8 @@ function quiet(asked: Asked, say: Say, kind: WrongKind): WrongMove {
   if (has('trap')) {
     const look = 'Think about what your opponent can do after each natural move.';
     if (uciOf(say.move) === say.turn.mistakeMove) return { ...blank, text: 'Careful: think about what your opponent can do after that natural move.' };
-    if (missed) return { ...blank, text: `That avoids the trap, but after it ${standing}. ${look}` };
+    // A move that gives away this much has walked into something of its own: no credit for missing the trap.
+    if (missed) return { ...blank, text: `After that move, ${standing}. ${look}` };
     return { ...blank, text: `That avoids the trap, but there is a better move. ${look}` };
   }
   if (missed) return { ...blank, text: `After that, ${standing}. Which of your pieces could do more?` };

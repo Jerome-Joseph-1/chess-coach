@@ -321,7 +321,7 @@ describe('a move no line punishes (R8)', () => {
       'That avoids the trap, but there is a better move. Think about what your opponent can do after each natural move.',
     );
     expect(told('italian-2000-0234#20', 'f2f3').early.text).toBe(
-      'That avoids the trap, but after it you are worse. Think about what your opponent can do after each natural move.',
+      'After that move, you are worse. Think about what your opponent can do after each natural move.',
     );
   });
 
