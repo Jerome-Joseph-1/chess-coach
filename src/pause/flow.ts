@@ -2,6 +2,7 @@ import type { Depth, Game, StepName, StepOutcome } from '../content/types';
 import { mainSituation, situationsOf, type Situation } from '../learn/situation';
 import { whyWrong, type WrongMove } from '../learn/whyWrong';
 import { fenAfter, uciOfSan } from './position';
+import type { DrillTeaching } from './teaching';
 
 /** A move losing at most this much win% still holds the position. */
 export const HOLD_MAX = 2.5;
@@ -17,6 +18,8 @@ export interface FlowContext {
   depth: Depth;
   /** A lesson's practice position: straight to the move, the pattern already named, no follow-up moves. */
   mode?: 'game' | 'drill';
+  /** An opening lesson's practice position: its plan moves count as found, and another good move is tried again. */
+  teaching?: DrillTeaching;
 }
 
 function isDrill(ctx: FlowContext): boolean {
@@ -38,6 +41,8 @@ export type Feedback =
   | { kind: 'spot'; correct: boolean }
   | { kind: 'move'; uci: string; turn: number }
   | { kind: 'alt'; uci: string }
+  /** A good move that is not the lesson's plan: it goes back and the question stays open. */
+  | { kind: 'off-plan'; uci: string }
   | { kind: 'wrong'; uci: string; why: WrongMove };
 
 export interface FlowState {
@@ -236,6 +241,17 @@ function takeHint(state: FlowState): FlowState {
   return { ...state, hint: hint as HintLevel, hinted: true, feedback: null };
 }
 
+/** The scripted move, or on the solve step any move of the lesson's plan. */
+function isFound(ctx: FlowContext, state: FlowState, uci: string): boolean {
+  if (uci === scriptedUci(ctx.game, state.turn)) return true;
+  return state.phase === 'solve' && (ctx.teaching?.planMoves.includes(uci) ?? false);
+}
+
+/** Another good move is only tried again when the lesson has something to say about its plan. */
+function wantsPlan(ctx: FlowContext, state: FlowState): boolean {
+  return state.phase === 'solve' && ctx.teaching?.offPlan !== undefined;
+}
+
 function playMove(ctx: FlowContext, state: FlowState, uci: string): FlowState {
   if (!isAsking(state)) return state;
 
@@ -243,13 +259,14 @@ function playMove(ctx: FlowContext, state: FlowState, uci: string): FlowState {
   const grade = ctx.game.turns[state.turn].grades[uci];
   const outcomes: StepOutcome[] = [...state.outcomes, { step, correct: state.hint <= startingHint(ctx) }];
 
-  if (uci === scriptedUci(ctx.game, state.turn)) {
+  if (isFound(ctx, state, uci)) {
     const last = holdTurns(ctx).at(-1) ?? ctx.turnIndex;
     const next = state.turn < last ? 'reply' : 'reveal';
     return settle(state, outcomes, next, { kind: 'move', uci, turn: state.turn });
   }
   // With the move already drawn on the board, only that move counts.
   if (state.hint < 3 && grade !== undefined && grade <= HOLD_MAX) {
+    if (wantsPlan(ctx, state)) return { ...state, feedback: { kind: 'off-plan', uci } };
     return settle(state, outcomes, 'reveal', { kind: 'alt', uci }, { alt: true });
   }
   const why = whyWrong(ctx.game, state.turn, uci, state.hint);

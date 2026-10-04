@@ -21,7 +21,9 @@ import {
   verdictOf,
 } from './flow';
 import { fenAfter, samePosition, uciOfSan } from './position';
+import type { DrillTeaching } from './teaching';
 import { italian1, italian2 } from './testGames';
+import { slowPlan } from './testTeaching';
 
 const DEPTHS: Depth[] = [1, 2, 3, 4, 5];
 
@@ -572,5 +574,69 @@ describe('a lesson practice position', () => {
     const done = run(ctx, [move(scriptedUci(italian1, 3)), advance], state);
     expect(done.outcomes).toEqual([{ step: 'solve', correct: false }]);
     expect(verdictOf(ctx, done)).toBe('hinted');
+  });
+});
+
+describe("an opening lesson's practice position", () => {
+  const lesson = (game: Game, turnIndex: number, teaching: DrillTeaching): FlowContext => ({
+    ...ctxFor(game, turnIndex, 3),
+    mode: 'drill',
+    teaching,
+  });
+  const slow = lesson(italian2, 5, slowPlan);
+
+  it('finds a plan move the game did not play', () => {
+    const ctx = lesson(italian1, 0, { ...slowPlan, planMoves: ['d2d4', 'd2d3'] });
+    expect(scriptedUci(italian1, 0)).toBe('d2d4');
+    const state = run(ctx, [move('d2d3')]);
+    expect(state.feedback).toEqual({ kind: 'move', uci: 'd2d3', turn: 0 });
+    expect(state.alt).toBe(false);
+    expect(verdictOf(ctx, run(ctx, [advance], state))).toBe('found');
+  });
+
+  it('asks again after another good move, without counting it, then finds the plan move', () => {
+    const offPlan = run(slow, [move('c3e2')]);
+    expect(offPlan).toEqual({ ...initialState(slow), feedback: { kind: 'off-plan', uci: 'c3e2' } });
+    const state = run(slow, [move('d2d3'), advance], offPlan);
+    expect(state.phase).toBe('reveal');
+    expect(state.outcomes).toEqual([{ step: 'solve', correct: true }]);
+    expect(verdictOf(slow, state)).toBe('found');
+  });
+
+  it('keeps the wrong moves tried before another good move', () => {
+    const wrong = losingMove(italian2, 5);
+    const state = run(slow, [move(wrong), move('b2b4')]);
+    expect(state.feedback).toEqual({ kind: 'off-plan', uci: 'b2b4' });
+    expect(state.tries).toBe(1);
+    expect(state.wrongUci).toBe(wrong);
+  });
+
+  it('takes a wrong move as wrong as usual', () => {
+    const wrong = losingMove(italian2, 5);
+    expect(run(slow, [move(wrong)]).feedback).toEqual({ kind: 'wrong', uci: wrong, why: whyWrong(italian2, 5, wrong, 1) });
+  });
+
+  it('takes only the plan move once the move is drawn on the board', () => {
+    const shown = run(slow, [hint, hint]);
+    expect(shown.hint).toBe(3);
+    expect(run(slow, [move('c3e2')], shown).feedback).toEqual({ kind: 'wrong', uci: 'c3e2', why: whyWrong(italian2, 5, 'c3e2', 3) });
+    expect(run(slow, [move('d2d3')], shown).feedback).toMatchObject({ kind: 'move', uci: 'd2d3' });
+  });
+
+  it('takes another good move as usual when the lesson has nothing to say about it', () => {
+    const quiet = lesson(italian2, 5, { ...slowPlan, offPlan: undefined });
+    expect(run(quiet, [move('c3e2')]).feedback).toEqual({ kind: 'alt', uci: 'c3e2' });
+  });
+
+  it('finds every move that holds in a trap position', () => {
+    const { grades } = italian2.turns[1];
+    const holding = Object.keys(grades).filter((uci) => grades[uci] <= HOLD_MAX);
+    expect(holding.length).toBeGreaterThan(1);
+    const trap = lesson(italian2, 1, { ...slowPlan, planMoves: holding, offPlan: undefined });
+    for (const uci of holding) {
+      const state = run(trap, [move(uci)]);
+      expect(state.feedback, uci).toEqual({ kind: 'move', uci, turn: 1 });
+      expect(verdictOf(trap, run(trap, [advance], state)), uci).toBe('found');
+    }
   });
 });
