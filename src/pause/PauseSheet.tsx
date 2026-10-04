@@ -26,6 +26,7 @@ import {
   type Verdict,
 } from './flow';
 import { hintButtonLabel, hintLadder, pieceInTrouble } from './hints';
+import { illegalLine } from './illegal';
 import { revealSequence } from './lines';
 import { BoardMarks } from './marks';
 import { patternIcon } from './patterns';
@@ -125,6 +126,11 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
   const [leaving, setLeaving] = useState(false);
   /** The board is showing what a wrong move loses: no moves and no hints until it is put back. */
   const [punishing, setPunishing] = useState(false);
+  /**
+   * What the coach says about a move the rules don't allow; it is not an answer and passes by itself.
+   * A new object each time, so the same line said again starts its timer again.
+   */
+  const [illegal, setIllegal] = useState<{ text: string } | null>(null);
   const alive = useRef(true);
   const latest = useRef(state);
   const doneRef = useRef(onDone);
@@ -169,6 +175,10 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
     });
   }
 
+  function sayIllegal(from: string, to: string | null) {
+    setIllegal({ text: illegalLine(board.fen(), game.side, from, to) });
+  }
+
   /** Plays the reply that punishes a wrong move, marks what it wins while the coach says why, then puts the position back. */
   async function showPunishment(why: WrongMove, at: number) {
     const reply = why.reply!;
@@ -188,7 +198,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
     const last = moveBefore(game, game.turns[at].ply);
     board.setLastMove(last ? last.from + last.to : null);
     setPunishing(false);
-    board.enableMoves(game.side, tryMove);
+    board.enableMoves(game.side, tryMove, sayIllegal);
     showHint(latest.current);
   }
 
@@ -254,7 +264,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
         break;
       case 'solve':
       case 'hold':
-        board.enableMoves(game.side, tryMove);
+        board.enableMoves(game.side, tryMove, sayIllegal);
         break;
       case 'reply':
         timers.push(
@@ -278,6 +288,14 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
 
   useEffect(() => showHint(state), [state.hint]);
   useEffect(() => onStage?.(stage), [stage]);
+
+  // Anything the flow does takes the place of a line about an illegal move.
+  useEffect(() => setIllegal(null), [state]);
+  useEffect(() => {
+    if (!illegal) return;
+    const id = window.setTimeout(() => setIllegal(null), readingMs(illegal.text));
+    return () => window.clearTimeout(id);
+  }, [illegal]);
 
   useEffect(
     () => () => {
@@ -322,6 +340,7 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
       <Question
         {...common}
         {...prompt}
+        sub={illegal?.text ?? prompt.sub}
         pattern={named ? lessonLabel(game, state.turn).pattern : undefined}
         ladder={hintLadder(state)}
       />

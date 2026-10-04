@@ -155,6 +155,37 @@ test('a wrong move is only an error and the piece goes back; the right one finis
   await expect(continueButton(page)).toBeVisible();
 });
 
+test('a move the rules do not allow gets a line from the coach and is not a wrong answer', async ({ page }) => {
+  await atStage(page, 3);
+  await reachFirstPause(page);
+  await winButton(page).click();
+  await expect(page.getByText('Your move', { exact: true })).toBeVisible();
+
+  await tapSquares(page, 'a2', 'a5');
+  await expect(page.getByText("Your pawn on a2 can't go to a5.")).toBeVisible();
+  await expect(page.locator('.pause-sheet .coach.is-error')).toHaveCount(0);
+  await expect(hintButton(page)).toHaveText('Hint: the idea');
+  // The line passes by itself and the answer to step 1 comes back.
+  await expect(page.getByText(RIGHT_PICK)).toBeVisible({ timeout: 8000 });
+
+  await tapSquares(page, 'd4', 'e5');
+  await expect(page.getByText('You found the move')).toBeVisible();
+});
+
+test('a lesson practice position says why a move is not allowed and keeps its hints', async ({ page }) => {
+  await page.goto('./#/practice/italian-1400/italian-1400-0001/3');
+  await expect(page.getByText('Play the best move on the board.')).toBeVisible();
+  await expect(hintButton(page)).toHaveText('Hint: the piece');
+
+  await tapSquares(page, 'a2', 'a5');
+  await expect(page.getByText("Your pawn on a2 can't go to a5.")).toBeVisible();
+  await expect(hintButton(page)).toHaveText('Hint: the piece');
+  await expect(page.locator('.hint-stop.is-used')).toHaveCount(1);
+
+  await tapSquares(page, 'd4', 'e5');
+  await expect(page.getByText('You found the move')).toBeVisible();
+});
+
 test('a move that loses material stays on the board while the reply shows what it loses, then the position comes back', async ({
   page,
 }) => {

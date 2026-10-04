@@ -16,10 +16,10 @@ import { EvalBar } from './evalBar';
 import { BoardArrows, BoardMarkers, type Entrance } from './extensions';
 import { gridCell } from './geometry';
 import { soundForMove } from './moveSound';
-import { capturedSquare, checkedKing, legalMoves, movedPiece, pickMove, stepBetween } from './moves';
+import { capturedSquare, checkedKing, isOwnPiece, legalMoves, movedPiece, pickMove, stepBetween } from './moves';
 import { SquareOverlay } from './overlay';
 import { PieceEffects } from './pieceEffects';
-import type { ArrowTone, BadgeKind, BarScore, BoardController, MovedPiece, Tone } from './types';
+import type { ArrowTone, BadgeKind, BarScore, BoardController, IllegalHandler, MovedPiece, Tone } from './types';
 
 type MoveHandler = (uci: string) => boolean | Promise<boolean>;
 type MovedListener = (move: MovedPiece) => void;
@@ -151,9 +151,9 @@ export class CmBoardController implements BoardController {
     });
   }
 
-  enableMoves(side: Side, onMove: MoveHandler): void {
+  enableMoves(side: Side, onMove: MoveHandler, onIllegal?: IllegalHandler): void {
     this.disableInput();
-    this.cm.enableMoveInput((event) => this.handleInput(event, side, onMove), side);
+    this.cm.enableMoveInput((event) => this.handleInput(event, side, onMove, onIllegal), side);
   }
 
   enableSquareTaps(onTap: (square: string) => void): void {
@@ -222,15 +222,15 @@ export class CmBoardController implements BoardController {
     this.cm.destroy();
   }
 
-  private handleInput(event: MoveInputEvent, side: Side, onMove: MoveHandler): boolean | undefined {
+  private handleInput(event: MoveInputEvent, side: Side, onMove: MoveHandler, onIllegal?: IllegalHandler): boolean | undefined {
     switch (event.type) {
       case INPUT_EVENT_TYPE.moveInputStarted:
-        return this.startMove(event.squareFrom, side);
+        return this.startMove(event.squareFrom, side, onIllegal);
       case INPUT_EVENT_TYPE.movingOverSquare:
         this.overlay.hover(event.squareTo ?? null);
         break;
       case INPUT_EVENT_TYPE.validateMoveInput:
-        return this.tryMove(event.squareFrom, event.squareTo, side, onMove);
+        return this.tryMove(event.squareFrom, event.squareTo, side, onMove, onIllegal);
       case INPUT_EVENT_TYPE.moveInputCanceled:
       case INPUT_EVENT_TYPE.moveInputFinished:
         this.clearMoveHints();
@@ -238,10 +238,13 @@ export class CmBoardController implements BoardController {
     return undefined;
   }
 
-  private startMove(square: string, side: Side): boolean {
+  private startMove(square: string, side: Side, onIllegal?: IllegalHandler): boolean {
     if (this.busy > 0) return false;
     const moves = legalMoves(this.position, side, square);
-    if (moves.length === 0) return false;
+    if (moves.length === 0) {
+      onIllegal?.(square, null);
+      return false;
+    }
     this.showMoveHints(square, moves);
     this.effects.lift(square);
     return true;
@@ -271,10 +274,14 @@ export class CmBoardController implements BoardController {
     return type === TONE_MARKERS.hint ? HINT_BREATHE : null;
   }
 
-  private tryMove(from: string, to: string | null | undefined, side: Side, onMove: MoveHandler): boolean {
+  private tryMove(from: string, to: string | null | undefined, side: Side, onMove: MoveHandler, onIllegal?: IllegalHandler): boolean {
     this.clearMoveHints();
     const move = to ? pickMove(legalMoves(this.position, side, from), to) : undefined;
-    if (!move) return false;
+    if (!move) {
+      // A tap on another piece of the same side picks that piece instead.
+      if (to && !isOwnPiece(this.position, to, side)) onIllegal?.(from, to);
+      return false;
+    }
 
     const before = this.position;
     const previousLastMove = this.lastMove;

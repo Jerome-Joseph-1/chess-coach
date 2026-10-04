@@ -1,7 +1,7 @@
 import { Chess } from 'chess.js';
 import { describe, expect, it } from 'vitest';
 import { toUci } from '../game/position';
-import { capturedSquare, checkedKing, legalMoves, moveBetween, movedPiece, pickMove, stepBetween } from './moves';
+import { capturedSquare, checkedKing, illegalReason, isOwnPiece, legalMoves, moveBetween, movedPiece, pickMove, stepBetween } from './moves';
 
 const START = new Chess().fen();
 
@@ -31,6 +31,45 @@ describe('legalMoves', () => {
 
   it('is empty for a position that cannot be read', () => {
     expect(legalMoves('nonsense', 'w', 'e2')).toEqual([]);
+  });
+});
+
+describe('illegalReason', () => {
+  const pinned = '4r1k1/8/8/8/8/8/4N3/4K3 w - - 0 1';
+  const checked = '4k3/8/8/8/8/8/3N4/r3K3 w - - 0 1';
+
+  it('says a piece simply cannot get there, or cannot move at all', () => {
+    expect(illegalReason(START, 'w', 'e2', 'e5')).toBe('blocked');
+    expect(illegalReason(START, 'w', 'g1', 'g3')).toBe('blocked');
+    expect(illegalReason(START, 'w', 'c1', null)).toBe('blocked');
+  });
+
+  it('tells a pinned piece from one that cannot get there', () => {
+    expect(illegalReason(pinned, 'w', 'e2', 'c3')).toBe('pinned');
+    expect(illegalReason(pinned, 'w', 'e2', null)).toBe('pinned');
+    expect(illegalReason(pinned, 'w', 'e2', 'e4')).toBe('blocked');
+  });
+
+  it('says when the king is in check and the move does not help', () => {
+    expect(illegalReason(checked, 'w', 'd2', 'f3')).toBe('check');
+  });
+
+  it('says when the king would step into check', () => {
+    const fen = '4k3/8/8/8/8/8/r7/4K3 w - - 0 1';
+    expect(illegalReason(fen, 'w', 'e1', 'e2')).toBe('into-check');
+    expect(illegalReason(fen, 'w', 'e1', 'e3')).toBe('blocked');
+  });
+
+  it('works for the side that is not on move', () => {
+    expect(illegalReason(START, 'b', 'e7', 'e4')).toBe('blocked');
+  });
+});
+
+describe('isOwnPiece', () => {
+  it('is true only for a piece of the side', () => {
+    expect(isOwnPiece(START, 'd2', 'w')).toBe(true);
+    expect(isOwnPiece(START, 'd7', 'w')).toBe(false);
+    expect(isOwnPiece(START, 'd4', 'w')).toBe(false);
   });
 });
 

@@ -12,6 +12,8 @@ export interface MovedPiece {
   undo?: boolean;
 }
 export type ArrowTone = 'best' | 'threat' | 'mistake';
+/** A move the rules don't allow: the piece's square, and where it was dropped. */
+export type IllegalHandler = (from: string, to: string | null) => void;
 /** An evaluation from White's point of view: centipawns, mate in n (negative when Black mates), or a finished game. */
 export type BarScore = { cp: number } | { mate: number } | { winner: Side };
 
@@ -29,9 +31,10 @@ export interface BoardController {
   setLastMove(uci: string | null): void;
   /**
    * Let the user move pieces of `side`. The callback decides: return true to keep the move,
-   * false to snap the piece back. Only legal moves reach the callback.
+   * false to snap the piece back. Only legal moves reach the callback. A piece dropped where it can't go,
+   * or picked up when it has no move at all (`to` is null), is told to `onIllegal`.
    */
-  enableMoves(side: Side, onMove: (uci: string) => boolean | Promise<boolean>): void;
+  enableMoves(side: Side, onMove: (uci: string) => boolean | Promise<boolean>, onIllegal?: IllegalHandler): void;
   /** Let the user tap any square (used by the "Where?" step). */
   enableSquareTaps(onTap: (square: string) => void): void;
   disableInput(): void;

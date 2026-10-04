@@ -12,6 +12,49 @@ export function legalMoves(fen: string, side: Side, square: string): Move[] {
   }
 }
 
+/** Why the piece on a square can't go where it was dropped, or can't move at all. */
+export type IllegalReason = 'check' | 'pinned' | 'into-check' | 'blocked';
+
+/** The piece's moves as if its own king could not be taken: what it could do but for the king. */
+function movesIgnoringKing(fen: string, side: Side, square: string): Move[] {
+  const chess = new Chess(withTurn(fen, side));
+  chess.findPiece({ type: 'k', color: side }).forEach((king) => chess.remove(king));
+  return chess.moves({ verbose: true, square: square as Square });
+}
+
+function isKingStep(from: string, to: string): boolean {
+  const files = Math.abs(from.charCodeAt(0) - to.charCodeAt(0));
+  const ranks = Math.abs(Number(from[1]) - Number(to[1]));
+  return Math.max(files, ranks) === 1;
+}
+
+/**
+ * Why `side` can't play from `from` to `to`, or move the piece at all when `to` is null: its king is in check,
+ * the piece is pinned to it, the king would step into check, or the piece simply can't get there.
+ */
+export function illegalReason(fen: string, side: Side, from: string, to: string | null): IllegalReason {
+  try {
+    const chess = new Chess(withTurn(fen, side));
+    if (chess.get(from as Square)?.type === 'k') {
+      return to && isKingStep(from, to) && chess.get(to as Square)?.color !== side ? 'into-check' : 'blocked';
+    }
+    const reaches = movesIgnoringKing(fen, side, from).some((m) => to === null || m.to === to);
+    if (!reaches) return 'blocked';
+    return chess.inCheck() ? 'check' : 'pinned';
+  } catch {
+    return 'blocked';
+  }
+}
+
+/** Whether a piece of `side` stands on the square. */
+export function isOwnPiece(fen: string, square: string, side: Side): boolean {
+  try {
+    return new Chess(fen).get(square as Square)?.color === side;
+  } catch {
+    return false;
+  }
+}
+
 /** The move from the first square to the second, queening when it promotes. */
 export function pickMove(moves: Move[], to: string): Move | undefined {
   const candidates = moves.filter((m) => m.to === to);
