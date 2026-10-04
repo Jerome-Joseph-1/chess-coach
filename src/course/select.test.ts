@@ -7,7 +7,7 @@ import queenForKnight from '../pause/fixtures/queen-for-knight.json';
 import { italian1, italian2 } from '../pause/testGames';
 import { FakeStorage } from '../progress/testkit';
 import { planCandidatesOf } from './openings/mine';
-import { trapEntry } from './openings/trapGames';
+import { readTraps, trapEntry } from './openings/trapGames';
 import type { TrapGame } from './openings/types';
 import {
   CLEAN,
@@ -29,7 +29,10 @@ import {
 } from './select';
 import { positionKey, type CourseFile, type LessonId, type PositionRef } from './types';
 
-vi.mock('./openings/trapGames', async (actual) => ({ ...(await actual()), trapEntry: vi.fn(() => null) }));
+vi.mock('./openings/trapGames', async (actual) => {
+  const real = await actual<typeof import('./openings/trapGames')>();
+  return { ...real, trapEntry: vi.fn(real.trapEntry) };
+});
 
 function candidate(set: string, n: number, findShare: number, clarity = CLEAN, unit: LessonId = 'fork'): Candidate {
   const ref = { set, gameId: `${set}-${String(n).padStart(4, '0')}`, ply: 9, findShare };
@@ -241,7 +244,7 @@ describe('buildCourses', () => {
   it('builds the test course from the test games', () => {
     const mined = (g: Game) => [...candidatesOf('italian-1400', g), ...planCandidatesOf('italian-1400', g)];
     const candidates = new Map([['italian-1400', [italian1, italian2].flatMap(mined)]]);
-    expect(buildCourses(candidates).get('italian-1400')).toEqual(fixtureCourse);
+    expect(buildCourses(candidates, readTraps()).get('italian-1400')).toEqual(fixtureCourse);
   });
 
   it('borrows from the same opening only, each position keeping its own set', () => {
@@ -296,6 +299,7 @@ describe('buildCourses', () => {
   it("builds each opening's own lessons after the tactic units, its trap lesson from the analysed traps", () => {
     const traps = [{ id: 'trap-italian-1' } as TrapGame];
     const trap: PositionRef = { set: 'italian-1400', gameId: 'trap-italian-1', ply: 7, findShare: 0.5 };
+    const real = vi.mocked(trapEntry).getMockImplementation()!;
     vi.mocked(trapEntry).mockImplementation((set) => (set === 'italian-1400' ? { id: 'italian-traps', examples: [trap], drills: [] } : null));
     const candidates = new Map([
       ['italian-1400', [candidate('italian-1400', 1, 0.5, CLEAN, 'italian-centre'), candidate('italian-1400', 2, 0.5), candidate('italian-1400', 3, 0.5, CLEAN, 'caro-kann-c5')]],
@@ -306,7 +310,7 @@ describe('buildCourses', () => {
     expect(courses.get('caro-kann-1100')!.units.map((u) => u.id)).toEqual(['caro-kann-c5']);
     expect(trapEntry).toHaveBeenCalledWith('italian-1400', 'italian', traps);
     expect(trapEntry).toHaveBeenCalledWith('caro-kann-1100', 'caro-kann', traps);
-    vi.mocked(trapEntry).mockReturnValue(null);
+    vi.mocked(trapEntry).mockImplementation(real);
   });
 
   it('refuses a folder that is not a set', () => {

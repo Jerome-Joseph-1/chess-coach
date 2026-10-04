@@ -17,10 +17,11 @@ async function expectBoardUncovered(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 }
 
-/** Free pieces practised on these plies of game 0001: dxe5 at 3 unless told otherwise. */
+/** Free pieces practised on these plies of game 0001: dxe5 at 3 unless told otherwise. The opening lessons are left out, so free pieces come first. */
 async function practise(page: Page, plies = [3]) {
   await page.route('**/content/italian-1400/course.json', async (route) => {
     const course = await (await route.fetch()).json();
+    course.units = course.units.filter((u: { id: string }) => !u.id.startsWith('italian-'));
     course.units[0].drills = plies.map((ply) => ({ set: 'italian-1400', gameId: 'italian-1400-0001', ply, findShare: 0.4 }));
     await route.fulfill({ json: course });
   });

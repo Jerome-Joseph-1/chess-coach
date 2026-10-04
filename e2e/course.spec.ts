@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// The test course teaches three units over the two test games: free pieces, pins, traps.
+// The test course teaches five lessons over the two test games and the Italian trap games, in this path order:
+// the slow plan, free pieces, pins, the Italian traps, traps.
 const DAY = 86_400_000;
 const KEY = 'cc.progress.v1';
 
@@ -29,15 +30,15 @@ test.describe('Course', () => {
     await expect(page.getByRole('heading', { name: 'Course', level: 1 })).toBeVisible();
     await expect(tabs.getByRole('link', { name: 'Course' })).toHaveAttribute('aria-current', 'page');
     const lessons = page.getByRole('region', { name: 'Italian Game lessons' });
-    await expect(lessons.getByText('0 of 3 done')).toBeVisible();
+    await expect(lessons.getByText('0 of 5 done')).toBeVisible();
     // Each opening's course is taught from its own games, so its progress is its own.
     await expect(lessons.getByText('Each opening has its own lessons.')).toBeVisible();
     const rows = lessons.getByRole('listitem');
-    await expect(rows).toHaveCount(3);
-    await expect(rows.nth(0)).toContainText('Free pieces');
-    await expect(rows.nth(0)).toContainText('A piece nobody guards: take it.');
+    await expect(rows).toHaveCount(5);
+    await expect(rows.nth(0)).toContainText('The slow plan');
+    await expect(rows.nth(0)).toContainText('Guard e4 with d3, castle, rook to e1, bishop back to b3.');
     await expect(rows.nth(0)).toContainText('Next');
-    for (const [i, title] of ['Pins', 'Traps'].entries()) {
+    for (const [i, title] of ['Free pieces', 'Pins', 'Italian traps', 'Traps'].entries()) {
       await expect(rows.nth(i + 1)).toContainText(title);
       await expect(rows.nth(i + 1)).toContainText('Later');
     }
@@ -47,27 +48,30 @@ test.describe('Course', () => {
     await page.goto('./#/course');
     const lessons = page.getByRole('region', { name: 'Lessons' });
     await expect(lessons.getByRole('link')).toHaveCount(1);
-    await lessons.getByRole('link', { name: /Free pieces/ }).click();
-    await expect(page).toHaveURL(/#\/lesson\/italian\/free-piece$/);
+    await lessons.getByRole('link', { name: /The slow plan/ }).click();
+    await expect(page).toHaveURL(/#\/lesson\/italian\/italian-slow$/);
   });
 
   test('a done lesson shows its score and opens again; the next one waits for two games', async ({ page }) => {
-    await seed(page, progress({ 'free-piece': done(Date.now() - DAY, [true, false]) }));
+    // Its one practice position is among the answers, so it offers no more practice.
+    const slow = done(Date.now() - DAY, [true, false]);
+    slow.drills[0].key = 'italian-1400/italian-1400-0002:11';
+    await seed(page, progress({ 'italian-slow': slow }));
     await page.goto('./#/course');
     await expect(page.getByText('Next lesson after 2 more games.')).toBeVisible();
     const lessons = page.getByRole('region', { name: 'Lessons' });
-    await expect(lessons.getByText('1 of 3 done')).toBeVisible();
+    await expect(lessons.getByText('1 of 5 done')).toBeVisible();
     const rows = lessons.getByRole('listitem');
     await expect(rows.nth(0)).toContainText('Done');
     await expect(rows.nth(0)).toContainText('1 of 2 right');
     await expect(rows.nth(1)).toContainText('Next');
     await expect(lessons.getByRole('link')).toHaveCount(2);
 
-    await lessons.getByRole('link', { name: /Pins/ }).click();
-    await expect(page).toHaveURL(/#\/lesson\/italian\/pin$/);
-    await page.goBack();
-    await page.getByRole('region', { name: 'Lessons' }).getByRole('link', { name: /Free pieces/ }).click();
+    await lessons.getByRole('link', { name: /Free pieces/ }).click();
     await expect(page).toHaveURL(/#\/lesson\/italian\/free-piece$/);
+    await page.goBack();
+    await page.getByRole('region', { name: 'Lessons' }).getByRole('link', { name: /The slow plan/ }).click();
+    await expect(page).toHaveURL(/#\/lesson\/italian\/italian-slow$/);
   });
 
   test('says so when the level has no lessons yet', async ({ page }) => {
@@ -88,12 +92,12 @@ test.describe('Course', () => {
 test.describe('Today with the course', () => {
   test('offers the first lesson at once, with one main button', async ({ page }) => {
     await page.goto('./');
-    const card = page.getByRole('region', { name: 'Free pieces' });
+    const card = page.getByRole('region', { name: 'The slow plan' });
     await expect(card.getByText('Up next · Lesson 1')).toBeVisible();
-    await expect(card.getByText('A piece nobody guards: take it.')).toBeVisible();
+    await expect(card.getByText('Guard e4 with d3, castle, rook to e1, bishop back to b3.')).toBeVisible();
     await expect(page.locator('main .btn-primary')).toHaveCount(1);
     await card.getByRole('button', { name: 'Start lesson' }).click();
-    await expect(page).toHaveURL(/#\/lesson\/italian\/free-piece$/);
+    await expect(page).toHaveURL(/#\/lesson\/italian\/italian-slow$/);
   });
 
   test('"Start a game instead" starts a game', async ({ page }) => {
@@ -110,13 +114,13 @@ test.describe('Today with the course', () => {
       [[lessonAt + 1000], 'game'],
       [[lessonAt + 1000, lessonAt + 2000], 'lesson'],
     ] as const) {
-      await page.evaluate(([key, value]) => localStorage.setItem(key, JSON.stringify(value)), [KEY, progress({ 'free-piece': done(lessonAt) }, [...games])] as const);
+      await page.evaluate(([key, value]) => localStorage.setItem(key, JSON.stringify(value)), [KEY, progress({ 'italian-slow': done(lessonAt) }, [...games])] as const);
       await page.reload();
       if (expected === 'game') {
         await expect(page.getByRole('region', { name: 'Italian Game' }).getByRole('button', { name: 'Start game' })).toBeVisible();
         await expect(page.getByRole('link', { name: 'Start a game instead' })).toHaveCount(0);
       } else {
-        await expect(page.getByRole('region', { name: 'Pins' }).getByRole('button', { name: 'Start lesson' })).toBeVisible();
+        await expect(page.getByRole('region', { name: 'Free pieces' }).getByRole('button', { name: 'Start lesson' })).toBeVisible();
       }
     }
   });

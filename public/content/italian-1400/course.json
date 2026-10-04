@@ -22,6 +22,17 @@
       "id": "italian-slow",
       "examples": [{ "set": "italian-1400", "gameId": "italian-1400-0002", "ply": 13, "findShare": 0.936 }],
       "drills": [{ "set": "italian-1400", "gameId": "italian-1400-0002", "ply": 11, "findShare": 0.91 }]
+    },
+    {
+      "id": "italian-traps",
+      "examples": [{ "set": "italian-1400", "gameId": "trap-italian-shilling", "ply": 0, "findShare": 0 }],
+      "drills": [
+        { "set": "italian-1400", "gameId": "trap-italian-shilling-f7", "ply": 0, "findShare": 0 },
+        { "set": "italian-1400", "gameId": "trap-italian-two-knights", "ply": 0, "findShare": 0 },
+        { "set": "italian-1400", "gameId": "trap-italian-bc5", "ply": 0, "findShare": 0 },
+        { "set": "italian-1400", "gameId": "trap-italian-legal", "ply": 0, "findShare": 0 },
+        { "set": "italian-1400", "gameId": "trap-italian-d6-ng5", "ply": 0, "findShare": 0 }
+      ]
     }
   ]
 }
