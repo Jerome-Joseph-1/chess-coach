@@ -220,7 +220,9 @@ function answerSpot(ctx: FlowContext, state: FlowState, pick: Situation): FlowSt
   if (!correct && tries < SPOT_TRIES) return { ...state, spot: pick, tries, feedback };
   const outcomes: StepOutcome[] = [...state.outcomes, { step: 'spot', correct: tries === 0 }];
   const spotShown = correct ? null : mainSituation(answers);
-  return settle(state, outcomes, ctx.type === 'pause' ? 'solve' : 'reveal', feedback, { spot: pick, tries, spotShown });
+  // A wrong first answer counts as a hint: finding the move after it is "solved with a hint", not a miss.
+  const hinted = state.hinted || tries > 0;
+  return settle(state, outcomes, ctx.type === 'pause' ? 'solve' : 'reveal', feedback, { spot: pick, tries, spotShown, hinted });
 }
 
 /** A hint replaces whatever the last answer earned. */

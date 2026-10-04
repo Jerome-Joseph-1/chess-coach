@@ -229,7 +229,7 @@ describe('the spot step', () => {
     expect(state.outcomes).toEqual([{ step: 'spot', correct: false }]);
   });
 
-  it('shows the right answer after the second wrong pick and moves on like a right pick, scored as missed', () => {
+  it('shows the right answer after the second wrong pick and moves on like a right pick, scored as a hint', () => {
     const shown = run(ctx, [spot('quiet'), spot('trap')]);
     expect(shown.phase).toBe('spot');
     expect(shown.answered).toBe(true);
@@ -242,7 +242,7 @@ describe('the spot step', () => {
     const next = run(ctx, [advance], shown);
     expect(next.phase).toBe('solve');
     expect(next.spotShown).toBe('win');
-    expect(verdictOf(ctx, run(ctx, [move(scriptedUci(italian1, 3)), advance], next))).toBe('missed');
+    expect(verdictOf(ctx, run(ctx, [move(scriptedUci(italian1, 3)), advance], next))).toBe('hinted');
   });
 
   it('shows the most urgent answer of a position about two things', () => {
@@ -518,13 +518,14 @@ describe('the reveal', () => {
     ]);
   });
 
-  it('gives the verdict for the mark on the move: found, found with a hint, or missed', () => {
+  it('gives the verdict for the mark on the move: found, found with a hint or after a wrong first answer, or missed', () => {
     const ctx = ctxFor(italian1, 3, 3);
     expect(verdictOf(ctx, run(ctx, perfectRun(ctx)))).toBe('found');
     expect(verdictOf(ctx, run(ctx, [spot('win'), advance, hint, move(scriptedUci(italian1, 3))]))).toBe('hinted');
     expect(flowResult(ctx, run(ctx, [spot('win'), advance, hint, move(scriptedUci(italian1, 3))])).hinted).toBe(true);
     expect(verdictOf(ctx, run(ctx, [spot('win'), advance, hint, solution]))).toBe('missed');
-    expect(verdictOf(ctx, run(ctx, [spot('quiet'), spot('win'), advance, move(scriptedUci(italian1, 3))]))).toBe('missed');
+    expect(verdictOf(ctx, run(ctx, [spot('quiet'), spot('win'), advance, move(scriptedUci(italian1, 3))]))).toBe('hinted');
+    expect(verdictOf(ctx, run(ctx, [spot('quiet'), spot('win'), advance, hint, solution]))).toBe('missed');
     expect(verdictOf(ctxFor(italian1, 11, 3, 'nothing'), initialState(ctxFor(italian1, 11, 3, 'nothing')))).toBe('quiet');
   });
 
