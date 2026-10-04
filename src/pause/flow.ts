@@ -241,9 +241,8 @@ function takeHint(state: FlowState): FlowState {
   return { ...state, hint: hint as HintLevel, hinted: true, feedback: null };
 }
 
-/** The scripted move, or on the solve step any move of the lesson's plan. */
-function isFound(ctx: FlowContext, state: FlowState, uci: string): boolean {
-  if (uci === scriptedUci(ctx.game, state.turn)) return true;
+/** A move of the lesson's plan, asked on the solve step. */
+function isPlanMove(ctx: FlowContext, state: FlowState, uci: string): boolean {
   return state.phase === 'solve' && (ctx.teaching?.planMoves.includes(uci) ?? false);
 }
 
@@ -259,11 +258,13 @@ function playMove(ctx: FlowContext, state: FlowState, uci: string): FlowState {
   const grade = ctx.game.turns[state.turn].grades[uci];
   const outcomes: StepOutcome[] = [...state.outcomes, { step, correct: state.hint <= startingHint(ctx) }];
 
-  if (isFound(ctx, state, uci)) {
+  if (uci === scriptedUci(ctx.game, state.turn)) {
     const last = holdTurns(ctx).at(-1) ?? ctx.turnIndex;
     const next = state.turn < last ? 'reply' : 'reveal';
     return settle(state, outcomes, next, { kind: 'move', uci, turn: state.turn });
   }
+  // Found all the same, though the game went another way.
+  if (isPlanMove(ctx, state, uci)) return settle(state, outcomes, 'reveal', { kind: 'move', uci, turn: state.turn }, { alt: true });
   // With the move already drawn on the board, only that move counts.
   if (state.hint < 3 && grade !== undefined && grade <= HOLD_MAX) {
     if (wantsPlan(ctx, state)) return { ...state, feedback: { kind: 'off-plan', uci } };

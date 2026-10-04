@@ -585,13 +585,14 @@ describe("an opening lesson's practice position", () => {
   });
   const slow = lesson(italian2, 5, slowPlan);
 
-  it('finds a plan move the game did not play', () => {
+  it('finds a plan move the game did not play, and says the game went another way', () => {
     const ctx = lesson(italian1, 0, { ...slowPlan, planMoves: ['d2d4', 'd2d3'] });
     expect(scriptedUci(italian1, 0)).toBe('d2d4');
     const state = run(ctx, [move('d2d3')]);
     expect(state.feedback).toEqual({ kind: 'move', uci: 'd2d3', turn: 0 });
-    expect(state.alt).toBe(false);
+    expect(state.alt).toBe(true);
     expect(verdictOf(ctx, run(ctx, [advance], state))).toBe('found');
+    expect(run(ctx, [move('d2d4')]).alt).toBe(false);
   });
 
   it('asks again after another good move, without counting it, then finds the plan move', () => {
