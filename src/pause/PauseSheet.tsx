@@ -25,11 +25,11 @@ import {
   type Phase,
   type Verdict,
 } from './flow';
-import { hintButtonLabel, hintLadder, pieceInTrouble } from './hints';
+import { hintButtonLabel, hintLadder, hintSquares } from './hints';
 import { illegalLine } from './illegal';
 import { revealSequence } from './lines';
 import { BoardMarks } from './marks';
-import { patternIcon } from './patterns';
+import { pauseLesson } from './patterns';
 import { moveBefore, samePosition, squaresOf } from './position';
 import { eyebrowFor, promptFor, spotPromptFor } from './prompt';
 import { leavePanel, Sheet } from './Sheet';
@@ -38,6 +38,7 @@ import { Question } from './steps/Question';
 import { QuietReveal } from './steps/QuietReveal';
 import { RevealStep } from './steps/RevealStep';
 import { SpotChoices } from './steps/SpotChoices';
+import type { DrillTeaching } from './teaching';
 
 export type { Verdict };
 
@@ -74,10 +75,12 @@ export interface PauseSheetProps {
   onStage?: (stage: PauseStage) => void;
   /** A lesson's practice position: it starts at the move with the pattern named. */
   mode?: 'game' | 'drill';
+  /** An opening lesson's practice position: its plan, hints and takeaway take the tactic's place. */
+  teaching?: DrillTeaching;
 }
 
 const REPLY_MS = 350;
-/** A wrong answer's cross stays this long, then the piece snaps back. */
+/** A wrong answer's cross, or a good move off the lesson's plan, stays this long, then the piece snaps back. */
 const WRONG_FLASH_MS = 600;
 /** A right answer stays on screen this long before the flow moves on. */
 const SETTLE_MS = 400;
@@ -90,21 +93,16 @@ function showPosition(board: BoardController, fen: string, animate: boolean): Pr
   return samePosition(board.fen(), fen) ? Promise.resolve() : board.setPosition(fen, animate);
 }
 
-function lessonLabel(game: Game, turnIndex: number) {
-  const lesson = lessonFor(game, turnIndex);
-  return { lesson, pattern: { name: lesson.name, icon: patternIcon(lesson.theme) } };
-}
-
 function buildReveal(ctx: FlowContext, state: FlowState) {
   const { game } = ctx;
   const index = revealTurn(ctx, state);
   const missedLate = state.missedUci !== null && index !== ctx.turnIndex;
   const scripted = game.moves[game.turns[state.turn].ply];
-  const { lesson, pattern } = lessonLabel(game, ctx.turnIndex);
+  const { pattern, idea, remember } = pauseLesson(game, ctx.turnIndex, ctx.teaching);
   return {
-    sequence: revealSequence(game, index, state.missedUci),
-    text: missedLate && state.missedUci ? holdMissHeadline(game, index, state.missedUci) : lesson.idea,
-    lesson: missedLate ? undefined : { pattern, remember: lesson.remember },
+    sequence: revealSequence(game, index, state.missedUci, ctx.teaching?.line),
+    text: missedLate && state.missedUci ? holdMissHeadline(game, index, state.missedUci) : idea,
+    lesson: missedLate ? undefined : { pattern, remember },
     note: state.alt ? `${COPY.altNote} ${continuesWith(scripted)}` : undefined,
   };
 }
@@ -115,8 +113,8 @@ function lastMoveSquares(game: Game, turnIndex: number): string[] {
   return move ? [move.from, move.to] : [];
 }
 
-export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStage, mode = 'game' }: PauseSheetProps) {
-  const ctx = useMemo<FlowContext>(() => ({ game, turnIndex, type, depth, mode }), [game, turnIndex, type, depth, mode]);
+export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStage, mode = 'game', teaching }: PauseSheetProps) {
+  const ctx = useMemo<FlowContext>(() => ({ game, turnIndex, type, depth, mode, teaching }), [game, turnIndex, type, depth, mode, teaching]);
   const [state, setState] = useState(() => initialState(ctx));
   const [why, setWhy] = useState<number | null>(null);
   const [lineAt, setLineAt] = useState(0);
@@ -157,12 +155,13 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
 
   /**
    * Board callback: keep the piece when the move was right. A wrong one shows a cross; when it loses something it
-   * stays for the opponent's reply, otherwise it snaps back.
+   * stays for the opponent's reply, otherwise it snaps back. A good move off the lesson's plan just goes back.
    */
   function tryMove(uci: string): boolean | Promise<boolean> {
     const before = latest.current;
     const next = send({ type: 'move', uci });
     if (next === before) return false;
+    if (next.feedback?.kind === 'off-plan') return wait(WRONG_FLASH_MS).then(() => false);
     const [, to] = squaresOf(uci);
     if (next.feedback?.kind !== 'wrong') {
       marks.badge(to, 'good');
@@ -220,13 +219,11 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
     if (alive.current) send({ type: 'hint' });
   }
 
-  /** Marks what the hint in hand shows on the board: the piece in trouble, then the move itself. */
+  /** Marks what the hint in hand shows on the board: the piece in trouble or the piece to move, then the move itself. */
   function showHint(at: FlowState) {
     if (at.hint < 2) return;
-    const [from, to] = squaresOf(scriptedUci(game, at.turn));
-    if (at.hint === 3) return board.arrow(from, to, 'best');
-    const trouble = at.phase === 'solve' ? pieceInTrouble(game, at.turn) : null;
-    board.highlight(trouble?.squares ?? [from], 'hint');
+    if (at.hint === 3) return board.arrow(...squaresOf(scriptedUci(game, at.turn)), 'best');
+    board.highlight(hintSquares(game, at, teaching), 'hint');
   }
 
   function react(feedback: Feedback) {
@@ -352,14 +349,14 @@ export function PauseSheet({ game, turnIndex, type, depth, board, onDone, onStag
         </>
       );
     }
-    const prompt = promptFor(game, state);
+    const prompt = promptFor(game, state, teaching);
     const named = state.hint > 0 && view === 'solve';
     return (
       <Question
         {...common}
         {...prompt}
         sub={illegal?.text ?? prompt.sub}
-        pattern={named ? lessonLabel(game, state.turn).pattern : undefined}
+        pattern={named ? pauseLesson(game, state.turn, teaching).pattern : undefined}
         ladder={hintLadder(state)}
       />
     );
