@@ -14,8 +14,9 @@ import {
   levelsByDistance,
   loadPosition,
   pickDrills,
+  pickExample,
   pickExamples,
-  pickLesson,
+  pickPractice,
   practiceOrder,
   setOf,
   spread,
@@ -313,28 +314,25 @@ describe('practiceOrder', () => {
   });
 });
 
-describe('pickLesson', () => {
-  it('shows the first example that loads', async () => {
-    const { source } = fakeSource({ broken: [1] });
-    expect((await pickLesson(course([1, 2, 3], []), 'fork', source))!.example.ref.ply).toBe(2);
+describe('pickExample', () => {
+  it('shows the first example that loads, or none', async () => {
+    const [entry] = course([1, 2, 3], []).units;
+    expect((await pickExample(entry, fakeSource({ broken: [1] }).source))!.ref.ply).toBe(2);
+    expect(await pickExample(entry, fakeSource({ broken: [1, 2, 3] }).source)).toBeNull();
   });
+});
 
-  it('gives up when no example loads or the course lacks the unit', async () => {
-    expect(await pickLesson(course([1], [5]), 'fork', fakeSource({ broken: [1] }).source)).toBeNull();
-    expect(await pickLesson(course([1], [5]), 'pin', fakeSource().source)).toBeNull();
-  });
-
-  it('asks four fresh positions, loading no more than it needs', async () => {
+describe('pickPractice', () => {
+  it('asks fresh positions first, loading no more than it needs', async () => {
     const { source, loads } = fakeSource({ seen: [10, 11] });
-    const lesson = await pickLesson(course([1], [10, 11, 12, 13, 14, 15, 16, 17]), 'fork', source);
-    expect(plies(lesson!.drills)).toEqual([12, 13, 14, 15]);
-    expect(loads).toEqual([1, 12, 13, 14, 15]);
+    const drills = await pickPractice([10, 11, 12, 13, 14, 15, 16, 17].map(ref), 4, source);
+    expect(plies(drills)).toEqual([12, 13, 14, 15]);
+    expect(loads).toEqual([12, 13, 14, 15]);
   });
 
   it('skips positions that do not load and falls back to ones seen before', async () => {
     const { source } = fakeSource({ seen: [10, 11, 12], broken: [13] });
-    const lesson = await pickLesson(course([1], [10, 11, 12, 13, 14]), 'fork', source);
-    expect(plies(lesson!.drills)).toEqual([14, 10, 11, 12]);
+    expect(plies(await pickPractice([10, 11, 12, 13, 14].map(ref), 4, source))).toEqual([14, 10, 11, 12]);
   });
 });
 
@@ -376,14 +374,14 @@ describe('on the device', () => {
     storage.data.set('cc.progress.v1', JSON.stringify(progress));
     vi.stubGlobal('localStorage', storage);
     vi.resetModules();
-    const select = await import('./select');
+    const { openLesson } = await import('./open');
     const file: CourseFile = {
       v: 1,
       opening: 'italian',
       level: 1400,
       units: [{ id: 'free-piece', examples: [at(1, 19)], drills: [at(1, 3), at(3, 13), at(3, 7), at(2, 3)] }],
     };
-    const lesson = await select.pickLesson(file, 'free-piece');
+    const lesson = await openLesson(file, 'free-piece', undefined, false);
     expect(lesson!.example.ref).toEqual(at(1, 19));
     expect(lesson!.drills.map((p) => positionKey(p.ref))).toEqual([
       'italian-1400/italian-1400-0002:3',

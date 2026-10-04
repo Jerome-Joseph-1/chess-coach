@@ -8,15 +8,7 @@ import { isWin } from '../learn/themes';
 import { tradeOf } from '../learn/trade';
 import { shownLine } from '../learn/walkthrough';
 import { getLessons, playedGameIds } from '../progress/store';
-import {
-  DRILLS_PER_LESSON,
-  UNIT_IDS,
-  positionKey,
-  type CourseFile,
-  type PositionRef,
-  type UnitEntry,
-  type UnitId,
-} from './types';
+import { UNIT_IDS, positionKey, type CourseFile, type PositionRef, type UnitEntry, type UnitId } from './types';
 import { unitOfTheme } from './units';
 
 const MAX_EXAMPLES = 3;
@@ -328,11 +320,6 @@ export interface LessonPosition {
   turnIndex: number;
 }
 
-export interface LessonPositions {
-  example: LessonPosition;
-  drills: LessonPosition[];
-}
-
 export interface PositionSource {
   /** The position with its game; null when the game cannot be loaded or does not hold the position. */
   load(ref: PositionRef): Promise<LessonPosition | null>;
@@ -396,13 +383,3 @@ export async function pickExample(entry: UnitEntry, source: PositionSource): Pro
   return example ?? null;
 }
 
-/**
- * The unit's worked example and up to four practice positions.
- * Null when the course has no such unit or none of its examples loads.
- */
-export async function pickLesson(course: CourseFile, unit: UnitId, source = deviceSource(course.opening, unit)): Promise<LessonPositions | null> {
-  const entry = course.units.find((u) => u.id === unit);
-  const example = entry && (await pickExample(entry, source));
-  if (!example) return null;
-  return { example, drills: await pickPractice(entry.drills, DRILLS_PER_LESSON, source) };
-}
