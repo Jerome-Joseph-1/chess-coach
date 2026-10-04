@@ -413,7 +413,7 @@ const QUIET_PLANS = {
 function quietIdea(theme: Theme): string {
   const quiet = theme.quiet!;
   if (!quiet.calm) return `Check what your opponent threatens first; if nothing is attacked, ${QUIET_PLANS[quiet.focus]}.`;
-  const calm = 'Nothing urgent is happening here';
+  const calm = 'No threats and nothing to win here';
   switch (quiet.focus) {
     case 'castle':
       return `${calm}, so it's a good moment to castle and tuck your king away.`;
@@ -428,6 +428,6 @@ function quietIdea(theme: Theme): string {
     case 'king':
       return `${calm}. With the queens gone, your king can come forward and join the game.`;
     case 'improve':
-      return `${calm}: nothing of yours is in danger and nothing can be won, so improve your least active piece.`;
+      return `${calm}, so improve your least active piece.`;
   }
 }

@@ -21,7 +21,7 @@ test.use({ serviceWorkers: 'block' });
 // These tests are about key positions: opening notes would stop autoplay on the way there.
 test.beforeEach(({ page }) => readAllNotes(page));
 
-const ANSWERS = ['Win material', 'Attack the king', 'Defend', 'Avoid a trap', 'Nothing urgent'];
+const ANSWERS = ['Win material', 'Attack the king', 'Defend', 'Avoid a trap', 'Improve a piece'];
 const RIGHT_PICK = "Yes: there's material to win. Find the move.";
 const PAWN_HINT = "Look at Black's pawn on e5: it isn't defended enough.";
 
@@ -122,7 +122,7 @@ test('after a second wrong answer the coach shows the right one, says why and mo
   await atStage(page, 3);
   await reachFirstPause(page);
 
-  await choiceButton(page, 'Nothing urgent').click();
+  await choiceButton(page, 'Improve a piece').click();
   await expect(page.getByText('Look again: check every capture and every attack.')).toBeVisible();
   await choiceButton(page, 'Defend').click();
   const shown = 'Right answer: Win material. One of your moves wins something.';

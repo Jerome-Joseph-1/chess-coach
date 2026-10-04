@@ -186,7 +186,7 @@ describe('a quiet turn', () => {
     });
   });
 
-  it('shows the error for any other answer, lets the user switch to "Nothing urgent", and scores the first answer', () => {
+  it('shows the error for any other answer, lets the user switch to "Improve a piece", and scores the first answer', () => {
     const ctx = ctxFor(italian1, 11, 3, 'nothing');
     expect(spotAnswers(ctx)).toEqual(['quiet']);
     const wrong = run(ctx, [spot('defend')]);

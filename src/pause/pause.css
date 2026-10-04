@@ -669,7 +669,7 @@
   }
 }
 
-/* Step 1's answers under the question: two rows of two, then "Nothing urgent" across. */
+/* Step 1's answers under the question: two rows of two, then "Improve a piece" across. */
 .spot-choices {
   display: grid;
   grid-template-columns: 1fr 1fr;

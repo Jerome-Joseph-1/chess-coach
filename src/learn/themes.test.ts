@@ -311,7 +311,7 @@ describe('quiet positions', () => {
 
   it('suggests developing pieces still at home in the opening', () => {
     expect(lesson('caro-kann-1100-0002#0').idea).toBe(
-      'Nothing urgent is happening here, so bring out a piece: all of your knights and bishops are still at home.',
+      'No threats and nothing to win here, so bring out a piece: all of your knights and bishops are still at home.',
     );
   });
 

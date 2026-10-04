@@ -99,7 +99,7 @@ export function initialState(ctx: FlowContext): FlowState {
   };
 }
 
-/** The answers to "What's going on here?" that count as right; a quiet pause accepts only "Nothing urgent". */
+/** The answers to "What's going on here?" that count as right; a quiet pause accepts only "Improve a piece". */
 export function spotAnswers(ctx: FlowContext): Situation[] {
   return ctx.type === 'nothing' ? ['quiet'] : situationsOf(ctx.game, ctx.turnIndex);
 }

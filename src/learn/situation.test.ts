@@ -7,7 +7,7 @@ const of = (key: Parameters<typeof realTurn>[0]) => situationsOf(realTurn(key), 
 
 describe('situationsOf', () => {
   it('offers the five answers in a fixed order', () => {
-    expect(SITUATIONS.map((s) => s.label)).toEqual(['Win material', 'Attack the king', 'Defend', 'Avoid a trap', 'Nothing urgent']);
+    expect(SITUATIONS.map((s) => s.label)).toEqual(['Win material', 'Attack the king', 'Defend', 'Avoid a trap', 'Improve a piece']);
   });
 
   it('calls a win that takes material a win, whatever its pattern', () => {

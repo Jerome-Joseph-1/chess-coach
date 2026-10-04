@@ -105,7 +105,7 @@ const SPOT_RIGHT: Record<Situation, string> = {
   attack: 'Yes: you can go after the king. Find the move.',
   defend: 'Yes: something of yours needs defending.',
   trap: 'Yes: the obvious move has a catch. Find a better one.',
-  quiet: 'Yes: nothing urgent here.',
+  quiet: 'Yes: no threats and nothing to win, so improve a piece.',
 };
 
 export function spotRight(pick: Situation): string {
@@ -160,7 +160,7 @@ const SPOT_WHY: Record<Situation, string> = {
   attack: 'Their king is in danger.',
   defend: 'They threaten something of yours.',
   trap: 'The natural move here is a mistake.',
-  quiet: 'Nothing is attacked and nothing can be won.',
+  quiet: 'No threats and nothing to win here.',
 };
 
 /** What the opponent threatens to take, e.g. "Black threatens to take your knight on e5." */

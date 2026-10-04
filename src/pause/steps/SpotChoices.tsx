@@ -55,7 +55,7 @@ function Choice({ id, label, ...props }: SpotChoicesProps & { id: Situation; lab
 }
 
 /**
- * Step 1's five answers under the question: two rows of two, then "Nothing urgent" across. Only the picked one
+ * Step 1's five answers under the question: two rows of two, then "Improve a piece" across. Only the picked one
  * carries a mark, and the right one once the coach shows it, so every label fits on one line on the narrowest phones.
  */
 export function SpotChoices(props: SpotChoicesProps) {

@@ -7,7 +7,7 @@ export const SITUATIONS = [
   { id: 'attack', label: 'Attack the king' },
   { id: 'defend', label: 'Defend' },
   { id: 'trap', label: 'Avoid a trap' },
-  { id: 'quiet', label: 'Nothing urgent' },
+  { id: 'quiet', label: 'Improve a piece' },
 ] as const;
 
 export type Situation = (typeof SITUATIONS)[number]['id'];
@@ -20,7 +20,7 @@ export function mainSituation(answers: Situation[]): Situation {
   return URGENCY.find((situation) => answers.includes(situation)) ?? 'quiet';
 }
 
-/** Every answer that counts as right for this key position; a turn that isn't critical accepts only "Nothing urgent". */
+/** Every answer that counts as right for this key position; a turn that isn't critical accepts only "Improve a piece". */
 export function situationsOf(game: Game, turnIndex: number): Situation[] {
   const turn = game.turns[turnIndex];
   if (turn.label !== 'critical') return ['quiet'];
