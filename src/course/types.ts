@@ -17,6 +17,28 @@ export const UNIT_IDS = [
 
 export type UnitId = (typeof UNIT_IDS)[number];
 
+/** Each opening's own lessons, in the order they are taught: plans first, its traps last. */
+export const OPENING_LESSON_IDS = {
+  italian: ['italian-idea', 'italian-centre', 'italian-slow', 'italian-ng5', 'italian-traps'],
+  'caro-kann': ['caro-kann-idea', 'caro-kann-bishop', 'caro-kann-c5', 'caro-kann-exchange', 'caro-kann-traps'],
+} as const satisfies Record<OpeningId, readonly string[]>;
+
+export type OpeningLessonId = (typeof OPENING_LESSON_IDS)[OpeningId][number];
+
+/** A lesson of the course: a tactic unit, or a lesson on one opening. */
+export type LessonId = UnitId | OpeningLessonId;
+
+export const LESSON_IDS: readonly LessonId[] = [...UNIT_IDS, ...OPENING_LESSON_IDS.italian, ...OPENING_LESSON_IDS['caro-kann']];
+
+export function isOpeningLessonId(value: string): value is OpeningLessonId {
+  return (LESSON_IDS as readonly string[]).includes(value) && !(UNIT_IDS as readonly string[]).includes(value);
+}
+
+/** A lesson this opening's course can open: any tactic unit, or one of its own opening lessons. */
+export function isLessonOf(opening: OpeningId, value: string): value is LessonId {
+  return (UNIT_IDS as readonly string[]).includes(value) || (OPENING_LESSON_IDS[opening] as readonly string[]).includes(value);
+}
+
 /** A key position of a game: the turn of `gameId` whose user move is at `ply`, in the set `set` (e.g. "italian-1400"). */
 export interface PositionRef {
   set: string;
