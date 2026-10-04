@@ -60,10 +60,10 @@ describe('words a beginner can follow', () => {
     );
     // Once "Re1 moves your rook out of danger, but after Qb6+ d4, Bd5 traps your queen on f7, and after c3, Bxf7 takes the queen, ..."
     expect(told('italian-1700-0069#9', 'f1e1').early.text).toBe(
-      "After a check, Black's bishop moves to d5, and your queen can't escape. You lose your queen and only get a bishop back.",
+      "After Black gives check, Black's bishop moves to d5, and your queen can't escape. You lose your queen and only get a bishop back.",
     );
     expect(told('italian-1700-0120#19', 'g4g7').early.text).toBe(
-      "Black takes back on g7, and a few moves later Black's rook takes your knight. In the end, you lose a knight and only get a pawn back.",
+      "Black's king takes your rook, and a few moves later Black's rook takes your knight. In the end, you lose a knight and only get a pawn back.",
     );
     expect(told('caro-kann-1700-0213#25', 'b8b6').early.text).toBe(
       "White's knight moves to e5, and then it moves to d7 and lures your queen away from your rook. You lose a rook and only get a knight back.",
@@ -86,9 +86,21 @@ describe('words a beginner can follow', () => {
     );
   });
 
+  it('says whose capture comes first', () => {
+    expect(told('italian-1100-0122#13', 'c2a4').early.text).toBe(
+      "Black's rook takes your bishop, and then Black's knight moves to c2 and attacks your queen and rook on a1 at once. You lose a rook and a bishop for a knight and a pawn.",
+    );
+  });
+
+  it('says why a mate in one is mate', () => {
+    expect(told('caro-kann-2000-0062#27', 'f6f5').early.text).toBe(
+      "That allows checkmate: White's rook moves to h1. Your king has no square to go to.",
+    );
+  });
+
   it('says castling in words', () => {
     expect(told('italian-1400-0169#9', 'e1g1').early.text).toBe(
-      "Castling looks natural, but it allows checkmate: Black's queen takes your pawn on h2.",
+      "Castling looks natural, but it allows checkmate: Black's queen takes your pawn on h2. Your king has no square to go to.",
     );
     expect(told('italian-1700-0083#5', 'e1g1').named.text).toBe(
       "One of your pieces is still in danger: Black's queen takes your knight on e5 for free.",
@@ -146,11 +158,16 @@ describe('the real payoff of a line (R3)', () => {
     );
   });
 
-  it('names the pieces a capture then attacks, and the bigger piece a later capture takes', () => {
+  it('leaves out an attack the line never wins anything from, in the text and on the board', () => {
+    // Once "...takes your pawn on f7 and then attacks your queen and rook on h8. You lose a pawn.": the attack seemed to cost nothing.
     expect(told('caro-kann-1700-0024#3', 'e8d7').early).toMatchObject({
-      text: "That doesn't stop White's threat: White's knight takes your pawn on f7 and then attacks your queen and rook on h8. You lose a pawn.",
-      targets: ['f7', 'd8', 'h8'],
+      text: "That doesn't stop White's threat: White's knight takes your pawn on f7 for free.",
+      targets: ['f7'],
     });
+    expect(told('caro-kann-1700-0235#8', 'f8d6').early).toMatchObject({ text: "White's pawn takes your pawn on c5 for free.", targets: ['c5'] });
+  });
+
+  it('names the bigger piece a later capture takes', () => {
     expect(told('caro-kann-2000-0010#24', 'b2b3').early.text).toBe(
       "That doesn't stop White's threat: White's rook takes your rook with check, and later White takes your queen on b3. You lose your queen and a rook, and White keeps checking your king.",
     );
@@ -166,19 +183,22 @@ describe('the real payoff of a line (R3)', () => {
 describe('the squares and moves of a line (R4)', () => {
   it('says what the moves before the capture do, never spelling them out', () => {
     expect(told('italian-1400-0245#13', 'd2e4').early.text).toBe(
-      "The knight you moved was guarding your knight on c4, and after a trade on c1, Black's bishop takes it for free.",
+      "The knight you moved was guarding your knight on c4, and a move later, Black's bishop takes it for free.",
     );
-    expect(told('caro-kann-2000-0187#26', 'a5a3').early.text).toBe("After a trade on e4, White's queen takes your pawn on e4 for free.");
+    expect(told('caro-kann-2000-0187#26', 'a5a3').early.text).toBe("After you and White trade pieces on e4, White's queen takes your pawn on e4 for free.");
   });
 });
 
 describe('a pattern with what it costs (R5)', () => {
-  it('ends a pin, a discovered attack or a removed defender on the material', () => {
+  it('ends a pin or a removed defender on the material, and says what a pin does instead of naming it', () => {
     expect(told('caro-kann-2000-0132#15', 'h8g8').early.text).toBe(
-      "White's rook takes your rook with check, and your pinned knight can't take back, and later White takes your rook on c8. You lose two rooks.",
+      "White's rook takes your rook with check, and your knight on f6 can't take back because your king would be in check. In the end, you lose two rooks.",
     );
-    expect(told('caro-kann-1700-0235#8', 'f8d6').early.text).toBe(
-      "White's pawn takes your pawn on c5, and now White's queen attacks your bishop on d6. You lose a pawn.",
+    expect(told('caro-kann-1100-0234#26', 'a5c7').early.text).toBe(
+      "After White gives check, White's rook moves to b7 and attacks your queen, which can't move because your king would be in check. You lose your queen and only get a rook back.",
+    );
+    expect(told('italian-1700-0130#15', 'd3b5').early.text).toBe(
+      "Black's rook moves to d6 and attacks your knight, which can't move without losing your queen. You lose a knight.",
     );
     expect(told('italian-1400-0135#14', 'b2b4').early.text).toBe(
       "That doesn't stop Black's threat: Black's bishop takes your knight, and your bishop on e6 is left unguarded. In the end, you lose a bishop.",
@@ -203,7 +223,7 @@ describe('a threat that was there before the move (R6)', () => {
       text: "That doesn't stop White's threat: White's knight takes your knight on f6 with check, and your pawn on h7 is left unguarded. In the end, you lose a pawn, and White keeps attacking your king.",
       reply: caroKann.turns[8].refutations.d7c5[0],
     });
-    expect(whyWrong(caroKann, 15, 'a8d8', 0).text).toBe("That doesn't stop White's threat: White's queen moves to h7, and that's checkmate.");
+    expect(whyWrong(caroKann, 15, 'a8d8', 0).text).toBe("That doesn't stop White's threat: White's queen moves to h7, and that's checkmate. Your king has no square to go to.");
   });
 
   it('shows the threat the blunders and baits carry out', () => {
@@ -243,9 +263,9 @@ describe('a move that leaves material down (R7)', () => {
       reply: null,
       targets: [],
     });
-    expect(told('italian-2000-0176#11', 'b3d5').named.text).toBe("After that move, you are still a queen down: Black's queen gets away to d3.");
+    expect(told('italian-2000-0176#11', 'b3d5').named.text).toBe("After that move, you are still a queen down: Black's queen escapes to d3.");
     expect(told('italian-1400-0116#14', 'b2b3').named.text).toBe(
-      "After that move, you are still a queen down: Black's queen gets away by taking your rook on e1.",
+      "After that move, you are still a queen down: Black's queen escapes by taking your rook on e1.",
     );
   });
 });
@@ -296,10 +316,10 @@ describe('a move no line punishes (R8)', () => {
 
   it('tells a defence that stops the threat from one that leaves it standing, and shows the threat', () => {
     expect(told('caro-kann-1400-0229#19', 'c4a5').early.text).toBe(
-      "That stops White's threat, but there is a better way to do it. Look at every way to defend.",
+      "That stops White's threat, but there is a better way to do it. Try another way: move the piece away, guard it, or block the attack.",
     );
     expect(whyWrong(caroKann, 15, 'f8d8', 0).text).toBe(
-      "That stops White's threat, but after it the position is about even. Look at every way to defend.",
+      "That stops White's threat, but after it the position is about even. Try another way: guard the square White wants to check on, or give your king room.",
     );
     expect(told('italian-1100-0177#6', 'a1c1').early).toMatchObject({
       kind: 'missed',
@@ -316,12 +336,18 @@ describe('a move no line punishes (R8)', () => {
     });
   });
 
+  it('names the ways to defend', () => {
+    expect(told('italian-1100-0191#4', 'd1f1').early.text).toBe(
+      "That stops Black's threat, but there is a better way to do it. Try another way: guard the square Black wants to check on, or give your king room.",
+    );
+  });
+
   it('sends the user looking for the trap without naming it', () => {
     expect(told('caro-kann-1100-0088#3', 'c8d7').early.text).toBe(
-      'That avoids the trap, but there is a better move. Think about what your opponent can do after each natural move.',
+      'That avoids the trap, but there is a better move. Before you move, look at every capture and every check your opponent could reply with.',
     );
     expect(told('italian-2000-0234#20', 'f2f3').early.text).toBe(
-      'After that move, you are worse. Think about what your opponent can do after each natural move.',
+      'After that move, you are worse. Before you move, look at every capture and every check your opponent could reply with.',
     );
   });
 
@@ -356,7 +382,7 @@ describe('material the line only wins after a poor move of the user (R11)', () =
     );
     expect(told('italian-1700-0073#9', 'd1b3').early.reply).toBeNull();
     expect(told('italian-1700-0058#15', 'g2g4').early.text).toBe(
-      "That doesn't stop Black's threat: after a check, Black's knight takes your pawn on f4 for free.",
+      "That doesn't stop Black's threat: after Black gives check, Black's knight takes your pawn on f4 for free.",
     );
   });
 
@@ -417,7 +443,7 @@ describe('every graded move of the fixture games', () => {
             expect(sentences(why.text).length, where).toBeLessThanOrEqual(2);
             for (const sentence of sentences(why.text)) expect(words(sentence), where).toBeLessThanOrEqual(24);
             expect(why.text, where).not.toMatch(
-              /\b[KQRBN][a-h1-8]?x?[a-h][1-8]|\b[a-h]x[a-h][1-8]|O-O|line that follows|the exchange|chance go|end up worse|goes on|stronger move here|only (?:a|two)\b/,
+              /\b[KQRBN][a-h1-8]?x?[a-h][1-8]|\b[a-h]x[a-h][1-8]|O-O|line that follows|the exchange|chance go|end up worse|goes on|stronger move here|only (?:a|two)\b|natural move|trade on|\bpin|every way/,
             );
           }
         }

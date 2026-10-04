@@ -15,6 +15,7 @@ import {
   fitting,
   mateInOne,
   played,
+  sideAttack,
   taking,
   yourList,
   type Caught,
@@ -183,7 +184,7 @@ function lastMove(game: Game, turn: Turn): ReturnType<typeof moveBefore> {
   return lastMoves.get(turn)!;
 }
 
-/** "After that move, you are still a queen down.", and from hint 2 how the piece that took gets away. */
+/** "After that move, you are still a queen down.", and from hint 2 how the piece that took escapes. */
 function stillDown(say: Say, taken: PieceSymbol, caught: Caught | null, named: boolean): WrongMove {
   const kind = caught ? 'blunder' : quietKind(say);
   const lead = `After that move, you are still a ${NAME[taken]} down`;
@@ -192,7 +193,7 @@ function stillDown(say: Say, taken: PieceSymbol, caught: Caught | null, named: b
   const escapes = new Chess(say.move.after).get(reply.from)?.type === taken && reply.piece === taken;
   if (!escapes) return { kind, text: `${lead}.`, reply: uciOf(reply), targets: [] };
   const away = reply.captured ? `by taking ${capturedRef(say, reply)}` : say.answerSquares.includes(reply.to) ? '' : `to ${reply.to}`;
-  const text = `${lead}: ${say.them}'s ${NAME[taken]} gets away${away ? ` ${away}` : ''}.`;
+  const text = `${lead}: ${say.them}'s ${NAME[taken]} escapes${away ? ` ${away}` : ''}.`;
   return { kind, text, reply: uciOf(reply), targets: reply.captured ? [capturedSquare(reply)] : [] };
 }
 
@@ -283,16 +284,17 @@ function quietThreat(turn: Turn): Move[] {
 }
 
 /** The reply on the board and the user's pieces it goes after, where they stand once the reply is played. */
-function marked(kind: WrongKind, { theme, t, cost }: Caught, text: string): WrongMove {
+function marked(kind: WrongKind, { theme, t }: Caught, text: string): WrongMove {
   const [reply] = t.moves;
   const board = new Chess(reply.after);
   const user = otherColor(t.side);
-  const pieces: PieceAt[] = theme.pieces.filter((p) => TARGET_ROLES.includes(p.role) && p.color === user);
-  const forked = cost.forked.map((p) => ({ ...p, color: user }));
+  // A piece the text leaves out, as the line never takes it, is not marked either.
+  const left = sideAttack(t) && t.id === 'discovered-attack' ? [t.target.square] : [];
+  const pieces: PieceAt[] = theme.pieces.filter((p) => TARGET_ROLES.includes(p.role) && p.color === user && !left.includes(p.square));
   // A mate goes after the king wherever it stands; a piece the reply has just taken is marked where it stood.
   const king = t.id === 'checkmate' ? [kingOf(board, user)] : [];
   const stands = (p: PieceAt) => board.get(p.square)?.type === p.type && board.get(p.square)?.color === p.color;
-  const shown = [...king, ...pieces, ...forked, ...(t.won ? [t.won] : [])].filter((p) => stands(p) || p.square === reply.to);
+  const shown = [...king, ...pieces, ...(t.won ? [t.won] : [])].filter((p) => stands(p) || p.square === reply.to);
   return { kind, text, reply: uciOf(reply), targets: [...new Set(shown.map((p) => p.square))], pattern: t.id };
 }
 
@@ -427,7 +429,7 @@ function quiet(asked: Asked, say: Say, kind: WrongKind): WrongMove {
     return { ...blank, text: `${safe ? "That's safe, but it" : 'That'} doesn't win material right away. ${look}` };
   }
   if (has('defend')) {
-    const look = 'Look at every way to defend.';
+    const look = defendLook(say);
     if (stands === false) {
       const but = missed ? `after it ${standing}` : 'there is a better way to do it';
       return { ...blank, text: `That stops ${say.them}'s threat, but ${but}. ${look}` };
@@ -436,14 +438,22 @@ function quiet(asked: Asked, say: Say, kind: WrongKind): WrongMove {
     return { ...blank, text: `${safe ? "That's safe, but there" : 'There'} is a better way to defend. ${look}` };
   }
   if (has('trap')) {
-    const look = 'Think about what your opponent can do after each natural move.';
-    if (uciOf(say.move) === say.turn.mistakeMove) return { ...blank, text: 'Careful: think about what your opponent can do after that natural move.' };
+    const look = 'Before you move, look at every capture and every check your opponent could reply with.';
+    if (uciOf(say.move) === say.turn.mistakeMove) return { ...blank, text: `Careful: ${look.charAt(0).toLowerCase()}${look.slice(1)}` };
     // A move that gives away this much has walked into something of its own: no credit for missing the trap.
     if (missed) return { ...blank, text: `After that move, ${standing}. ${look}` };
     return { ...blank, text: `That avoids the trap, but there is a better move. ${look}` };
   }
   if (missed) return { ...blank, text: `After that, ${standing}. Which of your pieces could do more?` };
   return { ...blank, text: `${safe ? "That's safe, but there is" : 'There is'} a better move. Which of your pieces could do more?` };
+}
+
+/** Ways to defend, said for the kind of threat: a piece attacked, or the king. */
+function defendLook(say: Say): string {
+  const threat = threatTactic(say.turn, say.user);
+  if (threat?.id === 'checkmate') return `Try another way: guard the square ${say.them} wants to check on, or give your king room.`;
+  if (threat?.id === 'mate-threat') return 'Try another way: give your king room, or guard the squares around it.';
+  return 'Try another way: move the piece away, guard it, or block the attack.';
 }
 
 /** "the position is about even", "you are worse": where the grades leave the user after the move. */

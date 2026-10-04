@@ -190,9 +190,12 @@ export function afterLead(say: Say, caught: Caught, leads: string[]): string {
   return told(say, caught, leads.map((lead) => `${lead}:`));
 }
 
-/** "That allows checkmate: Black's queen takes your pawn on g2." */
+/** Why a check is mate, said after it. */
+const NO_SQUARE = 'Your king has no square to go to.';
+
+/** "That allows checkmate: Black's queen takes your pawn on g2. Your king has no square to go to." */
 export function mateInOne(say: Say, mate: Move, lead = 'That allows checkmate'): string {
-  return `${lead}: ${played(say, mate, false)}.`;
+  return `${lead}: ${played(say, mate, false)}. ${NO_SQUARE}`;
 }
 
 /**
@@ -203,7 +206,8 @@ function mateText(say: Say, t: Tactic, lead: string): string {
   const mate = t.moves[t.key];
   if (t.key === 0) {
     if (!lead) return mateInOne(say, mate);
-    return lead.endsWith(':') ? `${lead} ${played(say, mate, false)}, and that's checkmate.` : `${lead} allows checkmate: ${played(say, mate, false)}.`;
+    if (!lead.endsWith(':')) return mateInOne(say, mate, `${lead} allows checkmate`);
+    return `${lead} ${played(say, mate, false)}, and that's checkmate. ${NO_SQUARE}`;
   }
   const later = t.key / 2 === 1 ? 'on the next move' : `${NUMBER[t.key / 2]} moves later`;
   const first = `${capitalize(played(say, t.moves[0]))}, and checkmate follows ${later}.`;
@@ -238,10 +242,13 @@ function unguardText(say: Say, caught: Caught): string {
   const piece = NAME[say.move.piece];
   const guard = 'kq'.includes(say.move.piece) ? `Your ${piece}` : `The ${piece} you moved`;
   const guarded = capturedRef(say, t.moves[t.key]);
-  const lead = leadTo(say, t, t.key, 'reply');
   const take = `${theirName(say, t.moves[t.key])} takes it`;
-  const text = lead ? `${guard} was guarding ${guarded}, and ${lead.text}${take}` : `${guard} was guarding ${guarded}, so ${take}`;
-  return withLoss(say, caught, text, onlyKey(caught, t.key) && !lead?.later, lead?.later, [t.moves[t.key].captured!]);
+  const told = (['reply', 'short'] as const).map((long) => {
+    const lead = leadTo(say, t, t.key, long);
+    const text = lead ? `${guard} was guarding ${guarded}, and ${lead.text}${take}` : `${guard} was guarding ${guarded}, so ${take}`;
+    return withLoss(say, caught, text, onlyKey(caught, t.key) && !lead?.later, lead?.later, [t.moves[t.key].captured!]);
+  });
+  return fitting(...told);
 }
 
 /** "Black's bishop": the piece that makes a move, without its square. */
@@ -332,7 +339,6 @@ function event(say: Say, caught: Caught, level: Level, long: Long): Event {
     `${move.captured ? `takes ${capturedRef(say, move)}${back}` : castles(move) ? '' : movesTo(say, move)}${check}`.trim(),
     move.promotion ? `becomes a ${NAME[move.promotion]}` : '',
     ...(pattern?.does ?? []),
-    ...(level > 0 || pattern ? [] : forkedText(say, caught)),
   ].filter(Boolean);
   // A piece that moves again after the reply the text has told is "it".
   const again = lead?.told && t.moves[0].to === move.from;
@@ -396,16 +402,20 @@ function patternOf(say: Say, { t }: Caught): Told | null {
       const hits = t.targets.filter((p) => p.type !== 'k').map(your);
       return { does: [...(king ? ['checks your king'] : []), `attacks ${yourList(hits)} at once`], checks: king };
     }
-    case 'pin':
-      if (t.how === 'created') return { does: [`pins ${your(t.pin.pinned)} to ${your(t.pin.behind)}`] };
-      if (t.how === 'attacked') return { does: [`attacks ${your(t.pin.pinned)}, which is pinned to ${your(t.pin.behind)}`] };
+    case 'pin': {
+      // What the pin does, in place of the word: the piece can't move without what stands behind it.
+      const king = t.pin.behind.type === 'k';
+      const behind = king ? 'because your king would be in check' : `without losing ${your(t.pin.behind)}`;
+      const piece = your(t.pin.pinned);
+      if (t.how === 'created' || t.how === 'attacked') return { does: [`attacks ${piece}, which can't move ${behind}`] };
       if (t.how !== 'defender' || t.at !== t.key) return null;
-      return { does: [], tail: `, and your pinned ${NAME[t.pin.pinned.type]} can't take back` };
+      return { does: [], tail: `, and ${piece} can't take back ${behind}` };
+    }
     case 'skewer':
       if (t.front.type === 'k') return { does: [`checks your king with ${your(t.back)} behind it`], checks: true };
       return { does: [`attacks ${your(t.front)} with ${your(t.back)} behind it`] };
     case 'discovered-attack': {
-      if (t.at !== 0) return null;
+      if (t.at !== 0 || sideAttack(t)) return null;
       const slider = theirs(say, t.slider, fen);
       const tail = `, and now ${slider} ${t.target.type === 'k' ? 'checks your king' : `attacks ${your(t.target)}`}`;
       return { does: [], tail, checks: t.target.type === 'k' };
@@ -421,6 +431,14 @@ function patternOf(say: Say, { t }: Caught): Told | null {
     default:
       return null;
   }
+}
+
+/**
+ * A discovered attack on a piece other than the king that the line never takes: the capture is the loss, and an
+ * attack the user can answer is left out of the text and off the board.
+ */
+export function sideAttack(t: Tactic): boolean {
+  return t.id === 'discovered-attack' && t.at === 0 && t.at === t.key && t.target.type !== 'k';
 }
 
 /** " on e4", or nothing when the answer goes there. */
@@ -452,23 +470,24 @@ function leadTo(say: Say, t: Tactic, at: number, long: Long): Lead | null {
   if (before.length === 2 && answer.captured && answer.to === reply.to && !shown(answer)) {
     const alike = reply.captured === answer.captured || VALUE[reply.captured ?? 'k'] === VALUE[answer.captured];
     if (reply.captured === 'q' && answer.captured === 'q') return { text: 'after the queens are traded, ', later: false };
-    return { text: alike ? `after a trade${on(say, reply.to)}, ` : `after some captures${on(say, reply.to)}, `, later: false };
+    const where = on(say, reply.to);
+    // Short, it is the opponent's next move after the reply: the pieces traded cancel out in the loss.
+    if (long === 'short') return { text: 'a move later, ', later: false };
+    return { text: alike ? `after you and ${say.them} trade pieces${where}, ` : `after ${say.them} takes${where} and you take back, `, later: false };
   }
-  // The reply takes the piece that has just captured: "Black takes back on a4".
-  const takesBack = say.move.captured && reply.captured && reply.to === say.move.to;
-  const first = takesBack ? `${say.them} takes back${on(say, reply.to)}` : played(say, reply);
+  const first = played(say, reply);
   const taken = reply.captured ? [reply.captured] : [];
   if (before.length === 2 && !answer.captured) {
-    if (givesCheck(reply) && (!reply.captured || long === 'short')) return { text: 'after a check, ', later: false };
+    if (givesCheck(reply) && (!reply.captured || long === 'short')) return { text: `after ${say.them} gives check, `, later: false };
     if (long === 'short') return { text: 'a move later, ', later: false };
     // The user's reply puts the piece where it is then taken: say there was one.
     const moved = answer.to === capturedSquare(t.moves[at]) || answer.to === t.moves[at].to;
-    return { text: `${first}, and ${moved ? 'after your reply,' : 'then'} `, later: false, told: !takesBack, taken };
+    return { text: `${first}, and ${moved ? 'after your reply,' : 'then'} `, later: false, told: true, taken };
   }
   // The user takes something on the way that the capture at the end only wins back: the middle can't be skipped.
   const hidden = before.some((m) => m.color !== t.side && m.captured && !(m === answer && m.to === reply.to));
   if (hidden && t.moves[at].captured && long === 'short') return { text: '', later: true, summary: true };
-  if (long === 'reply') return { text: `${first}, and a few moves later `, later: true, told: !takesBack, taken };
+  if (long === 'reply') return { text: `${first}, and a few moves later `, later: true, told: true, taken };
   return { text: 'a few moves later, ', later: true };
 }
 
@@ -504,14 +523,6 @@ function named(t: Tactic, at: number): boolean {
   return squares.includes(at2) || t.won?.square === at2;
 }
 
-/** "attacks your queen and your rook at once": the user's pieces the key capture's piece hits once the exchange is over. */
-function forkedText(say: Say, { t, cost }: Caught): string[] {
-  if (cost.forked.length < 2) return [];
-  const fen = t.moves[t.key].after;
-  const hits = cost.forked.filter((p) => p.type !== 'k').map((p) => yours(say, p, fen));
-  const king = cost.forked.some((p) => p.type === 'k') ? ['checks your king'] : [];
-  return [...king, `then attacks ${yourList(hits)}`];
-}
 
 /** The event sentence, then the loss: "You lose your queen and only get a bishop back." */
 function withLoss(say: Say, caught: Caught, first: string, free: boolean, later = false, named: PieceSymbol[] = []): string {

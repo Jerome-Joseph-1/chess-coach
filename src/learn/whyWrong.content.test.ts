@@ -89,7 +89,7 @@ describe.skipIf(!CONTENT_DIR)('whyWrong over a whole content folder', () => {
           for (const why of told) {
             const where = `${game.id} turn ${i} ${move.san}: ${why.text}`;
             for (const san of answers) if (!theirs.has(san)) expect(namesMove(why.text, san), where).toBe(false);
-            expect(why.text, where).not.toMatch(/line that follows|the exchange|stronger move here/);
+            expect(why.text, where).not.toMatch(/line that follows|the exchange|stronger move here|natural move|trade on|\bpin|every way/);
             // Plain words for a beginner: no notation, at most two short sentences.
             expect(why.text, where).not.toMatch(NOTATION);
             expect(sentencesOf(why.text).length, where).toBeLessThanOrEqual(2);
