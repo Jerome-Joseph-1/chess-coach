@@ -406,6 +406,11 @@ function patternOf(say: Say, { t }: Caught): Told | null {
   }
 }
 
+/** " on e4", or nothing when the answer goes there. */
+function on(say: Say, square: Square): string {
+  return say.answerSquares.includes(square) ? '' : ` on ${square}`;
+}
+
 /** How a long way to the move that matters is told: from the reply on the board, or as "a few moves later". */
 type Long = 'reply' | 'short';
 
@@ -430,11 +435,11 @@ function leadTo(say: Say, t: Tactic, at: number, long: Long): Lead | null {
   if (before.length === 2 && answer.captured && answer.to === reply.to && !shown(answer)) {
     const alike = reply.captured === answer.captured || VALUE[reply.captured ?? 'k'] === VALUE[answer.captured];
     if (reply.captured === 'q' && answer.captured === 'q') return { text: 'after the queens are traded, ', later: false };
-    return { text: alike ? `after a trade on ${reply.to}, ` : `after the captures on ${reply.to}, `, later: false };
+    return { text: alike ? `after a trade${on(say, reply.to)}, ` : `after some captures${on(say, reply.to)}, `, later: false };
   }
   // The reply takes the piece that has just captured: "Black takes back on a4".
   const takesBack = say.move.captured && reply.captured && reply.to === say.move.to;
-  const first = takesBack ? `${say.them} takes back on ${reply.to}` : played(say, reply);
+  const first = takesBack ? `${say.them} takes back${on(say, reply.to)}` : played(say, reply);
   const taken = reply.captured ? [reply.captured] : [];
   if (before.length === 2 && !answer.captured) {
     if (givesCheck(reply) && (!reply.captured || long === 'short')) return { text: 'after a check, ', later: false };

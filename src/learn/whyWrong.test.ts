@@ -103,24 +103,6 @@ describe('words a beginner can follow', () => {
       "After the queens are traded, White's knight takes your pawn on f6, checks your king and attacks your rook at once. You lose a rook and a pawn for a knight.",
     );
   });
-
-  it('stays within two short sentences for every graded move of the fixture games', () => {
-    const games: Game[] = [...learnGames, italian1, ...Object.keys(samples).map((key) => sample(key as SampleKey))];
-    for (const game of games) {
-      game.turns.forEach((turn, i) => {
-        if (turn.label !== 'critical') return;
-        for (const uci of Object.keys(turn.grades)) {
-          for (const hint of [0, 1, 2] as const) {
-            const { text } = whyWrong(game, i, uci, hint);
-            const where = `${game.id} ${i} ${uci}: ${text}`;
-            expect(sentences(text).length, where).toBeLessThanOrEqual(2);
-            for (const sentence of sentences(text)) expect(words(sentence), where).toBeLessThanOrEqual(24);
-            expect(text, where).not.toMatch(/\b[KQRBN][a-h1-8]?x?[a-h][1-8]|\b[a-h]x[a-h][1-8]|O-O|the exchange|chance go|end up worse|goes on|stronger move here|only (?:a|two)\b/);
-          }
-        }
-      });
-    }
-  }, 60_000);
 });
 
 describe('the cost counts only the move, the punishing reply and the exchange it starts (R1)', () => {
@@ -414,9 +396,9 @@ describe('the plain answer', () => {
 });
 
 describe('every graded move of the fixture games', () => {
-  const games: Game[] = [...learnGames, italian1];
+  const games: Game[] = [...learnGames, italian1, ...Object.keys(samples).map((key) => sample(key as SampleKey))];
 
-  it('never names the best move or the game move, says safe only when nothing hangs, and only plays a legal reply', () => {
+  it('never names the best move or the game move, says safe only when nothing hangs, plays a legal reply, and stays plain and short', () => {
     for (const game of games) {
       game.turns.forEach((turn, i) => {
         if (turn.label !== 'critical') return;
@@ -424,15 +406,22 @@ describe('every graded move of the fixture games', () => {
         for (const uci of Object.keys(turn.grades)) {
           const [move] = playLine(turn.fen, [uci]);
           if (answers.includes(move?.san)) continue;
-          for (const hint of [0, 2] as const) {
+          for (const hint of [0, 1, 2] as const) {
             const why = whyWrong(game, i, uci, hint);
-            for (const san of answers) expect(why.text.split(/[\s,.:]+/), `${game.id} ${i} ${uci}`).not.toContain(san);
-            if (/That's safe/.test(why.text)) expect(nothingHangs(move), `${game.id} ${i} ${uci}: ${why.text}`).toBe(true);
-            expect(why.text).not.toMatch(/line that follows/);
+            const where = `${game.id} ${i} ${uci}: ${why.text}`;
+            // A square after "on" names where a piece stands, not a move.
+            for (const san of answers) expect(why.text.replace(/\bon [a-h][1-8]\b/g, '').split(/[\s,.:]+/), where).not.toContain(san);
+            if (/That's safe/.test(why.text)) expect(nothingHangs(move), where).toBe(true);
             if (why.reply) expect(playLine(move.after, [why.reply])).toHaveLength(1);
+            // Two short sentences at most, in words a beginner reads: no notation, no jargon, no empty "stronger move".
+            expect(sentences(why.text).length, where).toBeLessThanOrEqual(2);
+            for (const sentence of sentences(why.text)) expect(words(sentence), where).toBeLessThanOrEqual(24);
+            expect(why.text, where).not.toMatch(
+              /\b[KQRBN][a-h1-8]?x?[a-h][1-8]|\b[a-h]x[a-h][1-8]|O-O|line that follows|the exchange|chance go|end up worse|goes on|stronger move here|only (?:a|two)\b/,
+            );
           }
         }
       });
     }
-  }, 60_000);
+  }, 180_000);
 });
