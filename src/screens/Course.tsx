@@ -1,5 +1,5 @@
 import type { OpeningId } from '../content/types';
-import { gamesUntilLesson, morePractice, unitRows, type UnitRow } from '../course/path';
+import { OPENING_LESSONS_IN_PATH, gamesUntilLesson, morePractice, sectionRows, unitRows, type UnitRow } from '../course/path';
 import { lessonInfo } from '../course/lessonInfo';
 import type { CourseFile } from '../course/types';
 import { gamesSinceLastLesson, useCourse } from '../course/useCourse';
@@ -23,6 +23,7 @@ function introLine(rows: UnitRow[] | null, gamesLeft: number): string {
 function Status({ row }: { row: UnitRow }) {
   if (row.status === 'next') return <span class="unit-next">Next</span>;
   if (row.status === 'later') return <span class="unit-later">Later</span>;
+  if (row.status === 'open') return null;
   return (
     <>
       <span class="level level--strong">
@@ -74,11 +75,22 @@ function UnitItem({ row, opening, index, more }: { row: UnitRow; opening: Openin
   );
 }
 
-function Lessons({ rows, opening, course }: { rows: UnitRow[]; opening: OpeningId; course: CourseFile | null }) {
-  if (!rows.length) return <EmptyCard text="Lessons for this level are on the way." />;
-  const done = rows.filter((r) => r.status === 'done').length;
+function LessonList({ rows, opening, course }: { rows: UnitRow[]; opening: OpeningId; course: CourseFile | null }) {
   const lessons = getLessons(opening);
   const moreOf = (row: UnitRow) => (row.status === 'done' ? morePractice(course, row.id, lessons[row.id]) : 0);
+  return (
+    <ul class="card list">
+      {rows.map((row, i) => (
+        <UnitItem key={row.id} row={row} opening={opening} index={i} more={moreOf(row)} />
+      ))}
+    </ul>
+  );
+}
+
+const doneCount = (rows: UnitRow[]) => rows.filter((r) => r.status === 'done').length;
+
+function Lessons({ rows, opening, course }: { rows: UnitRow[]; opening: OpeningId; course: CourseFile | null }) {
+  if (!rows.length) return <EmptyCard text="Lessons for this level are on the way." />;
   return (
     <section class="section-block" aria-labelledby="lessons-title">
       <div class="section-head">
@@ -86,15 +98,30 @@ function Lessons({ rows, opening, course }: { rows: UnitRow[]; opening: OpeningI
           {OPENING_SHORT[opening]} lessons
         </h2>
         <span class="section-note">
-          {done} of {rows.length} done
+          {doneCount(rows)} of {rows.length} done
         </span>
       </div>
       <p class="course-own">Each opening has its own lessons.</p>
-      <ul class="card list">
-        {rows.map((row, i) => (
-          <UnitItem key={row.id} row={row} opening={opening} index={i} more={moreOf(row)} />
-        ))}
-      </ul>
+      <LessonList rows={rows} opening={opening} course={course} />
+    </section>
+  );
+}
+
+/** The opening's own lessons, when they are not in the path: open at any time, in their own order. */
+function OpeningLessons({ opening, course }: { opening: OpeningId; course: CourseFile | null }) {
+  const rows = sectionRows(course, getLessons(opening));
+  if (!rows.length) return null;
+  return (
+    <section class="section-block" aria-labelledby="opening-lessons-title">
+      <div class="section-head">
+        <h2 id="opening-lessons-title" class="section-label">
+          {OPENING_SHORT[opening]} plans and traps
+        </h2>
+        <span class="section-note">
+          {doneCount(rows)} of {rows.length} done
+        </span>
+      </div>
+      <LessonList rows={rows} opening={opening} course={course} />
     </section>
   );
 }
@@ -113,6 +140,7 @@ export function Course() {
       <div class="stack">
         <OpeningSwitch value={opening} onChange={setOpening} />
         {rows && <Lessons key={opening} rows={rows} opening={opening} course={course ?? null} />}
+        {rows && !OPENING_LESSONS_IN_PATH && <OpeningLessons key={opening} opening={opening} course={course ?? null} />}
         <VariationsMet opening={opening} />
       </div>
       <TabBar current="course" />

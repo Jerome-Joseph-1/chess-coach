@@ -22,6 +22,10 @@
   min-height: 20px;
   margin-top: 4px;
 }
+/* An opening lesson open at any time has no status to show. */
+.unit-status:empty {
+  display: none;
+}
 .unit-score {
   color: var(--text-muted);
   font: var(--text-label);
