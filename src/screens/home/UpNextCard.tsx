@@ -1,8 +1,8 @@
 import { openingById } from '../../content/catalog';
 import type { Level, OpeningId } from '../../content/types';
 import { courseUnits, nextStep } from '../../course/path';
-import type { UnitId } from '../../course/types';
-import { UNITS } from '../../course/units';
+import { lessonInfo } from '../../course/lessonInfo';
+import type { LessonId, UnitId } from '../../course/types';
 import { gamesSinceLastLesson, useCourse } from '../../course/useCourse';
 import { getDepth, getLessons, getSetStats, getStageProgress, getUnfinishedGame } from '../../progress/store';
 import { navigate } from '../../router';
@@ -10,7 +10,6 @@ import { Button } from '../../ui/Button';
 import { disabledIf } from '../shared/disabledIf';
 import { Icon } from '../shared/icons';
 import { lessonPath, OPENING_TITLES, playPath, sideLine } from '../shared/labels';
-import { UNIT_ICONS } from '../shared/unitIcons';
 import { MiniBoard } from './MiniBoard';
 import { StageProgress } from './StageProgress';
 import type { SetStatus } from './useSetStatus';
@@ -28,17 +27,17 @@ export function UpNextCard(props: UpNextCardProps) {
   if (course === undefined) return <div class="card up-next up-next--waiting" aria-hidden="true" />;
   const step = nextStep(course, getLessons(props.opening), gamesSinceLastLesson(props.opening));
   if (step.kind === 'game') return <GameCard {...props} />;
-  return <LessonCard {...props} unit={step.unit} number={courseUnits(course).indexOf(step.unit) + 1} />;
+  return <LessonCard {...props} unit={step.unit} number={courseUnits(course).indexOf(step.unit as UnitId) + 1} />;
 }
 
 /** The next lesson, with a quiet way to play a game instead. */
-function LessonCard({ opening, level, status, unit, number }: UpNextCardProps & { unit: UnitId; number: number }) {
-  const { title, line } = UNITS[unit];
+function LessonCard({ opening, level, status, unit, number }: UpNextCardProps & { unit: LessonId; number: number }) {
+  const { title, line, icon } = lessonInfo(unit);
   return (
     <section class="card up-next" aria-labelledby="up-next-title">
       <div class="up-next-top">
         <span class="tile up-next-tile" aria-hidden="true">
-          <Icon name={UNIT_ICONS[unit]} size={28} />
+          <Icon name={icon} size={28} />
         </span>
         <div class="up-next-text">
           <p class="eyebrow up-next-eyebrow">Up next · Lesson {number}</p>

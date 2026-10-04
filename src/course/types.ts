@@ -49,7 +49,7 @@ export interface PositionRef {
 }
 
 export interface UnitEntry {
-  id: UnitId;
+  id: LessonId;
   /** Worked-example candidates, clearest first; the lesson shows the first one that loads. */
   examples: PositionRef[];
   /** Practice candidates, easiest first; the lesson takes the first ones whose game the user has not played. */
@@ -65,7 +65,7 @@ export interface CourseFile {
 }
 
 /** What Today offers next: a unit's lesson, or a game. */
-export type PathStep = { kind: 'lesson'; unit: UnitId } | { kind: 'game' };
+export type PathStep = { kind: 'lesson'; unit: LessonId } | { kind: 'game' };
 
 /** One practice position answered in a lesson. `key` is "set/gameId:ply". */
 export interface DrillResult {
@@ -87,7 +87,7 @@ export interface LessonRecord {
 /** An unfinished lesson's page: the worked example, or practice begun at `since` on the positions `drills`, by key. */
 export type LessonPlace = { page: 'example' } | { page: 'practice'; since: number; drills: string[] };
 
-export type Lessons = Partial<Record<UnitId, LessonRecord>>;
+export type Lessons = Partial<Record<LessonId, LessonRecord>>;
 
 /** How many practice positions a lesson asks. */
 export const DRILLS_PER_LESSON = 4;

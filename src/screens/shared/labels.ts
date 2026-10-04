@@ -1,6 +1,6 @@
 import { openingById } from '../../content/catalog';
 import type { Level, OpeningId } from '../../content/types';
-import type { UnitId } from '../../course/types';
+import type { LessonId } from '../../course/types';
 import type { StatKind } from '../../progress/stats';
 
 export const OPENING_TITLES: Record<OpeningId, string> = {
@@ -28,12 +28,12 @@ export function playPath(opening: OpeningId, level: Level): string {
   return `/play/${opening}/${level}`;
 }
 
-export function lessonPath(opening: OpeningId, unit: UnitId): string {
+export function lessonPath(opening: OpeningId, unit: LessonId): string {
   return `/lesson/${opening}/${unit}`;
 }
 
 /** A round of new practice positions for a lesson already done. */
-export function morePracticePath(opening: OpeningId, unit: UnitId): string {
+export function morePracticePath(opening: OpeningId, unit: LessonId): string {
   return `${lessonPath(opening, unit)}?more`;
 }
 
