@@ -58,6 +58,14 @@ describe('revealSequence', () => {
   it('follows the turn it is asked about', () => {
     expect(revealSequence(italian1, 7, null).steps[0].before).toBe(italian1.turns[7].fen);
   });
+
+  it('plays the line it is given when the turn has none, and only then', () => {
+    const plan = ['c4d5', 'c6d4'];
+    const bare = { ...italian1, turns: italian1.turns.map((t, i) => (i === 3 ? { ...t, lines: { best: [] } } : t)) };
+    expect(revealSequence(bare, 3, null).steps).toEqual([]);
+    expect(revealSequence(bare, 3, null, plan).steps.map((s) => s.uci)).toEqual(plan);
+    expect(revealSequence(italian1, 3, null, plan)).toEqual(revealSequence(italian1, 3, null));
+  });
 });
 
 describe('lineSequence', () => {
