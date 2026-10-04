@@ -3,11 +3,14 @@ import { useEffect, useState } from 'preact/hooks';
 import type { BoardController } from '../../board/types';
 import type { Game } from '../../content/types';
 import { PauseSheet, type PauseOutcome, type PauseStage } from '../../pause/PauseSheet';
+import type { DrillTeaching } from '../../pause/teaching';
 import type { LessonPosition } from '../select';
 
 export interface PracticeProps {
   board: BoardController;
   position: LessonPosition;
+  /** An opening lesson's plan, hints and takeaway for this position. */
+  teaching?: DrillTeaching;
   onStage: (stage: PauseStage) => void;
   onDone: (result: PauseOutcome) => void;
 }
@@ -34,7 +37,7 @@ async function setUp(board: BoardController, { game, turnIndex }: LessonPosition
 }
 
 /** One practice position: the opponent's last move plays in, then the pause asks for the move with the pattern named. */
-export function Practice({ board, position, onStage, onDone }: PracticeProps) {
+export function Practice({ board, position, teaching, onStage, onDone }: PracticeProps) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -54,6 +57,7 @@ export function Practice({ board, position, onStage, onDone }: PracticeProps) {
       depth={1}
       board={board}
       mode="drill"
+      teaching={teaching}
       onStage={onStage}
       onDone={onDone}
     />
