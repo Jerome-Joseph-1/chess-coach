@@ -33,8 +33,9 @@ interface CoachSays {
 /** A note on the opening position shown, under the name of its variation; once known, the name over today's line. */
 function coachSays(view: SessionView): CoachSays {
   if (view.intro && view.phase.kind === 'ready') return { name: 'How it works', text: HOW_IT_WORKS, note: true };
-  const live = view.phase.kind === 'ready' || view.phase.kind === 'playing';
-  const note = live ? view.note : null;
+  // While the game plays, notes flash past too fast to read: keep the variation's name and a steady line.
+  if (view.phase.kind === 'playing') return { name: view.note?.name ?? null, text: coachLine(view), note: false };
+  const note = view.phase.kind === 'ready' ? view.note : null;
   return { name: note?.name ?? null, text: note?.text ?? coachLine(view), note: Boolean(note?.text) };
 }
 
