@@ -1,7 +1,7 @@
 import type { OpeningId } from '../content/types';
 import { gamesUntilLesson, morePractice, unitRows, type UnitRow } from '../course/path';
+import { lessonInfo } from '../course/lessonInfo';
 import type { CourseFile } from '../course/types';
-import { UNITS } from '../course/units';
 import { gamesSinceLastLesson, useCourse } from '../course/useCourse';
 import { VariationsMet } from '../opening/VariationsMet';
 import { getLessons, getSettings } from '../progress/store';
@@ -10,7 +10,6 @@ import { Icon } from './shared/icons';
 import { EmptyCard } from './shared/EmptyCard';
 import { lessonPath, morePracticePath, OPENING_SHORT, plural } from './shared/labels';
 import { OpeningSwitch, useOpening } from './shared/OpeningSwitch';
-import { UNIT_ICONS } from './shared/unitIcons';
 import './shared/screen.css';
 import './course.css';
 
@@ -40,12 +39,12 @@ function Status({ row }: { row: UnitRow }) {
 }
 
 function UnitItem({ row, opening, index, more }: { row: UnitRow; opening: OpeningId; index: number; more: number }) {
-  const { title, line } = UNITS[row.id];
+  const { title, line, icon } = lessonInfo(row.id);
   const later = row.status === 'later';
   const content = (
     <>
       <span class="tile" aria-hidden="true">
-        <Icon name={UNIT_ICONS[row.id]} />
+        <Icon name={icon} />
       </span>
       <span class="row-main unit-main">
         <span class="row-title">{title}</span>

@@ -1,22 +1,56 @@
 import { describe, expect, it } from 'vitest';
-import { courseUnits, drillScore, gamesUntilLesson, lastLessonAt, morePractice, nextStep, nextUnit, unansweredDrills, unitRows } from './path';
-import type { CourseFile, LessonRecord, Lessons, UnitEntry, UnitId } from './types';
+import { courseLessons, drillScore, gamesUntilLesson, lastLessonAt, morePractice, nextStep, nextUnit, sectionRows, unansweredDrills, unitRows } from './path';
+import type { CourseFile, LessonId, LessonRecord, Lessons, UnitEntry } from './types';
 
 const REF = { set: 'italian-1400', gameId: 'italian-1400-0001', ply: 3, findShare: 0.5 };
 
-function unit(id: UnitId, examples = 1): UnitEntry {
+function unit(id: LessonId, examples = 1): UnitEntry {
   return { id, examples: Array.from({ length: examples }, () => REF), drills: [REF] };
 }
+
+const units = (...ids: LessonId[]) => ids.map((id) => unit(id));
 
 // Stored out of order, with a unit that has no worked example.
 const course: CourseFile = { v: 1, opening: 'italian', level: 1400, units: [unit('pin'), unit('fork'), unit('free-piece'), unit('skewer', 0)] };
 
+// One opening lesson has no example and one no entry; another opening's lesson does not belong.
+const openingCourse: CourseFile = {
+  ...course,
+  units: [
+    ...units('free-piece', 'piece-in-danger', 'fork', 'pin', 'checkmate'),
+    ...units('italian-idea', 'italian-slow', 'italian-traps', 'caro-kann-idea'),
+    unit('italian-centre', 0),
+  ],
+};
+
 const done = (doneAt: number, drills: LessonRecord['drills'] = []): LessonRecord => ({ learnedAt: doneAt - 1, doneAt, drills });
 
-describe('courseUnits', () => {
+describe('courseLessons', () => {
   it('lists the units with an example in teaching order', () => {
-    expect(courseUnits(course)).toEqual(['free-piece', 'fork', 'pin']);
-    expect(courseUnits(null)).toEqual([]);
+    expect(courseLessons(course)).toEqual(['free-piece', 'fork', 'pin']);
+    expect(courseLessons(null)).toEqual([]);
+  });
+
+  it("starts with the opening's first lesson and puts its next one after every two units, skipping lessons without an example", () => {
+    expect(courseLessons(openingCourse)).toEqual([
+      'italian-idea',
+      'free-piece',
+      'piece-in-danger',
+      'italian-slow',
+      'fork',
+      'pin',
+      'italian-traps',
+      'checkmate',
+    ]);
+  });
+
+  it('puts the opening lessons left over last when the units run out', () => {
+    const few: CourseFile = { ...course, units: [unit('fork'), unit('italian-centre'), unit('italian-idea'), unit('italian-ng5')] };
+    expect(courseLessons(few)).toEqual(['italian-idea', 'fork', 'italian-centre', 'italian-ng5']);
+  });
+
+  it('leaves the opening lessons out of the path when they are a section of their own', () => {
+    expect(courseLessons(openingCourse, false)).toEqual(['free-piece', 'piece-in-danger', 'fork', 'pin', 'checkmate']);
   });
 });
 
@@ -106,5 +140,41 @@ describe('more practice', () => {
     expect(morePractice(withDrills, 'fork', answered(1, 3, 5, 7, 9, 11))).toBe(0);
     expect(morePractice(withDrills, 'pin', undefined)).toBe(0);
     expect(morePractice(null, 'fork', undefined)).toBe(0);
+  });
+});
+
+describe('opening lessons for someone who started before them', () => {
+  const lessons: Lessons = { 'free-piece': done(100), 'piece-in-danger': done(200), fork: done(300) };
+
+  it('keeps the tactic lessons done and offers the first opening lesson next', () => {
+    expect(nextStep(openingCourse, lessons, 2)).toEqual({ kind: 'lesson', unit: 'italian-idea' });
+    expect(unitRows(openingCourse, lessons).map((r) => [r.id, r.status])).toEqual([
+      ['italian-idea', 'next'],
+      ['free-piece', 'done'],
+      ['piece-in-danger', 'done'],
+      ['italian-slow', 'later'],
+      ['fork', 'done'],
+      ['pin', 'later'],
+      ['italian-traps', 'later'],
+      ['checkmate', 'later'],
+    ]);
+  });
+
+  it('then offers the next opening lesson, two games later', () => {
+    const more: Lessons = { ...lessons, 'italian-idea': done(400) };
+    expect(nextStep(openingCourse, more, 1)).toEqual({ kind: 'game' });
+    expect(nextStep(openingCourse, more, 2)).toEqual({ kind: 'lesson', unit: 'italian-slow' });
+  });
+});
+
+describe('sectionRows', () => {
+  it("lists the opening's lessons with an example, done with a score or open", () => {
+    const lessons: Lessons = { 'italian-slow': done(100, [{ key: 'x', correct: true, at: 1 }]), 'italian-idea': { learnedAt: 50, drills: [] } };
+    expect(sectionRows(openingCourse, lessons)).toEqual([
+      { id: 'italian-idea', status: 'open', score: null },
+      { id: 'italian-slow', status: 'done', score: { right: 1, total: 1 } },
+      { id: 'italian-traps', status: 'open', score: null },
+    ]);
+    expect(sectionRows(null, lessons)).toEqual([]);
   });
 });

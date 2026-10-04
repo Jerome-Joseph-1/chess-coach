@@ -1,8 +1,8 @@
 import { openingById } from '../../content/catalog';
 import type { Level, OpeningId } from '../../content/types';
-import { courseUnits, nextStep } from '../../course/path';
+import { courseLessons, nextStep } from '../../course/path';
 import { lessonInfo } from '../../course/lessonInfo';
-import type { LessonId, UnitId } from '../../course/types';
+import type { LessonId } from '../../course/types';
 import { gamesSinceLastLesson, useCourse } from '../../course/useCourse';
 import { getDepth, getLessons, getSetStats, getStageProgress, getUnfinishedGame } from '../../progress/store';
 import { navigate } from '../../router';
@@ -27,7 +27,7 @@ export function UpNextCard(props: UpNextCardProps) {
   if (course === undefined) return <div class="card up-next up-next--waiting" aria-hidden="true" />;
   const step = nextStep(course, getLessons(props.opening), gamesSinceLastLesson(props.opening));
   if (step.kind === 'game') return <GameCard {...props} />;
-  return <LessonCard {...props} unit={step.unit} number={courseUnits(course).indexOf(step.unit as UnitId) + 1} />;
+  return <LessonCard {...props} unit={step.unit} number={courseLessons(course).indexOf(step.unit) + 1} />;
 }
 
 /** The next lesson, with a quiet way to play a game instead. */
