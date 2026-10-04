@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { courseUnits, drillScore, gamesUntilLesson, lastLessonAt, nextStep, nextUnit, unitRows } from './path';
+import { courseUnits, drillScore, gamesUntilLesson, lastLessonAt, morePractice, nextStep, nextUnit, unansweredDrills, unitRows } from './path';
 import type { CourseFile, LessonRecord, Lessons, UnitEntry, UnitId } from './types';
 
 const REF = { set: 'italian-1400', gameId: 'italian-1400-0001', ply: 3, findShare: 0.5 };
@@ -88,5 +88,23 @@ describe('unitRows', () => {
   it('has no next unit once all are done', () => {
     const lessons: Lessons = { 'free-piece': done(1), fork: done(2), pin: done(3) };
     expect(unitRows(course, lessons).map((r) => r.status)).toEqual(['done', 'done', 'done']);
+  });
+});
+
+describe('more practice', () => {
+  const ref = (ply: number) => ({ ...REF, ply });
+  const withDrills: CourseFile = { ...course, units: [{ id: 'fork', examples: [REF], drills: [1, 3, 5, 7, 9, 11].map(ref) }] };
+  const answered = (...plies: number[]) => done(100, plies.map((ply) => ({ key: `italian-1400/italian-1400-0001:${ply}`, correct: false, at: 50 })));
+
+  it('offers the practice positions not answered yet, up to a lesson at a time', () => {
+    expect(unansweredDrills(withDrills, 'fork', answered(1, 5)).map((r) => r.ply)).toEqual([3, 7, 9, 11]);
+    expect(morePractice(withDrills, 'fork', answered(1))).toBe(4);
+    expect(morePractice(withDrills, 'fork', answered(1, 3, 5))).toBe(3);
+  });
+
+  it('offers none once every one is answered, or without the unit', () => {
+    expect(morePractice(withDrills, 'fork', answered(1, 3, 5, 7, 9, 11))).toBe(0);
+    expect(morePractice(withDrills, 'pin', undefined)).toBe(0);
+    expect(morePractice(null, 'fork', undefined)).toBe(0);
   });
 });

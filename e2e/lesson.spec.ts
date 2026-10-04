@@ -187,3 +187,48 @@ test('leaving a lesson keeps its place: it reopens on the same practice, and the
   await expect(missed).toContainText('It comes back for review on Today, starting tomorrow.');
   expect((await storedLesson(page, 'free-piece')).place).toBeUndefined();
 });
+
+test('the summary offers four more practice positions while the unit has new ones', async ({ page }) => {
+  await page.route('**/content/italian-1400/course.json', async (route) => {
+    const course = await (await route.fetch()).json();
+    const at = (game: string, ply: number) => ({ set: 'italian-1400', gameId: `italian-1400-${game}`, ply, findShare: 0.4 });
+    course.units[0].drills = [at('0001', 3), at('0001', 7), at('0001', 15), at('0002', 35), at('0002', 3)];
+    await route.fulfill({ json: course });
+  });
+  // Left during a lesson whose practice asks only the first position.
+  await page.addInitScript(() => {
+    const place = { page: 'practice', since: 1, drills: ['italian-1400/italian-1400-0001:3'] };
+    const lessons = { italian: { 'free-piece': { learnedAt: 1, drills: [], place } } };
+    if (!localStorage.getItem('cc.progress.v1')) localStorage.setItem('cc.progress.v1', JSON.stringify({ v: 1, lessons }));
+  });
+  await page.goto('./#/lesson/italian/free-piece');
+  await expect(page.getByText('Practice 1 of 1')).toBeVisible();
+  await tapSquares(page, 'd4', 'e5');
+  await continueButton(page).click();
+
+  await expect(page.getByText('Lesson done')).toBeVisible();
+  await page.getByRole('button', { name: 'Practice 4 more' }).click();
+  await expect(page.getByText('Practice 1 of 4')).toBeVisible();
+});
+
+test('a done lesson offers new practice positions from the Course tab until none are left', async ({ page }) => {
+  await page.addInitScript(() => {
+    const lessons = { italian: { 'free-piece': { learnedAt: 1, doneAt: 2, drills: [] } } };
+    if (!localStorage.getItem('cc.progress.v1')) localStorage.setItem('cc.progress.v1', JSON.stringify({ v: 1, lessons }));
+  });
+  await page.goto('./#/course');
+  await page.getByRole('link', { name: 'Practice 1 more' }).click();
+  await expect(page).toHaveURL(/#\/lesson\/italian\/free-piece\?more$/);
+  await expect(page.getByText('Practice 1 of 1')).toBeVisible();
+  await tapSquares(page, 'd4', 'e5');
+  await expect(page.getByText('You found the move')).toBeVisible();
+  await continueButton(page).click();
+
+  await expect(page.getByText('Practice done')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '1 of 1' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Practice \d more$/ })).toHaveCount(0);
+  const saved = await storedLesson(page, 'free-piece');
+  expect(saved).toMatchObject({ doneAt: 2, drills: [{ key: 'italian-1400/italian-1400-0001:3', correct: true }] });
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.getByRole('link', { name: /^Practice \d more$/ })).toHaveCount(0);
+});

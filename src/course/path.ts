@@ -1,4 +1,15 @@
-import { GAMES_BETWEEN_LESSONS, UNIT_IDS, type CourseFile, type LessonRecord, type Lessons, type PathStep, type UnitId } from './types';
+import {
+  DRILLS_PER_LESSON,
+  GAMES_BETWEEN_LESSONS,
+  UNIT_IDS,
+  positionKey,
+  type CourseFile,
+  type LessonRecord,
+  type Lessons,
+  type PathStep,
+  type PositionRef,
+  type UnitId,
+} from './types';
 
 export type UnitStatus = 'done' | 'next' | 'later';
 
@@ -50,6 +61,18 @@ export function drillScore(record: LessonRecord): Score {
   for (const drill of record.drills) if (!first.has(drill.key)) first.set(drill.key, drill.correct);
   const answers = [...first.values()];
   return { right: answers.filter(Boolean).length, total: answers.length };
+}
+
+/** The unit's practice positions the user has not answered yet. */
+export function unansweredDrills(course: CourseFile | null, unit: UnitId, record: LessonRecord | undefined): PositionRef[] {
+  const answered = new Set(record?.drills.map((d) => d.key));
+  const drills = course?.units.find((u) => u.id === unit)?.drills ?? [];
+  return drills.filter((ref) => !answered.has(positionKey(ref)));
+}
+
+/** How many new practice positions the unit offers in one more round: up to a lesson's worth, none once all are answered. */
+export function morePractice(course: CourseFile | null, unit: UnitId, record: LessonRecord | undefined): number {
+  return Math.min(DRILLS_PER_LESSON, unansweredDrills(course, unit, record).length);
 }
 
 /** Each unit of the course with where it stands: done with its score, the next one, or later. */

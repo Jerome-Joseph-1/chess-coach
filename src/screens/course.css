@@ -44,6 +44,21 @@
   color: var(--text-muted);
   font: var(--text-label);
 }
+/* A round of new practice for a done lesson, under its row and in line with its text. */
+.unit-more {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  margin-top: -8px;
+  padding: 0 16px 4px 64px;
+  color: var(--coach-text);
+  font: var(--text-callout);
+  text-decoration: none;
+  touch-action: manipulation;
+}
+.unit-more:active {
+  opacity: 0.6;
+}
 .unit-row--later .row-title {
   color: var(--text);
 }

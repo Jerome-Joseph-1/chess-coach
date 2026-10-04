@@ -1,4 +1,5 @@
-// Where a lesson opens: at the start, or back on the page the user left.
+// Where a lesson opens: at the start, back on the page the user left, or with a round of new practice.
+import { unansweredDrills } from './path';
 import { deviceSource, pickExample, pickPractice, type LessonPosition, type PositionSource } from './select';
 import { DRILLS_PER_LESSON, type CourseFile, type DrillResult, type LessonRecord, type PositionRef, type UnitId } from './types';
 
@@ -46,18 +47,23 @@ async function resumePractice(record: LessonRecord, since: number, keys: string[
 }
 
 /**
- * The lesson to show: on the page the user left, with the practice answered there kept, or at the intro.
- * Null when the unit or its example is missing.
+ * The lesson to show. `more` asks up to four practice positions not answered before. Otherwise it opens on the page
+ * the user left, with the practice answered there kept, or at the intro. Null when the unit or its example is missing.
  */
 export async function openLesson(
   course: CourseFile,
   unit: UnitId,
   record: LessonRecord | undefined,
+  more: boolean,
   source = deviceSource(course.opening, unit),
 ): Promise<OpenedLesson | null> {
   const entry = course.units.find((u) => u.id === unit);
   const example = entry && (await pickExample(entry, source));
   if (!example) return null;
+  if (more) {
+    const drills = await pickPractice(unansweredDrills(course, unit, record), DRILLS_PER_LESSON, source);
+    return { stage: 'practice', example, drills, answers: [] };
+  }
   const place = record?.place;
   if (place?.page === 'practice') {
     const { answers, drills } = await resumePractice(record!, place.since, place.drills, source);

@@ -11,19 +11,31 @@ import type { UnitId } from '../types';
 import { INTROS } from './intros';
 import '../../pause/pause.css';
 
+interface Action {
+  label: string;
+  onClick: () => void;
+}
+
 interface PageProps {
   label: string;
-  action?: { label: string; onClick: () => void };
+  action?: Action;
+  /** A second way on, over the main one. */
+  secondary?: Action;
   children: ComponentChildren;
 }
 
-/** A lesson page without the board: its content scrolls over the dock, which holds the one way on. */
-function Page({ label, action, children }: PageProps) {
+/** A lesson page without the board: its content scrolls over the dock, which holds the way on. */
+function Page({ label, action, secondary, children }: PageProps) {
   return (
     <section class="lesson-page" aria-label={label}>
       <div class="lesson-scroll">{children}</div>
       {action && (
         <Dock>
+          {secondary && (
+            <div class="dock-row">
+              <DockButton look="secondary" wide label={secondary.label} onClick={secondary.onClick} />
+            </div>
+          )}
           <div class="dock-row">
             <DockButton look="primary" wide nudge label={action.label} onClick={action.onClick} />
           </div>
@@ -66,7 +78,11 @@ export function Intro({ unit, action }: IntroProps) {
 
 export interface SummaryProps {
   answers: Answer[];
+  /** A round of more practice rather than the lesson. */
+  more: boolean;
   remember: string;
+  /** Another round of new practice positions, while the unit has some left. */
+  moreAction?: Action;
   onContinue: () => void;
 }
 
@@ -98,15 +114,16 @@ function Missed({ answers }: { answers: Answer[] }) {
 }
 
 /** How the practice went, the positions to review, and the takeaway to bring into the next games. */
-export function Summary({ answers, remember, onContinue }: SummaryProps) {
+export function Summary({ answers, more, remember, moreAction, onContinue }: SummaryProps) {
   const right = answers.filter((a) => a.correct).length;
+  const done = more ? 'Practice done' : 'Lesson done';
   return (
-    <Page label="Lesson done" action={{ label: 'Continue', onClick: onContinue }}>
+    <Page label={done} action={{ label: 'Continue', onClick: onContinue }} secondary={moreAction}>
       <div class="lesson-hero rise-in">
         <span class="tile lesson-icon tile--right" aria-hidden="true">
           <Icon name="check" size={28} />
         </span>
-        <p class="eyebrow">Lesson done</p>
+        <p class="eyebrow">{done}</p>
         {answers.length > 0 ? (
           <>
             <h2 class="lesson-score">

@@ -27,21 +27,21 @@ function record(place: LessonRecord['place'], answered: [ply: number, correct: b
 
 describe('openLesson', () => {
   it('starts a new lesson at the intro with four practice positions', async () => {
-    const lesson = await openLesson(course, 'fork', undefined, source);
+    const lesson = await openLesson(course, 'fork', undefined, false, source);
     expect(lesson).toMatchObject({ stage: 'intro', answers: [] });
     expect(lesson!.example.ref.ply).toBe(1);
     expect(plies(lesson!.drills)).toEqual([10, 11, 12, 13]);
   });
 
   it('opens on the worked example the user left', async () => {
-    expect((await openLesson(course, 'fork', record({ page: 'example' }), source))!.stage).toBe('example');
+    expect((await openLesson(course, 'fork', record({ page: 'example' }), false, source))!.stage).toBe('example');
   });
 
   it('resumes practice on the positions it began with, keeping the answers given since', async () => {
     // 11 was also answered in an earlier lesson, which does not count here.
     const practice = { page: 'practice' as const, since: 100, drills: [11, 12, 13, 14].map(key) };
     const left = record(practice, [[11, false, 50], [11, true, 100], [12, false, 120]]);
-    const lesson = await openLesson(course, 'fork', left, source);
+    const lesson = await openLesson(course, 'fork', left, false, source);
     expect(lesson!.stage).toBe('practice');
     expect(lesson!.answers.map((a) => [a.position.ref.ply, a.correct])).toEqual([[11, true], [12, false]]);
     expect(plies(lesson!.drills)).toEqual([13, 14]);
@@ -50,14 +50,21 @@ describe('openLesson', () => {
   it('goes to the summary when every practice position was answered before the user left', async () => {
     const practice = { page: 'practice' as const, since: 100, drills: [10, 11, 12, 13].map(key) };
     const left = record(practice, [[10, true, 100], [11, true, 101], [12, true, 102], [13, false, 103]]);
-    const lesson = await openLesson(course, 'fork', left, source);
+    const lesson = await openLesson(course, 'fork', left, false, source);
     expect(lesson).toMatchObject({ stage: 'summary', drills: [] });
     expect(lesson!.answers).toHaveLength(4);
   });
 
+  it('asks more practice only from positions never answered', async () => {
+    const finished = { ...record(undefined, [[10, true, 1], [11, false, 2], [12, true, 3], [13, true, 4]]), doneAt: 5 };
+    const lesson = await openLesson(course, 'fork', finished, true, source);
+    expect(lesson).toMatchObject({ stage: 'practice', answers: [] });
+    expect(plies(lesson!.drills)).toEqual([14, 15]);
+  });
+
   it('gives nothing without the unit or an example that loads', async () => {
-    expect(await openLesson(course, 'pin', undefined, source)).toBeNull();
-    expect(await openLesson(course, 'fork', undefined, { ...source, load: async () => null })).toBeNull();
+    expect(await openLesson(course, 'pin', undefined, false, source)).toBeNull();
+    expect(await openLesson(course, 'fork', undefined, false, { ...source, load: async () => null })).toBeNull();
   });
 });
 

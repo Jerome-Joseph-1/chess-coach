@@ -1,5 +1,6 @@
 import type { OpeningId } from '../content/types';
-import { gamesUntilLesson, unitRows, type UnitRow } from '../course/path';
+import { gamesUntilLesson, morePractice, unitRows, type UnitRow } from '../course/path';
+import type { CourseFile } from '../course/types';
 import { UNITS } from '../course/units';
 import { gamesSinceLastLesson, useCourse } from '../course/useCourse';
 import { VariationsMet } from '../opening/VariationsMet';
@@ -7,7 +8,7 @@ import { getLessons, getSettings } from '../progress/store';
 import { TabBar } from '../ui/TabBar';
 import { Icon } from './shared/icons';
 import { EmptyCard } from './shared/EmptyCard';
-import { lessonPath, plural } from './shared/labels';
+import { lessonPath, morePracticePath, plural } from './shared/labels';
 import { OpeningSwitch, useOpening } from './shared/OpeningSwitch';
 import { UNIT_ICONS } from './shared/unitIcons';
 import './shared/screen.css';
@@ -38,7 +39,7 @@ function Status({ row }: { row: UnitRow }) {
   );
 }
 
-function UnitItem({ row, opening, index }: { row: UnitRow; opening: OpeningId; index: number }) {
+function UnitItem({ row, opening, index, more }: { row: UnitRow; opening: OpeningId; index: number; more: number }) {
   const { title, line } = UNITS[row.id];
   const later = row.status === 'later';
   const content = (
@@ -65,13 +66,20 @@ function UnitItem({ row, opening, index }: { row: UnitRow; opening: OpeningId; i
           {content}
         </a>
       )}
+      {more > 0 && (
+        <a class="unit-more" href={`#${morePracticePath(opening, row.id)}`}>
+          Practice {more} more
+        </a>
+      )}
     </li>
   );
 }
 
-function Lessons({ rows, opening }: { rows: UnitRow[]; opening: OpeningId }) {
+function Lessons({ rows, opening, course }: { rows: UnitRow[]; opening: OpeningId; course: CourseFile | null }) {
   if (!rows.length) return <EmptyCard text="Lessons for this level are on the way." />;
   const done = rows.filter((r) => r.status === 'done').length;
+  const lessons = getLessons(opening);
+  const moreOf = (row: UnitRow) => (row.status === 'done' ? morePractice(course, row.id, lessons[row.id]) : 0);
   return (
     <section class="section-block" aria-labelledby="lessons-title">
       <div class="section-head">
@@ -84,7 +92,7 @@ function Lessons({ rows, opening }: { rows: UnitRow[]; opening: OpeningId }) {
       </div>
       <ul class="card list">
         {rows.map((row, i) => (
-          <UnitItem key={row.id} row={row} opening={opening} index={i} />
+          <UnitItem key={row.id} row={row} opening={opening} index={i} more={moreOf(row)} />
         ))}
       </ul>
     </section>
@@ -104,7 +112,7 @@ export function Course() {
       </header>
       <div class="stack">
         <OpeningSwitch value={opening} onChange={setOpening} />
-        {rows && <Lessons key={opening} rows={rows} opening={opening} />}
+        {rows && <Lessons key={opening} rows={rows} opening={opening} course={course ?? null} />}
         <VariationsMet opening={opening} />
       </div>
       <TabBar current="course" />

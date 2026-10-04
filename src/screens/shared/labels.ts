@@ -32,6 +32,11 @@ export function lessonPath(opening: OpeningId, unit: UnitId): string {
   return `/lesson/${opening}/${unit}`;
 }
 
+/** A round of new practice positions for a lesson already done. */
+export function morePracticePath(opening: OpeningId, unit: UnitId): string {
+  return `${lessonPath(opening, unit)}?more`;
+}
+
 /** Where a review opens: a game's position replays in its game, a lesson's practice position is asked as practice. */
 export function reviewPath(item: { opening: OpeningId; level: Level; gameId: string; ply: number; drillSet?: string }): string {
   if (item.drillSet) return practicePath(item.drillSet, item.gameId, item.ply);

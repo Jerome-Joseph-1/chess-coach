@@ -40,7 +40,7 @@ export function App() {
   }
   const lesson = path.match(/^\/lesson\/([a-z-]+)\/([a-z-]+)$/);
   if (lesson && isOpeningId(lesson[1]) && isUnitId(lesson[2])) {
-    return <LessonScreen key={route} opening={lesson[1]} unit={lesson[2]} />;
+    return <LessonScreen key={route} opening={lesson[1]} unit={lesson[2]} more={new URLSearchParams(query).has('more')} />;
   }
   switch (path) {
     case '/course':
