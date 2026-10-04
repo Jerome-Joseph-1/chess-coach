@@ -387,7 +387,7 @@ const ITALIAN: Family[] = [
     lines: [`${IT} Nf6 Ng5`],
     plan: "4.Ng5 hits f7 twice. After 4...d5 5.exd5 Na5 you can keep an extra pawn, but Black's pieces get out faster.",
     notes: {
-      Bc5: '4...Bc5 ignores f7 and hits f2. 5.Nxf7 is best, hitting queen and rook; meet 5...Bxf2+ with 6.Kf1, not Kxf2.',
+      Bc5: '4...Bc5 ignores f7 and attacks f2. 5.Nxf7 is best, attacking queen and rook; meet 5...Bxf2+ with 6.Kf1, not Kxf2.',
       'Bc5 Bxf7+': "5.Bxf7+ grabs the pawn with check. Black's king must move and can no longer castle.",
       'Bc5 Nxf7': '5.Nxf7 attacks queen and rook at once, but 5...Bxf2+ drags your king out into the open.',
       'Bc5 Nxf7 Bxf2+': '5...Bxf2+ is the point. 6.Kxf2 Nxe4+ exposes your king; 6.Kf1 avoids the knight check.',
@@ -783,7 +783,7 @@ const ITALIAN: Family[] = [
     plan: "3...f5 hits e4 but opens lines toward Black's king. Strike with 4.d4 before Black's pieces are out.",
     notes: {
       d3: '4.d3 keeps e4 safe. Ng5 can then jump into f7 or e6, squares ...f5 has weakened.',
-      'd3 Bc5': '4...Bc5 brings the bishop out. Castle or play Nc3; 5.Ng5 threatens Nf7, hitting queen and rook, but 5...f4 holds.',
+      'd3 Bc5': '4...Bc5 brings the bishop out. Castle or play Nc3; 5.Ng5 threatens Nf7, attacking queen and rook, but 5...f4 holds.',
       'd3 Bc5 O-O': '5.O-O tucks your king away. Ng5 can still aim at f7, which ...f5 left empty.',
       'd3 Bc5 O-O f4': '5...f4 leaves e5 loose. 6.Nxe5 wins a pawn: if ...Nxe5, Qh5+ and Qxc5 picks up the bishop.',
       'd3 Bc5 O-O f4 Nxe5': '6.Nxe5 grabs a pawn. If 6...Nxe5, 7.Qh5+ checks, and next you take whichever piece Black leaves loose.',
